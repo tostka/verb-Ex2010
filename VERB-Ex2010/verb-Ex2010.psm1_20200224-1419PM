@@ -1,0 +1,770 @@
+﻿# VERB-Ex2010.psm1
+
+
+  <#
+  .SYNOPSIS
+  VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
+  .NOTES
+  Version     : 1.0.0.0
+  Author      : Todd Kadrie
+  Website     :	https://www.toddomation.com
+  Twitter     :	@tostka
+  CreatedDate : 1/16/2020
+  FileName    : VERB-Ex2010.psm1
+  License     : MIT
+  Copyright   : (c) 1/16/2020 Todd Kadrie
+  Github      : https://github.com/tostka
+  REVISIONS
+  * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
+  * 1/16/2020 - 1.0.0.0
+  # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
+  # 11:34 AM 12/30/2019 ran vsc alias-expansion
+  # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
+  # 10:19 AM 11/1/2019 trimmed some whitespace
+  # 10:05 AM 10/31/2019 added sample load/call info
+  # 12:02 PM 5/6/2019 added cx10,rx10,dx10 aliases
+  # 11:29 AM 5/6/2019 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+  # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
+  # 4:15 PM 3/24/2018 updated pshhelp
+  # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
+  # 1:33 PM 11/1/2017 add load-EMSSnapin (for use on server desktops)
+  # 11:37 AM 11/1/2017 shifted get-GcFast into here
+  # 9:29 AM 11/1/2017 spliced in Get-ExchangeServerInSite with updated auto-switch for ADL|SPB|LYN runs
+  # 8:02 AM 11/1/2017 updated connect-ex2010 & disconnect-ex2010 (add/remove-PSTitlebar), added disconnect-PssBroken
+  # 1:28 PM 12/9/2016: Reconnect-Ex2010, put in some logic to suppress errors
+  # 1:05 PM 12/9/2016 updated the docs & comments on new connect-Ex2010;Reconnect-Ex2010;Disconnect-Ex2010;Get-ExchangeServerInSite;Disconnect-PssBroken funcs and bp CALL code into function
+  # 11:03 AM 12/9/2016 debugged the new connect-Ex2010;Reconnect-Ex2010;Disconnect-Ex2010;Get-ExchangeServerInSite;Disconnect-PssBroken funcs and bp CALL code into function
+  .DESCRIPTION
+  VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
+  .INPUTS
+  None
+  .OUTPUTS
+  None
+  .EXAMPLE
+  .EXAMPLE
+  .LINK
+  https://github.com/tostka/verb-Ex2010
+
+  #>
+
+
+$script:ModuleRoot = $PSScriptRoot ; 
+$script:ModuleVersion = (Import-PowerShellDataFile -Path "$($script:ModuleRoot)\PSFramework.psd1").ModuleVersion ; 
+
+
+
+#*------v Connect-Ex2010.ps1 v------
+Function Connect-Ex2010 {
+  <#
+    .SYNOPSIS
+    Connect-Ex2010 - Setup Remote Exch2010 Mgmt Shell connection
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://toddomation.com
+    Twitter:	http://twitter.com/tostka
+    Author: ExactMike Perficient, Global Knowl... (Partner)
+    Website:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
+    REVISIONS   :
+    * 6:59 PM 1/15/2020 cleanup
+    * 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
+    * 8:55 AM 11/27/2019 expanded $Credential support to switch to torolab & - potentiall/uncfg'd - CMW mail infra. Fw seems to block torolab access (wtf)
+    * # 7:54 AM 11/1/2017 add titlebar tag & updated example to test for pres of Add-PSTitleBar
+    * 12:09 PM 12/9/2016 implented and debugged as part of verb-Ex2010 set
+    * 2:37 PM 12/6/2016 ported to local EMSRemote
+    * 2/10/14 posted version
+    $Credential can leverage a global: $Credential = $global:SIDcred
+    .DESCRIPTION
+    Connect-Ex2010 - Setup Remote Exch2010 Mgmt Shell connection
+    This supports Non-Restricted IIS custom pools, which are created via create-EMSOpenRemotePool.ps1
+    .PARAMETER  ExchangeServer
+    Exch server to Remote to
+    .PARAMETER  ExAdmin
+    Use exadmin IIS WebPool for remote EMS[-ExAdmin]
+    .PARAMETER  Credential
+    Credential object
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output.
+    .EXAMPLE
+    # -----------
+    try{
+        $reqMods="connect-Ex2010;Reconnect-Ex2010;Disconnect-Ex2010;Get-ExchangeServerInSite;Disconnect-PssBroken;Add-PSTitleBar".split(";") ;
+        $reqMods | % {if( !(test-path function:$_ ) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing $($_) function. EXITING." } } ;
+        Reconnect-Ex2010 ;
+    } CATCH {
+        Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+        Exit #STOP(debug)|EXIT(close)|Continue(move on in loop cycle) ;
+    } ;
+
+    # -----------
+    .EXAMPLE
+    # -----------
+    $rgxExoPsHostName="^(ps\.outlook\.com|outlook\.office365\.com)$" ;
+    $rgxRemsPssName="^(Exchange2010|Session\sfor\simplicit\sremoting\smodule\sat\s.*)" ;
+    $rgxSnapPssname="^Session\d{1}$" ;
+    $rgxEx2010SnapinName="^Microsoft\.Exchange\.Management\.PowerShell\.E2010$";
+    $Ex2010SnapinName="Microsoft.Exchange.Management.PowerShell.E2010" ;
+    $Error.Clear() ;
+    TRY {
+    if(($host.version.major -lt 3) -AND (get-service MSExchangeADTopology -ea SilentlyContinue)){
+        if (!(Get-PSSnapin | where {$_.Name -match $rgxEx2010SnapinName})) {Add-PSSnapin $Ex2010SnapinName -ea Stop} ;
+            write-verbose -verbose:$bshowVerbose  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Using Local Server EMS10 Snapin" ;
+            $Global:E10IsDehydrated=$false ;
+        } else {
+            $reqMods="connect-Ex2010;Reconnect-Ex2010;Disconnect-Ex2010;Get-ExchangeServerInSite;Disconnect-PssBroken;Cleanup;Add-PSTitleBar;Remove-PSTitleBar".split(";") ;
+            $reqMods | % {if( !(test-path function:$_ ) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing $($_) function. EXITING." } } ;
+            if(!(Get-PSSession |?{$_.ComputerName -match "^(adl|spb|lyn|bcc)ms\d{3}\.global\.ad\.toro\.com$" -AND $_.ConfigurationName -eq "Microsoft.Exchange" -AND $_.Name -eq "Exchange2010" -AND $_.State -eq "Opened" -AND $_.Availability -eq "Available"})){
+    reconnect-Ex2010 ;
+            $Global:E10IsDehydrated=$true ;
+        } else {
+          write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Functional REMS connection found. " ;
+        } ;
+    } ;
+    get-exchangeserver | out-null ;
+    # -----------
+    More detailed REMS & server-EMS snapin coexistince version.
+    .EXAMPLE
+    # -----------
+    if(!(Get-PSSnapin | where {$_.Name -match $rgxEx2010SnapinName})){
+        Do {
+            write-host "." -NoNewLine;Start-Sleep -m (1000 * 5)
+            if( !(Get-PSSession|?{$_.Name -match $rgxRemsPssName -AND $_.ComputerName -match $rgxProdEx2010ServersFqdn -AND $_.State -eq 'Opened' -AND $_.Availability -eq 'Available'}) ){
+                    Reconnect-Ex2010 ;
+            } ;
+        } Until ((Get-PSSession|?{($_.Name -match $rgxRemsPssName -AND $_.ComputerName -match $rgxProdEx2010ServersFqdn) -AND ($_.State -eq 'Opened') -AND ($_.Availability -eq 'Available')}))
+    } ;
+    # -----------
+    Looping reconnect test example ; defers to existing Snapin (which should be self-maintaining)
+    .LINK
+    #>
+
+  Param(
+    [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
+    [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')][switch]$ExAdmin,
+    [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credTOROSID
+  )  ;
+
+  # 12:27 PM 12/9/2016 trimmed the Add-EMSRemote-supporting regex varis
+  # 10:43 AM 12/7/2016 add PSLanguageMode:FullLanguage IISApp name variable:
+  $sWebPoolVariant = "exadmin" ;
+  $CommandPrefix = $null ;
+  $rgxTolSID = '(' + ([regex]::escape($TOROLAB_logon_SID), [regex]::escape($o365_Torolab_SIDUpn) -join "|") + ')' ;
+  $rgxTorSID = '(' + ([regex]::escape($TORO_logon_SID), [regex]::escape($o365_Toroco_SIDUpn) -join "|") + ')' ;
+  $rgxCmwSID = '(' + ([regex]::escape($DITCHWITCH_logon_SID), [regex]::escape($o365_charlesmachineworks_CSIDUpn) -join "|") + ')' ;
+  if ($Credential.Username -ne $TORO_logon_SID) {
+    switch -regex ($Credential.Username) {
+      "$($rgxTolSID)" {
+        $ExchangeServer = $TOROLAB_Ex10Server # (src tor-incl-infrastrings.ps1)
+        $ExAdmin = $true ;
+      }
+      "$($rgxTorSID)" {
+        $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN
+        $ExAdmin = $true ;
+      }
+      "$($rgxCmwSID)" {
+        $ExchangeServer = "SOMECMWMAILSERVER.DOMAIN.COM"
+        $ExAdmin = $false ;
+      }
+      default {
+        throw "Specified credential ($($Credential.Username))) is not on-prem Ex2010-enabled!`Please retry with a suitable credential" ;
+      } ;
+    } ;
+  }
+  else {
+    # any local site hub
+    If (!($ExchangeServer)) { $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN } ;
+  } ;
+
+  write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
+  # splat to open a session - # stock 'PSLanguageMode=Restricted' powershell IIS Webpool
+  $EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = 'Exchange2010' } ;
+  if ($ExAdmin) {
+    # use variant IIS Webpool
+    $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
+  }
+  if ($Credential) { $EMSsplat.Add("Credential", $Credential) } ;
+  # -Authentication Basic only if specif needed: for Ex configured to connect via IP vs hostname)
+  # try catch against and retry into stock if fails
+  $error.clear() ;
+  TRY {
+    $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+  }
+  CATCH {
+    write-host "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+    if ($ExAdmin) {
+      # switch to stock pool and retry
+      $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
+      write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($EMSSplat|out-string).trim())" ;
+      $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+    }
+    else {
+      STOP ;
+    } ;
+  } ;
+
+  write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
+
+  if ($CommandPrefix) {
+    write-verbose -verbose:$true  "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Modules Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
+    $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -Prefix $CommandPrefix -AllowClobber) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
+  }
+  else {
+    $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -AllowClobber) -Global -PassThru -DisableNameChecking   ;
+  } ;
+  # 7:54 AM 11/1/2017 add titlebar tag
+  Add-PSTitleBar 'EMS' ;
+  # 1:37 PM 11/1/2017 add E10IsDehydrated tag
+  $Global:E10IsDehydrated = $true ;
+  write-verbose -verbose:$true "$(($Global:E10Mod | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
+} ; #*------^ END Function Connect-Ex2010 ^------
+# 11:31 AM 5/6/2019 alias Add-EMSRemote-> Connect-Ex2010
+if (!(get-alias Add-EMSRemote -ea 0)) { set-alias -name Add-EMSRemote -value connect-Ex2010 } ;
+if (!(get-alias cx10 -ea 0)) { set-alias -name cx10 -value connect-Ex2010 }
+
+#*------^ Connect-Ex2010.ps1 ^------
+
+#*------v Disconnect-Ex2010.ps1 v------
+Function Disconnect-Ex2010 {
+  <#
+    .SYNOPSIS
+    Disconnect-Ex2010 - Clear Remote Exch2010 Mgmt Shell connection
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://toddomation.com
+    Twitter:	http://twitter.com/tostka
+    Author: ExactMike Perficient, Global Knowl... (Partner)
+    Website:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
+    REVISIONS   :
+    * 6:59 PM 1/15/2020 cleanup
+    * 8:01 AM 11/1/2017 added Remove-PSTitlebar 'EMS', and Disconnect-PssBroken to the bottom - to halt growth of unrepaired broken connections. Updated example to pretest for reqMods
+    * 12:54 PM 12/9/2016 cleaned up, add pshelp, implented and debugged as part of verb-Ex2010 set
+    * 2:37 PM 12/6/2016 ported to local EMSRemote
+    * 2/10/14 posted version
+    .DESCRIPTION
+    Disconnect-Ex2010 - Clear Remote Exch2010 Mgmt Shell connection
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output.
+    .EXAMPLE
+    $reqMods="Remove-PSTitlebar".split(";") ;
+    $reqMods | % {if( !(test-path function:$_ ) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing $($_) function. EXITING." } } ;
+    Disconnect-Ex2010 ;
+    .LINK
+    #>
+  $Global:E10Mod | Remove-Module -Force ;
+  $Global:E10Sess | Remove-PSSession ;
+  # 7:56 AM 11/1/2017 remove titlebar tag
+  Remove-PSTitlebar 'EMS' ;
+  # kill any other sessions using distinctive name; add verbose, to ensure they're echo'd that they were missed
+  Get-PSSession | ? { $_.name -eq 'Exchange2010' } | Remove-PSSession -verbose ;
+  # kill any broken PSS, self regen's even for L13 leave the original borked and create a new 'Session for implicit remoting module at C:\Users\', toast them, they don't reopen. Same for Ex2010 REMS, identical new PSS, indistinguishable from the L13 regen, except the random tmp_xxxx.psm1 module name. Toast them, it's just a growing stack of broken's
+  Disconnect-PssBroken ;
+} ; #*------^ END Function Disconnect-Ex2010 ^------
+if (!(get-alias Disconnect-EMSR -ea 0)) { set-alias -name Disconnect-EMSR -value Disconnect-Ex2010 } ;
+if (!(get-alias dx10 -ea 0)) { set-alias -name dx10 -value Disconnect-Ex2010 }
+
+#*------^ Disconnect-Ex2010.ps1 ^------
+
+#*------v Disconnect-PssBroken.ps1 v------
+if (!(test-path function:\Disconnect-PssBroken)) {
+
+  #*------v Function Disconnect-PssBroken v------
+  Function Disconnect-PssBroken {
+    <#
+        .SYNOPSIS
+        Disconnect-PssBroken - Remove all local broken PSSessions
+        .NOTES
+        Author: Todd Kadrie
+        Website:	http://tinstoys.blogspot.com
+        Twitter:	http://twitter.com/tostka
+        REVISIONS   :
+        * 12:56 PM 11/7/2f018 fix typo $s.state.value, switched tests to the strings, over values (not sure worked at all)
+        * 1:50 PM 12/8/2016 initial version
+        .DESCRIPTION
+        Disconnect-PssBroken - Remove all local broken PSSessions
+        .INPUTS
+        None. Does not accepted piped input.
+        .OUTPUTS
+        None. Returns no objects or output.
+        .EXAMPLE
+        Disconnect-PssBroken ;
+        .LINK
+    #>
+    Get-PsSession | ? { $_.State -ne 'Opened' -or $_.Availability -ne 'Available' } | Remove-PSSession -Verbose ;
+  } ; #*------^ END Function Disconnect-PssBroken ^------
+}
+
+#*------^ Disconnect-PssBroken.ps1 ^------
+
+#*------v Get-ExchangeServerInSite.ps1 v------
+Function Get-ExchangeServerInSite {
+  <#
+    .SYNOPSIS
+    Get-ExchangeServerInSite - Returns the name of an Exchange server in the local AD site.
+    .NOTES
+    Author: Mike Pfeiffer
+    Website:	http://mikepfeiffer.net/2010/04/find-exchange-servers-in-the-local-active-directory-site-using-powershell/
+    REVISIONS   :
+    * 6:59 PM 1/15/2020 cleanup
+    # 10:03 AM 11/16/2018 Get-ExchangeServerInSite:can't do AD-related functions when not AD authentictaed (home, pre-vpn connect). Added if/then test on status and abort balance when false.
+    # 12:10 PM 8/1/2017 updated example code at bottom, to accommodate lyn & adl|spb
+    # 11:28 AM 3/31/2016 validated that latest round of updates are still functional
+    #1:58 PM 9/3/2015 - added pshelp and some docs
+    #April 12, 2010 - web version
+    .PARAMETER  Site
+    Optional: Ex Servers from which Site (defaults to AD lookup against local computer's Site)
+    .DESCRIPTION
+    Get-ExchangeServerInSite - Returns the name of an Exchange server in the local AD site.
+    Uses an ADSI DirectorySearcher to search the current Active Directory site for Exchange 2010 servers.
+    Returned object includes the post-filterable Role property which reflects the following
+    installed-roles on the discovered server
+	    Mailbox Role - 2
+        Client Access Role - 4
+        Unified Messaging Role - 16
+        Hub Transport Role - 32
+        Edge Transport Role - 64
+        Add the above up to combine roles:
+        HubCAS = 32 + 4 = 36
+        HubCASMbx = 32+4+2 = 38
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    Returns the name of an Exchange server in the local AD site.
+    .EXAMPLE
+    .\Get-ExchangeServerInSite
+    .EXAMPLE
+    get-exchangeserverinsite |?{$_.roles -match "(4|32|36)"}
+    Return Hub,CAS,or Hub+CAS servers
+    .EXAMPLE
+    If(!($ExchangeServer)){$ExchangeServer=(Get-ExchangeServerInSite |?{($_.roles -eq 36) -AND ($_.FQDN -match "LYN.*")} | Get-Random ).FQDN }
+    Return a random HubCas Role server with a name beginning LYN
+    .EXAMPLE
+    $regex = '(' + [regex]($ADSiteCodeUK,$ADSiteCodeAU -join "|") + ')'
+    switch -regex ($($env:computername).substring(0,3)){
+       "$($ADSiteCodeUS)" {$tExRole=36 } ;
+       "$($regex)" {$tExRole= 38 }  default { write-error "$((get-date).ToString('HH:mm:ss')):UNRECOGNIZED SERVER PREFIX!."; } ;
+    } ;
+    $exhubcas = (Get-ExchangeServerInSite |?{($_.roles -eq $tExRole) -AND ($_.FQDN -match "$($env:computername.substring(0,3)).*")} | Get-Random ).FQDN ;
+    Return a random HubCas Role server with a name matching the $ENV:COMPUTERNAME
+    .LINK
+    http://mikepfeiffer.net/2010/04/find-exchange-servers-in-the-local-active-directory-site-using-powershell/
+    #>
+  # 9:53 AM 11/16/2018 from vpn/home, $ADSite doesn't populate prior to domain logon (via vpn)
+  if ($ADSite = [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]) {
+    $siteDN = $ADSite::GetComputerSite().GetDirectoryEntry().distinguishedName ;
+    # if conn'd rets: cn=lyndale,cn=sites,cn=configuration,dc=ad,dc=toro,dc=com
+    $configNC = ([ADSI]"LDAP://RootDse").configurationNamingContext ; # returns: "CN=Configuration,DC=ad,DC=toro,DC=com"
+    $search = new-object DirectoryServices.DirectorySearcher([ADSI]"LDAP://$configNC") ;
+    $objectClass = "objectClass=msExchExchangeServer" ;
+    $version = "versionNumber>=1937801568" ;
+    $site = "msExchServerSite=$siteDN" ;
+    $search.Filter = "(&($objectClass)($version)($site))" ;
+    $search.PageSize = 1000 ;
+    [void] $search.PropertiesToLoad.Add("name") ;
+    [void] $search.PropertiesToLoad.Add("msexchcurrentserverroles") ;
+    [void] $search.PropertiesToLoad.Add("networkaddress") ;
+    $search.FindAll() | % {
+      New-Object PSObject -Property @{
+        Name  = $_.Properties.name[0] ;
+        FQDN  = $_.Properties.networkaddress |
+        % { if ($_ -match "ncacn_ip_tcp") { $_.split(":")[1] } } ;
+        Roles = $_.Properties.msexchcurrentserverroles[0] ;
+      } ;
+    } ;
+  }
+  else {
+    write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):`$ADSite blank, not authenticated to a domain! ABORTING!" ;
+    $false | write-output ;
+  } ;
+}
+
+#*------^ Get-ExchangeServerInSite.ps1 ^------
+
+#*------v Get-ExchServerInLYN.ps1 v------
+Function Get-ExchServerInLYN {
+  <#
+    .SYNOPSIS
+    Get-ExchServerInLYN - Returns the name of an Exchange server in the LYN site (much simpler, pulls random box from ad.toro.com\Exchange Servers grp, & filters names for LYN and hubcas nameschemes).
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://tintoys.blogspot.com
+    REVISIONS   :
+    * 6:59 PM 1/15/2020 cleanup
+    # 10:44 AM 9/2/2016 - initial tweak
+    .PARAMETER  Site
+    Optional: Ex Servers from which Site (defaults to AD lookup against local computer's Site)
+    .DESCRIPTION
+    Get-ExchServerInLYN - Returns the name of an Exchange server in the local LYN AD site.
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    Returns the name of an Exchange server in the local AD site.
+    .EXAMPLE
+    .\Get-ExchServerInLYN
+    .LINK
+    #>
+
+  #$rgxLocalHubCAS = (# src in tor-incl-infrastrings.ps1)
+  #$DomTORParentfqdn = (# src in tor-incl-infrastrings.ps1)
+  (Get-ADGroupMember -Identity 'Exchange Servers' -server $DomTORParentfqdn | ? { $_.distinguishedname -match $rgxLocalHubCAS }).name | get-random | write-output ;
+}
+
+#*------^ Get-ExchServerInLYN.ps1 ^------
+
+#*------v get-GCFast.ps1 v------
+function get-GCFast {
+
+  <#
+    .SYNOPSIS
+    get-GCFast - function to locate a random sub-100ms response gc in specified domain & optional AD site
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://toddomation.com
+    Twitter:	http://twitter.com/tostka
+    Additional Credits: Originated in Ben Lye's GetLocalDC()
+    Website:	http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
+    REVISIONS   :
+    # 2:19 PM 4/29/2019 add [lab dom] to the domain param validateset & site lookup code, also copied into tsksid-incl-ServerCore.ps1
+    # 2:39 PM 8/9/2017 ADDED some code to support torolab.com, also added test that $LocalDcs actually returned anything!
+    # 10:59 AM 3/31/2016 fix site param valad: shouln't be sitecodes, should be Site names; updated Site param def, to validate, cleanup, cleaned up old remmed code, rearranged comments a bit
+    # 1:12 PM 2/11/2016 fixed new bug in get-GCFast, wasn't detecting blank $site, for PSv2-compat, pre-ensure that ADMS is loaded
+    12:32 PM 1/8/2015 - tweaked version of Ben lye's script, replaced broken .NET site query with get-addomaincontroller ADMT module command
+    .PARAMETER  Domain
+    Which AD Domain [Domain fqdn]
+    .PARAMETER  Site
+    DCs from which Site name (defaults to AD lookup against local computer's Site)
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    Returns one DC object, .Name is name pointer
+    .EXAMPLE
+    C:\> get-gcfast -domain dom.for.domain.com -site Site
+    Lookup a Global domain gc, with Site specified (whether in Site or not, will return remote site dc's)
+    .EXAMPLE
+    C:\> get-gcfast -domain dom.for.domain.com
+    Lookup a Global domain gc, default to Site lookup from local server's perspective
+  #>
+
+  [CmdletBinding()]
+  param(
+    [Parameter(HelpMessage = 'Target AD Domain')]
+    [string]$Domain
+    , [Parameter(Position = 1, Mandatory = $False, HelpMessage = "Optional: DCs from what Site name? (default=Discover)")]
+    [string]$Site
+  ) ;
+  $SpeedThreshold = 100 ;
+  $ErrorActionPreference = 'SilentlyContinue' ; # Set so we don't see errors for the connectivity test
+  $env:ADPS_LoadDefaultDrive = 0 ; $sName = "ActiveDirectory"; if ( !(Get-Module | Where-Object { $_.Name -eq $sName }) ) {
+    if ($bDebug) { Write-Debug "Adding ActiveDirectory Module (`$script:ADPSS)" };
+    $script:AdPSS = Import-Module $sName -PassThru -ea Stop ;
+  } ;
+  if (!$Domain) {
+    $Domain = (get-addomain).DNSRoot ; # use local domain
+    write-host -foregroundcolor yellow   "Defaulting domain: $Domain";
+  }
+  # Get all the local domain controllers
+  if ((!$Site)) {
+    # if no site, look the computer's Site Up in AD
+    $Site = [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name ;
+    write-host -foregroundcolor yellow   "Using local machine Site: $Site";
+  } ;
+
+  # gc filter
+  #$LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) } ;
+  #$LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) } ;
+  $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -and (Site -eq $Site) -and (Domain -eq $Domain) } ;
+  # any dc filter
+  #$LocalDCs = Get-ADDomainController -filter {(Site -eq $Site)} ;
+
+  $PotentialDCs = @() ;
+  # Check connectivity to each DC against $SpeedThreshold
+  if ($LocalDCs) {
+    foreach ($LocalDC in $LocalDCs) {
+      $TCPClient = New-Object System.Net.Sockets.TCPClient ;
+      $Connect = $TCPClient.BeginConnect($LocalDC.Name, 389, $null, $null) ;
+      $Wait = $Connect.AsyncWaitHandle.WaitOne($SpeedThreshold, $False) ;
+      if ($TCPClient.Connected) {
+        $PotentialDCs += $LocalDC.Name ;
+        $Null = $TCPClient.Close() ;
+      } # if-E
+    } ;
+    write-host -foregroundcolor yellow  "`$PotentialDCs: $PotentialDCs";
+    $DC = $PotentialDCs | Get-Random ;
+    write-output $DC  ;
+  }
+  else {
+    write-host -foregroundcolor yellow  "NO DCS RETURNED BY GET-GCFAST()!";
+    write-output $false ;
+  } ;
+}
+
+#*------^ get-GCFast.ps1 ^------
+
+#*------v load-EMSLatest.ps1 v------
+function load-EMSLatest {
+  #  #Checks local machine for registred E20[13|10|07] EMS, and then loads the newest one found
+  #Returns the string 2013|2010|2007 for reuse for version-specific code
+
+  <#
+  .SYNOPSIS
+  load-EMSLatest - Checks local machine for registred E20[13|10|07] EMS, and then loads the newest one found.
+  Attempts remote Ex2010 connection if no local EMS installed
+  Returns the string 2013|2010|2007 for reuse for version-specific code
+    .NOTES
+  Author: Todd Kadrie
+  Website:	http://tinstoys.blogspot.com
+  Twitter:	http://twitter.com/tostka
+  REVISIONS   :
+  * 6:59 PM 1/15/2020 cleanup
+  9:39 AM 2/4/2015 updated to remote to a local hub, updated latest TOR
+    .INPUTS
+  None. Does not accepted piped input.
+    .OUTPUTS
+  Returns version number connected to: [2013|2010|2007]
+    .EXAMPLE
+  .\load-EMSLatest
+    .LINK
+  *-----^ END Comment-based Help  ^----- #>
+
+  # check registred & loaded ;
+  $SnapsReg = Get-PSSnapin -Registered ;
+  $SnapsLoad = Get-PSSnapin ;
+  $Snapin13 = "Microsoft.Exchange.Management.PowerShell.E2013";
+  $Snapin10 = "Microsoft.Exchange.Management.PowerShell.E2010";
+  $Snapin7 = "Microsoft.Exchange.Management.PowerShell.Admin";
+  # check/load E2013, E2010, or E2007, stop at newest (servers wouldn't be running multi-versions)
+  if (($SnapsReg | where { $_.Name -eq $Snapin13 })) {
+    if (!($SnapsLoad | where { $_.Name -eq $Snapin13 })) {
+      Add-PSSnapin $Snapin13 -ErrorAction SilentlyContinue ; return "2013" ;
+    }
+    else {
+      return "2013" ;
+    } # if-E
+  }
+  elseif (($SnapsReg | where { $_.Name -eq $Snapin10 })) {
+    if (!($SnapsLoad | where { $_.Name -eq $Snapin10 })) {
+      Add-PSSnapin $Snapin10 -ErrorAction SilentlyContinue ; return "2010" ;
+    }
+    else {
+      return "2010" ;
+    } # if-E
+  }
+  elseif (($SnapsReg | where { $_.Name -eq $Snapin7 })) {
+    if (!($SnapsLoad | where { $_.Name -eq $Snapin7 })) {
+      Add-PSSnapin $Snapin7 -ErrorAction SilentlyContinue ; return "2007" ;
+    }
+    else {
+      return "2007" ;
+    } # if-E
+  }
+  else {
+    Write-Verbose "Unable to locate Exchange tools on localhost, attempting to remote to Exchange 2010 server...";
+    #Try implicit remoting-only works for Exchange 2010
+    Try {
+      # connect to a local hub (leverages ADSI function)
+      $Ex2010Server = (Get-ExchangeServerInSite | ? { $_.Roles -match "^(36|38)$" })[0].fqdn
+      $ExchangeSession = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri http://$Ex2010Server/PowerShell/ -ErrorAction Stop ;
+      Import-PSSession $ExchangeSession -ErrorAction Stop;
+    }
+    Catch {
+      Write-Host -ForegroundColor Red "Unable to import Exchange tools from $Exchange2010Server, is it running Exchange 2010?" ;
+      Write-Host -ForegroundColor Magenta "Error:  $($Error[0])" ;
+      Exit;
+    } # try-E
+  }# if-E
+}
+
+#*------^ load-EMSLatest.ps1 ^------
+
+#*------v Load-EMSSnap.ps1 v------
+function Load-EMSSnap {
+  <#
+    .SYNOPSIS
+    Checks local machine for registred Exchange2010 EMS, and loads the component
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://toddomation.com
+    Twitter:	http://twitter.com/tostka
+
+    REVISIONS   :
+    * 6:59 PM 1/15/2020 cleanup
+    vers: 9:39 AM 8/12/2015: retool into generic switched version to support both modules & snappins with same basic code ; building a stock EMS version (vs the fancier load-EMSSnapLatest)
+    vers: 10:43 AM 1/14/2015 fixed return & syntax expl to true/false
+    vers: 10:20 AM 12/10/2014 moved commentblock into function
+    vers: 11:40 AM 11/25/2014 adapted to Lync
+    ers: 2:05 PM 7/19/2013 typo fix in 2013 code
+    vers: 1:46 PM 7/19/2013
+    .INPUTS
+    None.
+    .OUTPUTS
+    Outputs $true if successful. $false if failed.
+    .EXAMPLE
+    $EMSLoaded = Load-EMSSnap ; Write-Debug "`$EMSLoaded: $EMSLoaded" ;
+    Stock free-standing Exchange Mgmt Shell load
+    .EXAMPLE
+    $EMSLoaded = Load-EMSSnap ; Write-Debug "`$EMSLoaded: $EMSLoaded" ; get-exchangeserver | out-null ;
+    Example utilizing a workaround for bug in EMS, where loading ADMS causes Powershell/ISE to crash if ADMS is loaded after EMS, before EMS has executed any commands
+    .EXAMPLE
+    TRY {
+        if(($host.version.major -lt 3) -AND (get-service MSExchangeADTopology -ea SilentlyContinue)){
+                write-verbose -verbose:$bshowVerbose  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Using Local Server EMS10 Snapin" ;
+                $sName="Microsoft.Exchange.Management.PowerShell.E2010"; if (!(Get-PSSnapin | where {$_.Name -eq $sName})) {Add-PSSnapin $sName -ea Stop} ;
+        } else {
+             write-verbose -verbose:$bshowVerbose  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Initiating REMS connection" ;
+            $reqMods="connect-Ex2010;Disconnect-Ex2010;".split(";") ;
+            $reqMods | % {if( !(test-path function:$_ ) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing $($_) function. EXITING." } } ;
+            Reconnect-Ex2010 ;
+        } ;
+    } CATCH {
+        Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+        Exit #STOP(debug)|EXIT(close)|Continue(move on in loop cycle) ;
+    } ;
+    Example demo'ing check for local psv2 & ADtopo svc to defer
+    #>
+
+  # check registred v loaded ;
+  # style of plugin we want to test/load
+  $PlugStyle = "Snapin"; # for Exch EMS
+  #"Module" ; # for Lync/ADMS
+  $PlugName = "Microsoft.Exchange.Management.PowerShell.E2010" ;
+
+  switch ($PlugStyle) {
+    "Module" {
+      # module-style (for LMS or ADMS
+      $PlugsReg = Get-Module -ListAvailable;
+      $PlugsLoad = Get-Module;
+    }
+    "Snapin" {
+      $PlugsReg = Get-PSSnapin -Registered ;
+      $PlugsLoad = Get-PSSnapin ;
+    }
+  } # switch-E
+
+  TRY {
+    if ($PlugsReg | where { $_.Name -eq $PlugName }) {
+      if (!($PlugsLoad | where { $_.Name -eq $PlugName })) {
+        #
+        switch ($PlugStyle) {
+          "Module" {
+            Import-Module $PlugName -ErrorAction Stop ; write-output $TRUE;
+          }
+          "Snapin" {
+            Add-PSSnapin $PlugName -ErrorAction Stop ; write-output $TRUE
+          }
+        } # switch-E
+      }
+      else {
+        # already loaded
+        write-output $TRUE;
+      } # if-E
+    }
+    else {
+      Write-Error { "$(Get-TimeStamp):($env:computername) does not have $PlugName installed!"; };
+      #return $FALSE ;
+      write-output $FALSE ;
+    } # if-E ;
+  } CATCH {
+        Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+        Exit #STOP(debug)|EXIT(close)|Continue(move on in loop cycle) ;
+  } ;
+
+}
+
+#*------^ Load-EMSSnap.ps1 ^------
+
+#*------v Reconnect-Ex2010.ps1 v------
+Function Reconnect-Ex2010 {
+  <#
+    .SYNOPSIS
+    Reconnect-Ex2010 - Reconnect Remote Exch2010 Mgmt Shell connection
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://toddomation.com
+    Twitter:	http://twitter.com/tostka
+    Author: ExactMike Perficient, Global Knowl... (Partner)
+    Website:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
+    REVISIONS   :
+    * 6:59 PM 1/15/2020 cleanup
+    * 8:09 AM 11/1/2017 updated example to pretest for reqMods
+    * 1:26 PM 12/9/2016 split no-session and reopen code, to suppress notfound errors, add pshelpported to local EMSRemote
+    * 2/10/14 posted version
+    .DESCRIPTION
+    Reconnect-Ex2010 - Reconnect Remote Exch2010 Mgmt Shell connection
+    .PARAMETER  Credential
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output.
+    .EXAMPLE
+    $reqMods="connect-Ex2010;Disconnect-Ex2010;".split(";") ;
+    $reqMods | % {if( !(test-path function:$_ ) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing $($_) function. EXITING." } } ;
+    Reconnect-Ex2010 ;
+    .LINK
+    #>
+  if (!$E10Sess) {
+    if (!$Credential) {
+      Connect-Ex2010
+    }
+    else {
+      Connect-Ex2010 -Credential:$($Credential) ;
+    } ;
+  }
+  elseif ($E10Sess.state -ne 'Opened' -OR $E10Sess.Availability -ne 'Available' ) {
+    Disconnect-Ex2010 ; Start-Sleep -S 3;
+    if (!$Credential) {
+      Connect-Ex2010
+    }
+    else {
+      Connect-Ex2010 -Credential:$($Credential) ;
+    } ;
+  } ;
+}#*------^ END Function Reconnect-Ex2010 ^------ ;
+if (!(get-alias rx10 -ea 0)) { set-alias -name rx10 -value Reconnect-Ex2010 }
+
+#*------^ Reconnect-Ex2010.ps1 ^------
+
+#*------v toggle-ForestView.ps1 v------
+Function toggle-ForestView {
+  # 7:37 AM 6/2/2014 toggle forest view
+  if (!(get-AdServerSettings).ViewEntireForest ) {
+    write-warning "Enabling WholeForest"
+    write-host "`a"
+    if (get-command -name set-AdServerSettings -ea 0) { set-AdServerSettings -ViewEntireForest $true } ;
+  }
+  else {
+    write-warning "Disableing WholeForest"
+    write-host "`a"
+    if (get-command -name set-AdServerSettings -ea 0) { set-AdServerSettings -ViewEntireForest $true } ;
+  } # if-block end
+
+}
+
+#*------^ toggle-ForestView.ps1 ^------
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnciwbBI9gNE1uNArxLWys1NP
+# TWagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQqkaoI
+# SAFLXCwMH3k10bINoCI27zANBgkqhkiG9w0BAQEFAASBgDmEc4MRxIc/bgVyRzF/
+# oMDZxkddthqDMYxjK8GKPxrWcCkFozme79S5qdmAvzBmu7X7JHJ2jmtwoYcdO37Q
+# dF2NhWK6HJULmA1QBexcoyVxEGCXu6xk2eu1lrx2TgcAoOMg7qqNzEUta6Yz65BC
+# vNsbRzzrqDI+fD7IHmjcvXSM
+# SIG # End signature block

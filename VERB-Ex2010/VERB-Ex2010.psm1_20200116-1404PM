@@ -1,0 +1,68 @@
+# VERB-Ex2010.psm1
+
+
+  <#
+  .SYNOPSIS
+  VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
+  .NOTES
+  Version     : 1.0.0.0
+  Author      : Todd Kadrie
+  Website     :	https://www.toddomation.com
+  Twitter     :	@tostka
+  CreatedDate : 1/16/2020
+  FileName    : VERB-Ex2010.psm1
+  License     : MIT
+  Copyright   : (c) 1/16/2020 Todd Kadrie
+  Github      : https://github.com/tostka
+  REVISIONS
+  * 1/16/2020 - 1.0.0.0
+  # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
+  # 11:34 AM 12/30/2019 ran vsc alias-expansion
+  # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
+  # 10:19 AM 11/1/2019 trimmed some whitespace
+  # 10:05 AM 10/31/2019 added sample load/call info
+  # 12:02 PM 5/6/2019 added cx10,rx10,dx10 aliases
+  # 11:29 AM 5/6/2019 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+  # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
+  # 4:15 PM 3/24/2018 updated pshhelp
+  # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
+  # 1:33 PM 11/1/2017 add load-EMSSnapin (for use on server desktops)
+  # 11:37 AM 11/1/2017 shifted get-GcFast into here
+  # 9:29 AM 11/1/2017 spliced in Get-ExchangeServerInSite with updated auto-switch for ADL|SPB|LYN runs
+  # 8:02 AM 11/1/2017 updated connect-ex2010 & disconnect-ex2010 (add/remove-PSTitlebar), added disconnect-PssBroken
+  # 1:28 PM 12/9/2016: Reconnect-Ex2010, put in some logic to suppress errors
+  # 1:05 PM 12/9/2016 updated the docs & comments on new connect-Ex2010;Reconnect-Ex2010;Disconnect-Ex2010;Get-ExchangeServerInSite;Disconnect-PssBroken funcs and bp CALL code into function
+  # 11:03 AM 12/9/2016 debugged the new connect-Ex2010;Reconnect-Ex2010;Disconnect-Ex2010;Get-ExchangeServerInSite;Disconnect-PssBroken funcs and bp CALL code into function
+  .DESCRIPTION
+  VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
+  .INPUTS
+  None
+  .OUTPUTS
+  None
+  .EXAMPLE
+  .EXAMPLE
+  .LINK
+  https://github.com/tostka/verb-Ex2010
+
+  #>
+
+
+$script:ModuleRoot = $PSScriptRoot ; 
+$script:ModuleVersion = (Import-PowerShellDataFile -Path "$($script:ModuleRoot)\PSFramework.psd1").ModuleVersion ; 
+
+#Get public and private function definition files.
+$functionFolders = @('Public', 'Internal', 'Classes') ;
+ForEach ($folder in $functionFolders) {
+    $folderPath = Join-Path -Path $PSScriptRoot -ChildPath $folder ;
+    If (Test-Path -Path $folderPath) {
+        Write-Verbose -Message "Importing from $folder" ;
+        $functions = Get-ChildItem -Path $folderPath -Filter '*.ps1'  ;
+        ForEach ($function in $functions) {
+            Write-Verbose -Message "  Importing $($function.BaseName)" ;
+            . $($function.FullName) ;
+        } ;
+    } ;
+} ;
+$publicFunctions = (Get-ChildItem -Path "$PSScriptRoot\Public" -Filter '*.ps1').BaseName ;
+Export-ModuleMember -Function $publicFunctions ;
+

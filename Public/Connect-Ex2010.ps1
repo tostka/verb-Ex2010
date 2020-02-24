@@ -1,0 +1,198 @@
+﻿#*------v Function Connect-Ex2010 v------
+Function Connect-Ex2010 {
+  <#
+    .SYNOPSIS
+    Connect-Ex2010 - Setup Remote Exch2010 Mgmt Shell connection
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    AddedCredit : Inspired by concept code by ExactMike Perficient, Global Knowl... (Partner)
+    AddedWebsite:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
+    Version     : 1.1.0
+    CreatedDate : 2020-02-24
+    FileName    : Connect-Ex2010()
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell
+    REVISIONS   :
+    * 10:19 AM 2/24/2020 Connect-Ex2010/-OBS v1.1.0: updated cx10 to reflect infra file cred name change: cred####SID -> cred###SID, debugged, working, updated output banner to draw from global session, rather than imported module (was blank output). Ren'ing this one to the primary vers, and the prior to -OBS. Changed attribution, other than function names & concept, none of the code really sources back to Mike's original any more.
+    * 6:59 PM 1/15/2020 cleanup
+    * 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
+    * 8:55 AM 11/27/2019 expanded $Credential support to switch to torolab & - potentiall/uncfg'd - CMW mail infra. Fw seems to block torolab access (wtf)
+    * # 7:54 AM 11/1/2017 add titlebar tag & updated example to test for pres of Add-PSTitleBar
+    * 12:09 PM 12/9/2016 implented and debugged as part of verb-Ex2010 set
+    * 2:37 PM 12/6/2016 ported to local EMSRemote
+    * 2/10/14 posted version
+    $Credential can leverage a global: $Credential = $global:SIDcred
+    .DESCRIPTION
+    Connect-Ex2010 - Setup Remote Exch2010 Mgmt Shell connection
+    This supports Non-Restricted IIS custom pools, which are created via create-EMSOpenRemotePool.ps1
+    .PARAMETER  ExchangeServer
+    Exch server to Remote to
+    .PARAMETER  ExAdmin
+    Use exadmin IIS WebPool for remote EMS[-ExAdmin]
+    .PARAMETER  Credential
+    Credential object
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output.
+    .EXAMPLE
+    # -----------
+    try{
+        $reqMods="Connect-Ex2010;Reconnect-Ex2010;Disconnect-Ex2010;Get-ExchangeServerInSite;Disconnect-PssBroken;Add-PSTitleBar".split(";") ;
+        $reqMods | % {if( !(test-path function:$_ ) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing $($_) function. EXITING." } } ;
+        Reconnect-Ex2010 ;
+    } CATCH {
+        Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+        Exit #STOP(debug)|EXIT(close)|Continue(move on in loop cycle) ;
+    } ;
+
+    # -----------
+    .EXAMPLE
+    # -----------
+    $rgxExoPsHostName="^(ps\.outlook\.com|outlook\.office365\.com)$" ;
+    $rgxRemsPssName="^(Exchange2010|Session\sfor\simplicit\sremoting\smodule\sat\s.*)" ;
+    $rgxSnapPssname="^Session\d{1}$" ;
+    $rgxEx2010SnapinName="^Microsoft\.Exchange\.Management\.PowerShell\.E2010$";
+    $Ex2010SnapinName="Microsoft.Exchange.Management.PowerShell.E2010" ;
+    $Error.Clear() ;
+    TRY {
+    if(($host.version.major -lt 3) -AND (get-service MSExchangeADTopology -ea SilentlyContinue)){
+        if (!(Get-PSSnapin | where {$_.Name -match $rgxEx2010SnapinName})) {Add-PSSnapin $Ex2010SnapinName -ea Stop} ;
+            write-verbose -verbose:$bshowVerbose  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Using Local Server EMS10 Snapin" ;
+            $Global:E10IsDehydrated=$false ;
+        } else {
+            $reqMods="Connect-Ex2010;Reconnect-Ex2010;Disconnect-Ex2010;Get-ExchangeServerInSite;Disconnect-PssBroken;Cleanup;Add-PSTitleBar;Remove-PSTitleBar".split(";") ;
+            $reqMods | % {if( !(test-path function:$_ ) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing $($_) function. EXITING." } } ;
+            if(!(Get-PSSession |?{$_.ComputerName -match "^(adl|spb|lyn|bcc)ms\d{3}\.global\.ad\.toro\.com$" -AND $_.ConfigurationName -eq "Microsoft.Exchange" -AND $_.Name -eq "Exchange2010" -AND $_.State -eq "Opened" -AND $_.Availability -eq "Available"})){
+    reconnect-Ex2010 ;
+            $Global:E10IsDehydrated=$true ;
+        } else {
+          write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Functional REMS connection found. " ;
+        } ;
+    } ;
+    get-exchangeserver | out-null ;
+    # -----------
+    More detailed REMS & server-EMS snapin coexistince version.
+    .EXAMPLE
+    # -----------
+    if(!(Get-PSSnapin | where {$_.Name -match $rgxEx2010SnapinName})){
+        Do {
+            write-host "." -NoNewLine;Start-Sleep -m (1000 * 5)
+            if( !(Get-PSSession|?{$_.Name -match $rgxRemsPssName -AND $_.ComputerName -match $rgxProdEx2010ServersFqdn -AND $_.State -eq 'Opened' -AND $_.Availability -eq 'Available'}) ){
+                    Reconnect-Ex2010 ;
+            } ;
+        } Until ((Get-PSSession|?{($_.Name -match $rgxRemsPssName -AND $_.ComputerName -match $rgxProdEx2010ServersFqdn) -AND ($_.State -eq 'Opened') -AND ($_.Availability -eq 'Available')}))
+    } ;
+    # -----------
+    Looping reconnect test example ; defers to existing Snapin (which should be self-maintaining)
+    .LINK
+    https://github.com/tostka/verb-Ex2010/
+    #>
+
+    Param(
+        [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
+        [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')][switch]$ExAdmin,
+        [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credTORSID
+    )  ;
+    $verbose = ($VerbosePreference -eq "Continue") ; 
+    $sWebPoolVariant = "exadmin" ;
+    $CommandPrefix = $null ;
+    # use credential domain to determine target org
+    $rgxLegacyLogon = '\w*\\\w*' ; 
+    if($Credential.username -match $rgxLegacyLogon){
+        $credDom =$Credential.username.split('\')[0] ; 
+        switch ($credDom){
+            "$($TORMeta['legacyDomain'])" {
+                $ExchangeServer = $TORMeta['Ex10Server'] ; 
+                $ExAdmin = $true ;
+            }
+            "$($TOLMeta['legacyDomain'])" {
+                $ExchangeServer = $TOLMeta['Ex10Server'] ; 
+                $ExchangeServer = $TOL_Ex10Server # (src tor-incl-infrastrings.ps1)
+                $ExAdmin = $true ;
+            }
+            "$CMWMeta['legacyDomain'])" {
+                $ExchangeServer = $CMWMeta['Ex10Server']
+                $ExAdmin = $false ;
+            }
+            default {
+                $ExchangeServer = 'dynamic' ; 
+            } ;
+        } ; 
+    } elseif ($Credential.username.contains('@')){
+        $credDom = ($Credential.username.split("@"))[1] ;
+        switch ($credDom){
+            "$($TORMeta['o365_OPDomain'])" {
+                $ExchangeServer = $TORMeta['Ex10Server'] ; 
+                $ExAdmin = $true ;
+            }
+            "$($TOLMeta['o365_OPDomain'])" {
+                $ExchangeServer = $TOLMeta['Ex10Server'] ; 
+                $ExchangeServer = $TOL_Ex10Server # (src tor-incl-infrastrings.ps1)
+                $ExAdmin = $true ;
+            }
+            "$CMWMeta['o365_OPDomain'])" {
+                $ExchangeServer = $CMWMeta['Ex10Server']
+                $ExAdmin = $false ;
+            }
+            default {
+                $ExchangeServer = 'dynamic' ; 
+            } ;
+        } ; 
+    } else {
+        write-warning "$((get-date).ToString('HH:mm:ss')):UNRECOGNIZED CREDENTIAL!:$($Credential.Username)`nUNABLE TO RESOLVE DEFAULT EX10SERVER FOR CONNECTION!" ;
+    }  ;  
+    if($ExchangeServer -eq 'dynamic'){
+        $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN ; 
+    } ; 
+
+  write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
+  # splat to open a session - # stock 'PSLanguageMode=Restricted' powershell IIS Webpool
+  $EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = 'Exchange2010' } ;
+  if ($ExAdmin) {
+    # use variant IIS Webpool
+    $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
+  }
+  if ($Credential) { $EMSsplat.Add("Credential", $Credential) } ;
+  # -Authentication Basic only if specif needed: for Ex configured to connect via IP vs hostname)
+  # try catch against and retry into stock if fails
+  $error.clear() ;
+  TRY {
+    $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+  }
+  CATCH {
+    $ErrTrapd = $_ ; 
+    write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+    if ($ExAdmin) {
+      # switch to stock pool and retry
+      $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
+      write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($EMSSplat|out-string).trim())" ;
+      $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+    }
+    else {
+      STOP ;
+    } ;
+  } ;
+
+  write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
+
+  if ($CommandPrefix) {
+    write-verbose -verbose:$true  "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
+    $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -Prefix $CommandPrefix -AllowClobber) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
+  }
+  else {
+    $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -AllowClobber) -Global -PassThru -DisableNameChecking   ;
+  } ;
+  # 7:54 AM 11/1/2017 add titlebar tag
+  Add-PSTitleBar 'EMS' ;
+  # tag E10IsDehydrated 
+  $Global:E10IsDehydrated = $true ;
+  write-verbose -verbose:$true "$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
+} ; #*------^ END Function Connect-Ex2010 ^------
+# 11:31 AM 5/6/2019 alias Add-EMSRemote-> Connect-Ex2010
+if (!(get-alias Add-EMSRemote -ea 0)) { set-alias -name Add-EMSRemote -value connect-Ex2010 } ;
+if (!(get-alias cx10 -ea 0)) { set-alias -name cx10 -value connect-Ex2010 } ;

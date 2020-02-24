@@ -1,0 +1,244 @@
+﻿2020-01-16 13:53:39 INFO: #*======v START PASS:convertto-Module.ps1 v======
+2020-01-16 13:53:39 INFO: 13:53:39:$ModuleName interpolated from VERB-Ex2010.ps1: VERB-Ex2010
+2020-01-16 13:53:39 INFO: 13:53:39:$ModuleDesc specified: Exchange 2010 PS Module-related generic functions
+2020-01-16 13:53:45 INFO: Invoke-Plaster w
+Name                           Value                                                                                                                 
+----                           -----                                                                                                                 
+TemplatePath                   C:\sc\powershell\FullModuleTemplate\                                                                                  
+DestinationPath                C:\sc\VERB-Ex2010                                                                                                     
+ModuleName                     VERB-Ex2010                                                                                                           
+ModuleDesc                     Exchange 2010 PS Module-related generic functions
+2020-01-16 13:53:45 INFO: 
+**IN THE PROMPTS BELOW, USE THE FOLLOWING!**:
+Github Repo Name For This Module:	verb-Ex2010
+Github Repo Url For This Module:	https://github.com/tostka/verb-Ex2010
+
+2020-01-16 13:54:42 INFO: Opening a copy of $oModSrcFile:
+C:\sc\powershell\ExScripts\VERB-Ex2010.ps1
+for reference
+2020-01-16 13:54:43 INFO: Opening a copy of $psmFile:
+(C:\sc\VERB-Ex2010\VERB-Ex2010\VERB-Ex2010.psm1.fullname)
+for EDITING
+2020-01-16 13:54:43 INFO: new-item w
+Name                           Value                                                                                                                 
+----                           -----                                                                                                                 
+path                           C:\sc\VERB-Ex2010\Public\toggle-ForestView.ps1                                                                        
+whatif                         False
+2020-01-16 13:54:43 INFO: Pre-populating the toggle-ForestView.ps1 with the function body
+(may *not* include associated aliases!)
+2020-01-16 13:54:43 INFO: new-item w
+Name                           Value                                                                                                                 
+----                           -----                                                                                                                 
+path                           C:\sc\VERB-Ex2010\Public\get-GCFast.ps1                                                                               
+whatif                         False
+2020-01-16 13:54:43 INFO: Pre-populating the get-GCFast.ps1 with the function body
+(may *not* include associated aliases!)
+2020-01-16 13:54:44 INFO: new-item w
+Name                           Value                                                                                                                 
+----                           -----                                                                                                                 
+path                           C:\sc\VERB-Ex2010\Public\Get-ExchangeServerInSite.ps1                                                                 
+whatif                         False
+2020-01-16 13:54:44 INFO: Pre-populating the Get-ExchangeServerInSite.ps1 with the function body
+(may *not* include associated aliases!)
+2020-01-16 13:54:44 INFO: new-item w
+Name                           Value                                                                                                                 
+----                           -----                                                                                                                 
+path                           C:\sc\VERB-Ex2010\Public\Get-ExchServerInLYN.ps1                                                                      
+whatif                         False
+2020-01-16 13:54:44 INFO: Pre-populating the Get-ExchServerInLYN.ps1 with the function body
+(may *not* include associated aliases!)
+2020-01-16 13:54:44 INFO: new-item w
+Name                           Value                                                                                                                 
+----                           -----                                                                                                                 
+path                           C:\sc\VERB-Ex2010\Public\Load-EMSSnap.ps1                                                                             
+whatif                         False
+2020-01-16 13:54:44 INFO: Pre-populating the Load-EMSSnap.ps1 with the function body
+(may *not* include associated aliases!)
+2020-01-16 13:54:44 INFO: new-item w
+Name                           Value                                                                                                                 
+----                           -----                                                                                                                 
+path                           C:\sc\VERB-Ex2010\Public\load-EMSLatest.ps1                                                                           
+whatif                         False
+2020-01-16 13:54:44 INFO: Pre-populating the load-EMSLatest.ps1 with the function body
+(may *not* include associated aliases!)
+2020-01-16 13:54:44 INFO: new-item w
+Name                           Value                                                                                                                 
+----                           -----                                                                                                                 
+path                           C:\sc\VERB-Ex2010\Public\Reconnect-Ex2010.ps1                                                                         
+whatif                         False
+2020-01-16 13:54:44 INFO: Pre-populating the Reconnect-Ex2010.ps1 with the function body
+(may *not* include associated aliases!)
+2020-01-16 13:54:44 INFO: new-item w
+Name                           Value                                                                                                                 
+----                           -----                                                                                                                 
+path                           C:\sc\VERB-Ex2010\Public\Connect-Ex2010.ps1                                                                           
+whatif                         False
+2020-01-16 13:54:44 INFO: Pre-populating the Connect-Ex2010.ps1 with the function body
+(may *not* include associated aliases!)
+2020-01-16 13:54:44 INFO: new-item w
+Name                           Value                                                                                                                 
+----                           -----                                                                                                                 
+path                           C:\sc\VERB-Ex2010\Public\Disconnect-Ex2010.ps1                                                                        
+whatif                         False
+2020-01-16 13:54:46 INFO: Pre-populating the Disconnect-Ex2010.ps1 with the function body
+(may *not* include associated aliases!)
+2020-01-16 13:54:46 INFO: new-item w
+Name                           Value                                                                                                                 
+----                           -----                                                                                                                 
+path                           C:\sc\VERB-Ex2010\Public\Disconnect-PssBroken.ps1                                                                     
+whatif                         False
+2020-01-16 13:54:46 INFO: Pre-populating the Disconnect-PssBroken.ps1 with the function body
+(may *not* include associated aliases!)
+2020-01-16 13:54:46 INFO: Parsing function list out of C:\sc\powershell\ExScripts\VERB-Ex2010.ps1
+use these with FunctionsToExport 'func1', 'func2' at bottom of the .psm1 file
+2020-01-16 13:54:47 INFO: Updating manifest .psd1 FunctionsToExport to reflect all functions above:
+(C:\sc\VERB-Ex2010\VERB-Ex2010\VERB-Ex2010.psd1)
+2020-01-16 13:54:48 INFO: Opening a copy of the Manifest (.psd1) file:
+C:\sc\VERB-Ex2010\VERB-Ex2010\VERB-Ex2010.psd1
+for EDITING
+2020-01-16 13:54:48 INFO: 
+#*------v FOLLOW-ON PROCEDURE v------
+
+1) **Edit the following portion of the VERB-Ex2010.psd1 file:**
+
+     - Populate FunctionsToExport,
+    Functions parsed from the C:\sc\powershell\ExScripts\VERB-Ex2010.ps1 include:
+    'toggle-ForestView','get-GCFast','Get-ExchangeServerInSite','Get-ExchServerInLYN','Load-EMSSnap','load-EMSLatest','Reconnect-Ex2010','Connect-Ex2010','Disconnect-Ex2010','Disconnect-PssBroken'
+
+    - Set ModuleVersion in '1.0.0' format, or you'll see ...
+    Publish-PSArtifactUtility : Failed to publish module 'verb-transcript': 'File does not exist
+    ... .nupkg file errors
+
+2) **Copy the public/exported functions from the source .ps1/psm1 into the the matching new function-named files in the Public folder
+  & Internal folders (for non-exported functions)
+
+3) Edit the readme.md file.
+    notepad2.exe C:\sc\VERB-Ex2010\README.md
+
+4) Edit the .psm1 file
+    notepad2.exe C:\sc\VERB-Ex2010\VERB-Ex2010\VERB-Ex2010.psm1
+
+5) Optional all-in-one that encapsulates remaining steps below: (RUN AS SID, REQ'S PERMS TO REPO & ADMIN PROFILE)
+
+# To do a monolithic merged .psm1, sign, and publish to specified Repo,
+.\process-NewModule.ps1 -ModuleName "VERB-Ex2010" -ModDirPath "C:\sc\VERB-Ex2010" -Repository "lyncRepo" -Merge -showdebug -whatif ;
+
+==Following are the component pieces of the encapsulating process-NewModule.ps1 processing above:
+
+6) Optionally Merge the default Dyanamic-Include version of the .psm1, to a Monolithic .psm1 (faster loading):
+    .\merge-Module.ps1 -ModuleName VERB-Ex2010 -ModuleSourcePath "C:\sc\VERB-Ex2010\Public","C:\sc\VERB-Ex2010\Internal" -ModuleDestinationPath C:\sc\VERB-Ex2010\VERB-Ex2010 -showdebug -whatif ;
+
+7) Sign relevenent files:
+$rgxfiles='\.(CAT|MSI|JAR,OCX|PS1|PSM1|PSD1|PS1XML|PSC1|MSP|CMD|BAT|VBS)$' ;
+$rgxIncludeDirs='\\(Public|Internal|Classes)\\' ;
+$files = gci C:\sc\VERB-Ex2010\* -recur |?{$_.extension -match $rgxfiles} | ?{$_.fullname -notmatch $rgxIncludeDirs} ;
+sign-file -file $files.fullname ;
+
+8) Clear any existing copy in $PSProfilePath: (use SID at work w lyncRepo!)
+    remove-item -Recurse -Path C:\Users\kadrits\Documents\WindowsPowerShell\Modules\VERB-Ex2010\*.* -whatif ;
+
+9) Then copy the module to the $PSProfilePath: (excluding .git & .vscode subfolders ; use SID at work w lyncRepo!
+
+$from='C:\sc\VERB-Ex2010' ; $to = 'C:\Users\kadrits\Documents\WindowsPowerShell\Modules\VERB-Ex2010' ;
+ $exclude = @('main.js') ; $excludeMatch = @('.git','.vscode') ;
+[regex] $excludeMatchRegEx = '(?i)' + (($excludeMatch |foreach {[regex]::escape($_)}) -join "|") + '' ;
+Get-ChildItem -Path $from -Recurse -Exclude $exclude |
+where { $excludeMatch -eq $null -or $_.FullName.Replace($from, '') -notmatch $excludeMatchRegEx} |
+Copy-Item -Destination {  if ($_.PSIsContainer) { Join-Path $to $_.Parent.FullName.Substring($from.length) }
+else { Join-Path $to $_.FullName.Substring($from.length) }    } -Force -Exclude $exclude -whatif ;
+
+
+
+10) Validate module function (should be visible in the results)
+    Get-Module -ListAvailable -Name VERB-Ex2010
+
+11) Exit and restart PS to fully register module (though listed by Get-Module, can see
+    'Publish-Module : ...no module with that name was found in any module directory.'
+    ... errors, until post-restart.epository lyncRepo -Verbose -whatif
+
+
+12)	Publish to the Repo: Verify the repo is present & publish:
+    Get-PSRepository ;
+
+    Publish-Module -Name VERB-Ex2010 -Repository lyncRepo -Verbose -whatif
+    # or from source dir
+    Publish-Module -Name C:\sc\VERB-Ex2010 -R
+
+13) Confirm publication: list all the modules in your repo, (or search)
+    Find-Module -Name VERB-Ex2010 ;
+
+14) Installing mods from the repo:
+
+    Pre-clear all files in local non-installed version in $PSProfilePath: (isn't manageable, use SID at work w lyncRepo!)
+    gci -Recurse -Path "C:\Users\kadrits\Documents\WindowsPowerShell\Modules\VERB-Ex2010\*.*" |?{ ! $_.PSIsContainer } | remove-item -whatif ;
+
+    Install the Repo version:
+    Install-Module -Name VERB-Ex2010 -Repository lyncRepo -scope CurrentUser -AllowClobber -force -whatif ;
+
+===========
+TO FIND & UPDATE DEPENDANT FILES THAT CURRENTLY LEVERAGE VERB-Ex2010.ps1, RUN:
+
+gci C:\sc\powershell\*.ps1 -recur | sort name| ss '\$tModFile\s=\s"VERB-Ex2010\.ps1"'
+
+
+For each matching .ps1:
+a) Rem/remove any load block like the above
+b) Above params, at script start, add a suitable #Requires for this updated installed module:
+		#Requires -Modules VERB-Ex2010
+    (can be on separate lines, or comma-delimited list of like items).
+    Other Requres directives that may be suitable with this change: (## => Rem'd conflicting variant)
+        ##Requires –Version 2.0
+        #Requires –Version 3
+        #requires -PSEdition Desktop
+        ##requires -PSEdition Core
+        #Requires –PSSnapin Microsoft.Exchange.Management.PowerShell.E2010
+        #Requires -Modules ActiveDirectory,  Azure,  AzureAD,  AzureRM,  GroupPolicy,  Lync,  Microsoft.Online.SharePoint.PowerShell,  MSOnline,  ScheduledTasks,  SkypeOnlineConnector
+        #Requires -RunasAdministrator
+
+===========
+TO BRING UPDATED REPO/MODULE ONTO ANOTHER MACHINE
+
+    a) Clone in the repo from GitHub:
+
+    cd C:\sc\ ;
+    # & Git clone [gh repo https clone url]
+    Git clone https://github.com/tostka/verb-Ex2010.git --porcelain ;
+
+
+    b) Add Repo to GitHubDesktop
+
+    c) Run steps 7-13 above, to install into local repo, and install Module locally onto machine(s) from published Repo
+
+===========
+TO DO FUTURE REVISION UPDATES:
+
+    a) Uninstall the existing version (avoids update-module's habit of
+        leaving out of date content in place.)
+
+    Uninstall-Module -Name VERB-Ex2010 -force -whatif ;
+
+    b) Edit & increment the psd1 file ModuleVersion value (required or it won't publish properly).
+
+    c) Copy the updated module to the PSProfilePath:
+
+$from='C:\sc\VERB-Ex2010' ; $to = 'C:\Users\kadrits\Documents\WindowsPowerShell\Modules\VERB-Ex2010' ;
+$exclude = @('main.js') ; $excludeMatch = @('.git','.vscode') ;
+[regex] $excludeMatchRegEx = '(?i)' + (($excludeMatch |foreach {[regex]::escape($_)}) -join "|") + '' ;
+Get-ChildItem -Path $from -Recurse -Exclude $exclude |
+where { $excludeMatch -eq $null -or $_.FullName.Replace($from, '') -notmatch $excludeMatchRegEx} |
+Copy-Item -Destination {  if ($_.PSIsContainer) { Join-Path $to $_.Parent.FullName.Substring($from.length) }
+else { Join-Path $to $_.FullName.Substring($from.length) }    } -Force -Exclude $exclude -whatif ;
+
+
+    d) Republish the updated module:
+
+    Publish-Module -Name VERB-Ex2010 -Repository lyncRepo -Verbose -whatif
+
+    e) Reinstall from the Repo
+
+    Install-Module -Name VERB-Ex2010 -Repository lyncRepo -whatif ;
+
+
+#*------^ END FOLLOW-ON PROCEDURE  ^------
+
+
