@@ -12,7 +12,7 @@
 RootModule = 'VERB-Ex2010.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.1.0.1'
+ModuleVersion = '1.1.1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'Exchange 2010 PS Module-related generic functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = 'toggle-ForestView','get-GCFast','Get-ExchangeServerInSite','Get-ExchServerInLYN','Load-EMSSnap','load-EMSLatest','Reconnect-Ex2010','Connect-Ex2010','Disconnect-Ex2010','Disconnect-PssBroken'
+FunctionsToExport = @('Connect-Ex2010','Disconnect-Ex2010','Disconnect-PssBroken','Get-ExchangeServerInSite','Get-ExchServerInLYN','get-GCFast','load-EMSLatest','Load-EMSSnap','Reconnect-Ex2010','toggle-ForestView')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUIJ/YWBKKapl5HRZRXpuojbQU
-# C3agggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUt416ITw5b+2u0E4rBtlygHmx
+# ks2gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS54AH3
-# +4XcdbSZDNU6DzYOO78YMjANBgkqhkiG9w0BAQEFAASBgCtxrW6eUdqAZMeFX0oT
-# 0lqsZP2EtKpEjH/UiYJjf9aZzfFPLK3VPg8O4JEPblcJ3Qk89gNEsczDRm/AMnQU
-# 6Q83mpgqSAjmEYv7jX0Pz156eylVg8FrnE2nHC8gJV7fN4jdjZ10/PR7n0zM0XDB
-# mWs6e5k92RfZ5qV7/i2M2VT5
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRX7c3F
+# cjyYgspmjDQhnORZ6CRr1jANBgkqhkiG9w0BAQEFAASBgDhPjLlExZFUcbZTA9N4
+# 1P+G9xF3GFItTHQTqlGC8WGoDRLqm+2kBtkFdSBeU59YjqLkmBk98N6lZMS9Hb7s
+# K4soyPBAHccBEiLuGG7EiE9DpXnFt7qX+XAG6f/Jy68ceSi/oPaH3ZKVdBPhffQg
+# Cjf63pY4Y4X1B0paCBegVHAi
 # SIG # End signature block
