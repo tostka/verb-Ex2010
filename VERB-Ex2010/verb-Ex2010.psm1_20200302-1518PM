@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.4.0
+Version     : 1.1.1.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -51,7 +51,9 @@ https://github.com/tostka/verb-Ex2010
 $script:ModuleRoot = $PSScriptRoot ;
 $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:moduleroot\*.psd1).fullname).moduleversion ;
 
-#*======v FUNCTIONS v======
+
+# Auto-export all Aliases
+Export-ModuleMember -Alias * ;
 
 
 
@@ -771,16 +773,11 @@ Function toggle-ForestView {
 
 #*------^ toggle-ForestView.ps1 ^------
 
-#*======^ END FUNCTIONS ^======
-
-Export-ModuleMember -Function Connect-Ex2010,Disconnect-Ex2010,Disconnect-PssBroken,Get-ExchangeServerInSite,Get-ExchServerInLYN,get-GCFast,load-EMSLatest,Load-EMSSnap,Reconnect-Ex2010,toggle-ForestView -Alias *
-
-
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvILDb8asApxbExlU7RnvTpTC
-# EwigggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUXns5xNpzPdS3NS6CmlJDvxgB
+# xnygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -795,9 +792,9 @@ Export-ModuleMember -Function Connect-Ex2010,Disconnect-Ex2010,Disconnect-PssBro
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRaIIG6
-# RLIpo9zIhJFk01RjURFTpDANBgkqhkiG9w0BAQEFAASBgIqK1KiIkCL9K5PpK74e
-# gnYOmkBeP3S/E0Da/0ZbmkUtMpuZwjPdOhc4Qwe8Ta45gqMomQG8DBX9eTrMz04v
-# pNPhNn97H7DrkKflTzxfDIZRfbhiqYpXOPtW+alsz+Z76AsK3Mv5FQmk1/p3Z6+k
-# wrfRq3U4COFcqGzGx9D7h9yT
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSM8vRJ
+# OTzQ7fp1mgOdo4AEYW/NmzANBgkqhkiG9w0BAQEFAASBgKwcsKBQhgF8OS7k8Kz0
+# GY74A78K9IglMMb0//+tePXA2BB+g42FBRsuBg1Us4a512x9dKdXtjuDoeIR5uqn
+# Je7RNRQQPlz27opoyS0x3TVlzMF3+zugSaBIWjCzK+npbfhytq+eRilNdTXDgAgI
+# xPKGUWfUg6/5m0jxEjnuItWs
 # SIG # End signature block
