@@ -339,7 +339,7 @@ Function Get-ExchangeServerInSite {
     Author: Mike Pfeiffer
     Website:	http://mikepfeiffer.net/2010/04/find-exchange-servers-in-the-local-active-directory-site-using-powershell/
     REVISIONS   :
-    * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
+    * 11:22 AM 3/13/2020 added a ping-test, to only return matches that are pingable
     * 6:59 PM 1/15/2020 cleanup
     # 10:03 AM 11/16/2018 Get-ExchangeServerInSite:can't do AD-related functions when not AD authentictaed (home, pre-vpn connect). Added if/then test on status and abort balance when false.
     # 12:10 PM 8/1/2017 updated example code at bottom, to accommodate lyn & adl|spb
@@ -792,8 +792,8 @@ Export-ModuleMember -Function Connect-Ex2010,Disconnect-Ex2010,Disconnect-PssBro
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUpFOf+KJS8kl6yCnUbN5TYADH
-# 5FqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUd1wjIKlNF0buoc3Fbcfkw1pQ
+# D3ugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -808,9 +808,9 @@ Export-ModuleMember -Function Connect-Ex2010,Disconnect-Ex2010,Disconnect-PssBro
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTVWYHs
-# 6YE2xasLEyxACCX4WYY0CjANBgkqhkiG9w0BAQEFAASBgIqHUPOjiTxmh+Uv7loM
-# g3iNx09K8m1QKUJ9LTvZnCfV9idF/aJ7KEXnGKnlN44NuOfR4q89yJR4XKtX0hAz
-# y+EbKUvJacacxLkjlw5LZjyZ0mKTRCOfSinzloWdTzsDge5aV45WUJ/BibXM/iGZ
-# x0uGO/MR8x33dZLFE6S3VVSy
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRJRC5C
+# T7/ukjZz4yXDGAQ2+CyaWDANBgkqhkiG9w0BAQEFAASBgCjm9aO22B1W3IAa4pNG
+# 36tJ7GkaOA/Lc4h+3z3qROiY1dSpLJKu+wd00f9zyyPKNfsq9JQ0HESwfDhCkF2H
+# i5GuEyuUzOAMEvVmzejHsCuctz+tC3PZ8KmaIvePv8m1fgdmkJjCERtMPTKjujoE
+# doEuGAdL8g216YDm7XW8vJe0
 # SIG # End signature block
