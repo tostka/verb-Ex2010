@@ -41,4 +41,4 @@ PARAM(
     $Verbose = ($VerbosePreference -eq 'Continue') ; 
     write-verbose -verbose:$verbose "`$PSBoundParameters:`n$(($PSBoundParameters|out-string).trim())" ; 
 
-.\process-NewModule.ps1 -ModuleName "verb-Ex2010" -ModDirPath "C:\sc\verb-Ex2010" -Repository "`$localPSRepo" -Merge -showdebug -whatif:$($whatif) ;
+.\process-NewModule.ps1 -ModuleName "verb-Ex2010" -ModDirPath "C:\sc\verb-Ex2010" -Repository "`$localPSRepo" -Merge -RunTest -showdebug -whatif:$($whatif) ;
