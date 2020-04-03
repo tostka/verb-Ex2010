@@ -1,10 +1,10 @@
-#*----------------v Function new-MailboxShared v------
+#*------v new-MailboxShared.ps1 v------
 function new-MailboxShared {
     <#
     .SYNOPSIS
     new-MailboxShared.ps1 - Create New Generic Mbx
     .NOTES
-    Version     : 1.0.0
+    Version     : 1.0.2
     Author      : Todd Kadrie
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
@@ -18,7 +18,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
-    # 2:35 PM 4/3/2020 new-MailboxShared: genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material
+    # 2:35 PM 4/3/2020 new-MailboxShared: genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules ; added -ParentPath to pass through a usable path for start-log, within new-mailboxshared()
     # 8:48 AM 11/26/2019 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office 
     # 12:14 PM 10/4/2019 splice in Room/Equip code from new-mailboxConfRm.ps1's variant (not functionalized yet), added new -Room & -Equipement flags to trigger ConfRm code
     # 2:22 PM 10/1/2019 2076 & 1549 added: $FallBackBaseUserOU, OU that's used when can't find any baseuser for the owner's OU, default to a random shared from SITECODE (avoid crapping out):
@@ -131,6 +131,8 @@ new-MailboxShared.ps1 - Create New Generic Mbx
     Incident number for the change request[[int]nnnnnn]
     .PARAMETER domaincontroller
     Option to hardcode a specific DC [-domaincontroller xxxx]
+    .PARAMETER ParentPath
+    Calling script path (used for log construction)[-ParentPath c:\pathto\script.ps1]
     .PARAMETER NoPrompt
     Suppress YYY confirmation prompts
     .PARAMETER Whatif
@@ -222,6 +224,8 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         [int]$Ticket,
         [Parameter(HelpMessage="Option to hardcode a specific DC [-domaincontroller xxxx]")]
         [string]$domaincontroller,
+        [Parameter(HelpMessage="Calling script path (used for log construction)[-ParentPath c:\pathto\script.ps1]")]
+        [string]$ParentPath,
         [Parameter(HelpMessage="Suppress YYY confirmation prompts [-NoPrompt]")]
         [switch] $NoPrompt,
         [Parameter(HelpMessage='Debugging Flag [$switch]')]
@@ -253,7 +257,6 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         # OU that's used when can't find any baseuser for the owner's OU, default to a random shared from ($ADSiteCodeUS) (avoid crapping out):
         $FallBackBaseUserOU = "$($DomTORfqdn)/($ADSiteCodeUS)/Generic Email Accounts" ;
 
-        #*------v  MOD LOADS  v------
         # strings are: "[tModName];[tModFile];tModCmdlet"
         $tMods = @() ;
         #$tMods+="verb-Auth;C:\sc\verb-Auth\verb-Auth\verb-Auth.psm1;get-password" ;
@@ -268,10 +271,10 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $tMods+="verb-Ex2010;C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1;Connect-Ex2010";
         #$tMods+="verb-EXO;C:\sc\verb-EXO\verb-EXO\verb-EXO.psm1;Connect-Exo";
         #$tMods+="verb-L13;C:\sc\verb-L13\verb-L13\verb-L13.psm1;Connect-L13";
-        $tMods+="verb-Network;C:\sc\verb-Network\verb-Network\verb-Network.psm1;Send-EmailNotif";
+        #$tMods+="verb-Network;C:\sc\verb-Network\verb-Network\verb-Network.psm1;Send-EmailNotif";
         #$tMods+="verb-Teams;C:\sc\verb-Teams\verb-Teams\verb-Teams.psm1;Connect-Teams";
         #$tMods+="verb-SOL;C:\sc\verb-SOL\verb-SOL\verb-SOL.psm1;Connect-SOL" ;
-        #$tMods+="C:\sc\verb-Azure\verb-Azure\verb-Azure.psm1;get-AADBearToken" ;
+        #$tMods+="verb-Azure;C:\sc\verb-Azure\verb-Azure\verb-Azure.psm1;get-AADBearToken" ;
         foreach($tMod in $tMods){
             $tModName = $tMod.split(';')[0] ;
             $tModFile = $tMod.split(';')[1] ;
@@ -279,7 +282,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             $smsg = "( processing `$tModName:$($tModName)`t`$tModFile:$($tModFile)`t`$tModCmdlet:$($tModCmdlet) )" ; 
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-            if($tModName -eq 'verb-Network' -OR $tModName -eq 'verb-Azure'){
+            if($tModName -eq 'verb-Network' -OR $tModName -eq 'verb-Text'){
                 write-host "GOTCHA!" ;
             } ;
             $lVers = get-module -name $tModName -ListAvailable -ea 0 ;
@@ -336,11 +339,23 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         } ;  # loop-E
         #*------^ END MOD LOADS ^------
 
+        #$logging = $true ; 
+        if($ParentPath){
+            $logspec = start-Log -Path ($ParentPath) -showdebug:$($showdebug) -whatif:$($whatif) ;
+            if($logspec){
+                $logging=$logspec.logging ;
+                $logfile=$logspec.logfile ;
+                $transcript=$logspec.transcript ;
+            } else {throw "Unable to configure logging!" } ;
+        } else {
+        
+        } ; 
 
-        $transcript = join-path -path $PSScriptRoot -ChildPath "logs" ;
+        <#$transcript = join-path -path $PSScriptRoot -ChildPath "logs" ;
         if(!(test-path -path $transcript)){ "Creating missing log dir $($transcript)..." ; mkdir $transcript  ; } ;
         $transcript=join-path -path $transcript -childpath $ScriptNameNoExt  ;
         $transcript+= "-Transcript-BATCH-$(get-date -format 'yyyyMMdd-HHmmtt')-trans-log.txt"  ;
+        #>
         # add log file variant as target of Write-Log:
         $logfile=$transcript.replace("-Transcript","-LOG").replace("-trans-log","-log")
         if($whatif){
@@ -1380,4 +1395,6 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
 
     } # END-E
-} #*----------------^ END Function new-MailboxShared ^--------
+}
+
+#*------^ new-MailboxShared.ps1 ^------

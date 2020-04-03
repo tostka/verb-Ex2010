@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.7.0
+Version     : 1.1.6.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -721,7 +721,7 @@ function new-MailboxShared {
     .SYNOPSIS
     new-MailboxShared.ps1 - Create New Generic Mbx
     .NOTES
-    Version     : 1.0.2
+    Version     : 1.0.1
     Author      : Todd Kadrie
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
@@ -735,7 +735,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
-    # 2:35 PM 4/3/2020 new-MailboxShared: genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules ; added -ParentPath to pass through a usable path for start-log, within new-mailboxshared()
+    # 2:35 PM 4/3/2020 new-MailboxShared: genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules
     # 8:48 AM 11/26/2019 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office 
     # 12:14 PM 10/4/2019 splice in Room/Equip code from new-mailboxConfRm.ps1's variant (not functionalized yet), added new -Room & -Equipement flags to trigger ConfRm code
     # 2:22 PM 10/1/2019 2076 & 1549 added: $FallBackBaseUserOU, OU that's used when can't find any baseuser for the owner's OU, default to a random shared from SITECODE (avoid crapping out):
@@ -848,8 +848,6 @@ new-MailboxShared.ps1 - Create New Generic Mbx
     Incident number for the change request[[int]nnnnnn]
     .PARAMETER domaincontroller
     Option to hardcode a specific DC [-domaincontroller xxxx]
-    .PARAMETER ParentPath
-    Calling script path (used for log construction)[-ParentPath c:\pathto\script.ps1]
     .PARAMETER NoPrompt
     Suppress YYY confirmation prompts
     .PARAMETER Whatif
@@ -941,8 +939,6 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         [int]$Ticket,
         [Parameter(HelpMessage="Option to hardcode a specific DC [-domaincontroller xxxx]")]
         [string]$domaincontroller,
-        [Parameter(HelpMessage="Calling script path (used for log construction)[-ParentPath c:\pathto\script.ps1]")]
-        [string]$ParentPath,
         [Parameter(HelpMessage="Suppress YYY confirmation prompts [-NoPrompt]")]
         [switch] $NoPrompt,
         [Parameter(HelpMessage='Debugging Flag [$switch]')]
@@ -1057,16 +1053,13 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         #*------^ END MOD LOADS ^------
 
         #$logging = $true ; 
-        if($ParentPath){
-            $logspec = start-Log -Path ($ParentPath) -showdebug:$($showdebug) -whatif:$($whatif) ;
-            if($logspec){
-                $logging=$logspec.logging ;
-                $logfile=$logspec.logfile ;
-                $transcript=$logspec.transcript ;
-            } else {throw "Unable to configure logging!" } ;
-        } else {
+        $logspec = start-Log -Path ($script:logpath) -showdebug:$($showdebug) -whatif:$($whatif) ;
+        if($logspec){
+            $logging=$logspec.logging ;
+            $logfile=$logspec.logfile ;
+            $transcript=$logspec.transcript ;
+        } else {throw "Unable to configure logging!" } ;
         
-        } ; 
 
         <#$transcript = join-path -path $PSScriptRoot -ChildPath "logs" ;
         if(!(test-path -path $transcript)){ "Creating missing log dir $($transcript)..." ; mkdir $transcript  ; } ;
@@ -2193,8 +2186,8 @@ Export-ModuleMember -Function Connect-Ex2010,Disconnect-Ex2010,Disconnect-PssBro
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUSVEihNijC8ZWRVEAOmPQp1D9
-# lj6gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUNaVSXQffpIUcIKcQ+9IAvq+T
+# qUKgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -2209,9 +2202,9 @@ Export-ModuleMember -Function Connect-Ex2010,Disconnect-Ex2010,Disconnect-PssBro
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRSR8OO
-# Em87K2jyr/f+qZ8bbLQIdjANBgkqhkiG9w0BAQEFAASBgKTfGPSVS7scwJ0MBnHp
-# kx2ZUJyp9aintLHL8aIdMPs5/Ode93Fy6hDX3Me8UdXJbVyO+4OMdlFdJiAZv+SD
-# vuV/vZFyr0L3zr5R0qC2zC5XP/RhBbSzparsO6yyYEDz00FmJMr0CkLMVMc55PHN
-# FU0jnbfchLmC9Gk2Ez17fpdE
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBR7l591
+# rmN12EZ73vHFe3qJItV+6DANBgkqhkiG9w0BAQEFAASBgAMwyv4o7Js3035tsAtw
+# D9vv1+RoIeHDTKXvCx8nJTifT5Ykm84VztYAl6h/WdZGRodVjhHXFWGAJUcgFsVU
+# 0zIwXsfbiU95raaB+3Dm0pFfDX1KLv4doXzpDliFSjEtwzIWcpFpZK+2uIQQXrDL
+# BNms97kLmA6XN+WR7yPoKVLJ
 # SIG # End signature block
