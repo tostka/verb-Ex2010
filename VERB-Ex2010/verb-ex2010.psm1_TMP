@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.6.0
+Version     : 1.1.9.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -55,6 +55,11 @@ $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:
 #*======v FUNCTIONS v======
 
 
+
+#*------v check-ReqMods.ps1 v------
+function check-ReqMods ($reqMods){    $bValidMods=$true ;    $reqMods | foreach-object {        if( !(test-path function:$_ ) ) {          write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing $($_) function." ;          $bValidMods=$false ;        }    } ;    write-output $bValidMods ;}
+
+#*------^ check-ReqMods.ps1 ^------
 
 #*------v Connect-Ex2010.ps1 v------
 Function Connect-Ex2010 {
@@ -302,33 +307,6 @@ if (!(get-alias Disconnect-EMSR -ea 0)) { set-alias -name Disconnect-EMSR -value
 if (!(get-alias dx10 -ea 0)) { set-alias -name dx10 -value Disconnect-Ex2010 }
 
 #*------^ Disconnect-Ex2010.ps1 ^------
-
-#*------v Disconnect-PssBroken.ps1 v------
-Function Disconnect-PssBroken {
-  <#
-      .SYNOPSIS
-      Disconnect-PssBroken - Remove all local broken PSSessions
-      .NOTES
-      Author: Todd Kadrie
-      Website:	http://tinstoys.blogspot.com
-      Twitter:	http://twitter.com/tostka
-      REVISIONS   :
-      * 12:56 PM 11/7/2018 fix typo $s.state.value, switched tests to the strings, over values
-      * 1:50 PM 12/8/2016 initial version
-      .DESCRIPTION
-      Disconnect-PssBroken - Remove all local broken PSSessions
-      .INPUTS
-      None. Does not accepted piped input.
-      .OUTPUTS
-      None. Returns no objects or output.
-      .EXAMPLE
-      Disconnect-PssBroken ;
-      .LINK
-  #>
-  Get-PsSession | ? { $_.State -ne 'Opened' -or $_.Availability -ne 'Available' } | Remove-PSSession -Verbose ;
-}
-
-#*------^ Disconnect-PssBroken.ps1 ^------
 
 #*------v Get-ExchangeServerInSite.ps1 v------
 Function Get-ExchangeServerInSite {
@@ -735,6 +713,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 2:15 PM 4/7/2020 updated to reflect debugging on jumpbox
     # 2:35 PM 4/3/2020 new-MailboxShared: genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules ; added -ParentPath to pass through a usable path for start-log, within new-mailboxshared()
     # 8:48 AM 11/26/2019 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office 
     # 12:14 PM 10/4/2019 splice in Room/Equip code from new-mailboxConfRm.ps1's variant (not functionalized yet), added new -Room & -Equipement flags to trigger ConfRm code
@@ -979,6 +958,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         #$tMods+="verb-Auth;C:\sc\verb-Auth\verb-Auth\verb-Auth.psm1;get-password" ;
         $tMods+="verb-logging;C:\sc\verb-logging\verb-logging\verb-logging.psm1;write-log";
         $tMods+="verb-IO;C:\sc\verb-IO\verb-IO\verb-IO.psm1;Add-PSTitleBar" ;
+        $tMods+="verb-Mods;C:\sc\verb-Mods\verb-Mods\verb-Mods.psm1;check-ReqMods" ;
         #$tMods+="verb-Desktop;C:\sc\verb-Desktop\verb-Desktop\verb-Desktop.psm1;Speak-words" ;
         #$tMods+="verb-dev;C:\sc\verb-dev\verb-dev\verb-dev.psm1;Get-CommentBlocks" ;
         $tMods+="verb-Text;C:\sc\verb-Text\verb-Text\verb-Text.psm1;Remove-StringDiacritic" ;
@@ -999,8 +979,8 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             $smsg = "( processing `$tModName:$($tModName)`t`$tModFile:$($tModFile)`t`$tModCmdlet:$($tModCmdlet) )" ; 
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-            if($tModName -eq 'verb-Network' -OR $tModName -eq 'verb-Text'){
-                write-host "GOTCHA!" ;
+            if($tModName -eq 'verb-Network' -OR $tModName -eq 'verb-Text' -OR $tModName -eq 'verb-IO'){
+                write-host "GOTCHA!:$($tModName)" ;
             } ;
             $lVers = get-module -name $tModName -ListAvailable -ea 0 ;
             if($lVers){
@@ -2187,5 +2167,5 @@ Function toggle-ForestView {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Connect-Ex2010,Disconnect-Ex2010,Disconnect-PssBroken,Get-ExchangeServerInSite,Get-ExchServerInLYN,get-GCFast,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,toggle-ForestView -Alias *
+Export-ModuleMember -Function check-ReqMods,Connect-Ex2010,Disconnect-Ex2010,Get-ExchangeServerInSite,Get-ExchServerInLYN,get-GCFast,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,toggle-ForestView -Alias *
 

@@ -38,15 +38,18 @@ PARAM(
     [Parameter(HelpMessage="Whatif Flag  [-whatIf]")]
     [switch] $whatIf
 ) ;
-    $Verbose = ($VerbosePreference -eq 'Continue') ; 
-    write-verbose -verbose:$verbose "`$PSBoundParameters:`n$(($PSBoundParameters|out-string).trim())" ; 
+$Verbose = ($VerbosePreference -eq 'Continue') ; 
+write-verbose -verbose:$verbose "`$PSBoundParameters:`n$(($PSBoundParameters|out-string).trim())" ; 
+pushd ; 
+cd c:\usr\work\ps\scripts\
+.\process-NewModule.ps1 -ModuleName "verb-Ex2010" -ModDirPath "C:\sc\verb-Ex2010" -Repository $localPSRepo -Merge -RunTest -showdebug -whatif:$($whatif) ;
+popd ; 
 
-.\process-NewModule.ps1 -ModuleName "verb-Ex2010" -ModDirPath "C:\sc\verb-Ex2010" -Repository "`$localPSRepo" -Merge -RunTest -showdebug -whatif:$($whatif) ;
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUgey7kt8R6VH933Ef7Ary1vCF
-# oI6gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU+mTvd5MdUmSnjKJ5Y7wpgDB5
+# iQWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -61,9 +64,9 @@ PARAM(
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQ8B5ef
-# oUoVHaarpF4ZKyclrDCA8jANBgkqhkiG9w0BAQEFAASBgEJhzpXlWA/3z/rxM6yf
-# JvW1pwBy7T9FPtJ46DH9UIgORVbaFhGDEPTEUmEhtZVniM63f8Gbd/w/lFSWOEbD
-# iNIOAvCXZ78WdKP22o3ETwOaOmonArnjVUHnDr9jYoHRErIx4dx5r1f+2nDWRvxh
-# CKT6R0qEB7a/mo5IbvZ3QkeO
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRWyXKF
+# A3S1n106f5aPXBeleEXvpDANBgkqhkiG9w0BAQEFAASBgLp4cc6WTD/CD6C9HmD7
+# Q3EvngCdnwI+Efz7XLgRVA6ckCPA9mhK+qzMQdzpUXMYf9m+jvvZHKjsIocIUWns
+# UYr1sQL3JDFbHU15OhmBedyW/E9vnn9R9gXxffg6ydp0zRoK+S6gnKf1AFnpENbG
+# IQqSBNyLCnYkTT5aSte7BMAH
 # SIG # End signature block
