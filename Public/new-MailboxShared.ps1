@@ -18,6 +18,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 4:36 PM 4/8/2020 works fully on jumpbox, but ignores whatif, renamed $bwhatif -> $whatif (as the b variant was prev set in the same-script, now separate scopes); swapped out CU5 switch, moved settings into infra file, genericized
     # 2:15 PM 4/7/2020 updated to reflect debugging on jumpbox
     # 2:35 PM 4/3/2020 new-MailboxShared: genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules ; added -ParentPath to pass through a usable path for start-log, within new-mailboxshared()
     # 8:48 AM 11/26/2019 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office 
@@ -37,7 +38,7 @@ function new-MailboxShared {
     # 10:00 AM 11/20/2018 major update, switched 99% of write-xxx to write-log support, so it now produces a realtime 'log' of the build of the mailbox. Better than transcript because it still logs the changes right up to crashes. And it's only the _relevant) changes.
     # downside: lacks color coding unless I want to code in WARNs, which would be logged as warns.
     # 12:04 PM 7/18/2018 made display of password conditional (!shared)
-    # 10:28 AM 6/27/2018 add $domaincontroller param option - skips dc discovery process and uses the spec, also updated $findOU code to work with torolab dom
+    # 10:28 AM 6/27/2018 add $domaincontroller param option - skips dc discovery process and uses the spec, also updated $findOU code to work with TOL dom
     # 10:59 AM 5/21/2018 Fixed broken -nongeneric $true functionality: (corrected samaccountname gen code for blank fname field). Also added Mailuser/RemoteMailbox support for -Owner value. Validated functional for creation of the LYNCmonacct1 mbx.
     # 11:25 AM 12/22/2017 missing casmailbox splat construct for psv2 section, update CU5 test regx for perrotde & perrotpl, output an error when it fails to find a BaseUser (new empty site with empty target OU to draw from, prompts to hand spec -BaseUser param with mbx in another OU or loc
     # 11:58 AM 11/15/2017 1321: accommodate EXO-hosted Owners by testing with get-remotemailbox -AND get-mailbox on the owner spec. Created a mailbox, seemed to work. Not sure of access grant script yet.
@@ -63,7 +64,7 @@ function new-MailboxShared {
     # 11:35 AM 2/24/2017 ran initial debug pass, may work.
     # # 11:09 AM 2/24/2017 DMG gone: switch generics to real shared mbxs "Shared" = $True / $Inputsplat.shared
     #* 9:11 AM 9/30/2016 added pretest if(get-command -name set-AdServerSettings -ea 0)
-    # 10:38 AM 6/7/2016 tested debugged 378194, generic creation. Now has new UPN set based on Primary SMTP dirname@toro.com.
+    # 10:38 AM 6/7/2016 tested debugged 378194, generic creation. Now has new UPN set based on Primary SMTP dirname@DOMAIN.com.
     # 8:17 AM 6/7/2016 fixed to missing )'s in the splat dummy refactor bloc
     # 7:51 AM 6/7/2016 roughed in retries, and if/then cleanupexit blocks to make more fault tolerant. Needs debugging
     # 12:51 PM 5/10/2016 updated debug BP blocks
@@ -238,13 +239,6 @@ new-MailboxShared.ps1 - Create New Generic Mbx
     BEGIN {
         $verbose = ($VerbosePreference -eq "Continue") ; 
         $continue = $true ;
-        #$rgxMyBoxW= [infra file]
-        #$rgxProdEx2010Servers=[infra file]
-        #$rgxProdEx2010HubDServers=[infra file] # hubs with d: drives
-        #$rgxProdEx2010MbxServers=[infra file];
-        #$rgxLabEx2010Servers=[infra file];
-        #$rgxLabEx2010HubDServers=[infra file] ; # hubs with d: drives
-        #$rgxLabEx2010MbxServers=[infra file] ;
         switch -regex ($env:COMPUTERNAME){
             ($rgxMyBoxW){ $LocalInclDir="c:\usr\work\exch\scripts" ; }
             ($rgxProdEx2010Servers){ $LocalInclDir="c:\scripts" ; }
@@ -341,7 +335,6 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         } ;  # loop-E
         #*------^ END MOD LOADS ^------
 
-        #$logging = $true ; 
         if($ParentPath){
             $logspec = start-Log -Path ($ParentPath) -showdebug:$($showdebug) -whatif:$($whatif) ;
             if($logspec){
@@ -381,21 +374,11 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $BARS=("="*10);
 
         $reqMods+="Add-PSTitleBar;Remove-PSTitleBar".split(";") ;
-        #Disconnect-EMSR (variant name in some ps1's for Disconnect-Ex2010)
-        #$reqMods+="Reconnect-CCMS;Connect-CCMS;Disconnect-CCMS".split(";") ;
-        #$reqMods+="Reconnect-SOL;Connect-SOL;Disconnect-SOL".split(";") ;
         $reqMods+="Test-TranscriptionSupported;Test-Transcribing;Stop-TranscriptLog;Start-IseTranscript;Start-TranscriptLog;get-ArchivePath;Archive-Log;Start-TranscriptLog".split(";") ;
-        # 12:15 PM 9/12/2018 remove dupes
         $reqMods=$reqMods| select -Unique ;
 
         #region SPLATDEFS ; # ------
-        #10:07 AM 4/1/2016 - shifted freestanding varis into the $InputSplat: ADDesc BUserAD ChangeLog ADNotes
-        # 10:45 AM 4/1/2016 shifted $Tmbx => $InputSplat.OwnerMbx
-        # 11:01 AM 4/1/2016 moved $ADOtherInfoProps to here, and then back down to the Notes handling block
-        # 7:38 AM 4/6/2016 $Changelog back out too, both should be portable
-
-        # 3:07 PM 6/6/2016 dummy hashes
-        # 10:59 AM 10/5/2017 add missing $MbxSetCASmbx
+        # dummy hashes
         if($host.version.major -ge 3){
             $InputSplat=[ordered]@{
                 Dummy = $null ;
@@ -444,7 +427,6 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         # 8:08 AM 10/6/2017 add missing CASMailbox splat
         $MbxSetCASmbx.remove("Dummy") ;
 
-
         # also, less code post-decl to populate the $hash with fields, post creation:
         #$InputSplat.Add("NewField",$($NewValue)) ;
         $InputSplat.Add("Ticket",$($null)) ;
@@ -464,14 +446,13 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $InputSplat.Add("OrganizationalUnit",$($null)) ;
 
         #$MbxSplat.Add("OrganizationalUnit",$($null)) ;
-        # 11:30 AM 2/24/2017 add shared for real shares
         $MbxSplat.Add("Shared",$($null)) ;
         $MbxSplat.Add("Name",$($null)) ;
         $MbxSplat.Add("DisplayName",$($null)) ;
         $MbxSplat.Add("userprincipalname",$($null)) ;
         $MbxSplat.Add("OrganizationalUnit", $($null)) ;
         #$MbxSplat.Add("Office", $($null)) ;
-        # 8:30 AM 11/26/2019 new-mailbox syntax set that includes -shared DOESN'T include -office!, move it to MbxSetSplat
+        # new-mailbox syntax set that includes -shared DOESN'T include -office!, move it to MbxSetSplat
         $MbxSplat.Add("database",$($null)) ;
         $MbxSplat.Add("password",$($null)) ;
         $MbxSplat.Add("FirstName",$($null)) ;
@@ -480,13 +461,11 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $MbxSplat.Add("samaccountname",$($null)) ;
         $MbxSplat.Add("alias",$($null)) ;
         $MbxSplat.Add("ResetPasswordOnNextLogon",$($false));
-        $MbxSplat.Add("RetentionPolicy",$('Toro Retention Policy')) ;
+        $MbxSplat.Add("RetentionPolicy",$($TORMeta['RetentionPolicy'])) ;
         $MbxSplat.Add("ActiveSyncMailboxPolicy",$('Default')) ;
         $MbxSplat.Add("domaincontroller",$($null)) ;
-        # 8:33 AM 10/6/2017 add explicit whatif's to each splat (seems to let you set them without an ad, might be a psv3 thing, not safe)
         $MbxSplat.Add("whatif",$true) ;
 
-        # 10:57 AM 10/5/2017 add identity, doesn't seem to have a match (was pipelined to spec historically)
         $MbxSetSplat.Add("identity",$($null)) ;
         $MbxSetSplat.Add("CustomAttribute9",$($null)) ;
         $MbxSetSplat.Add("CustomAttribute5",$($null)) ;
@@ -494,20 +473,18 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $MbxSetSplat.Add("domaincontroller",$($null)) ;
         $MbxSetSplat.Add("whatif",$true) ;
 
-        # 8:08 AM 10/6/2017 add missing CASMailbox splat
+        # CASMailbox splat
         $MbxSetCASmbx.Add("identity",$($null)) ;
         $MbxSetCASmbx.Add("ActiveSyncMailboxPolicy",$($null)) ;
         $MbxSetCASmbx.Add("domaincontroller",$($null)) ;
         $MbxSetCASmbx.Add("whatif",$true) ;
 
-        #$ADSplat.Add("domaincontroller",$($null)) ;
         $ADSplat.Add("manager",$($null)) ;
         $ADSplat.Add("Description",$($null)) ;
         $ADSplat.Add("Server",$($null)) ;
         $ADSplat.Add("identity",$($null)) ;
         $ADSplat.Add("whatif",$($true)) ;
 
-        # 8:34 AM 10/6/2017 unrem, not sure why it was
         $UsrSplat.Add("whatif",$($true)) ;
         $UsrSplat.Add("City",$($null)) ;
         $UsrSplat.Add("CountryOrRegion",$($null)) ;
@@ -528,7 +505,6 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         if($BaseUser){$InputSplat.BaseUser=$BaseUser};
         # only reset from defaults on explicit -NonGeneric $true param
         if($NonGeneric -eq $true){
-            # 11:07 AM 2/24/2017 switching over generics to real 'shared' mbxs: "Shared" = $True
 
         } else {
             # force it if not true
@@ -537,7 +513,6 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $InputSplat.NonGeneric=$NonGeneric
         if($IsContractor){$InputSplat.IsContractor=$IsContractor};
 
-        # 11:48 AM 10/21/2015 vscan
         if ($Vscan){
             if ($Vscan -match "(?i:^(YES|NO)$)" ) {
                 $Vscan = $Vscan.ToString().ToUpper() ;
@@ -546,33 +521,12 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 $Vscan = $null ;
                 $InputSplat.Vscan="YES";
             }  ;
-        }; # If not explicit yes/no, prompt for input
+        }; 
 
         # 3:07 PM 10/4/2017 Cu5 override support (normally inherits from assigned owner/manager)
         if ($Cu5){
             if ($Cu5 -match $rgxCU5 ) {
-                switch -regex ($Cu5){
-                    "(?i:^Exmark$)" {$Cu5 = "Exmark" ; } ;
-                    "(?i:^Irritrol$)" {$Cu5 = "Irritrol" ; } ;
-                    "(?i:^IrritrolEurope$)" {$Cu5 = "IrritrolEurope" ; } ;
-                    "(?i:^Lawn-boy$)" {$Cu5 = "Lawn-boy" ; } ;
-                    "(?i:^Lawngenie$)" {$Cu5 = "Lawngenie" ; } ;
-                    "(?i:^Toro\.be$)" {$Cu5 = "Toro.be" ; } ;
-                    "(?i:^TheToroCompany$)" {$Cu5 = "TheToroCompany" ; } ;
-                    "(?i:^Hayter$)" {$Cu5 = "Hayter" ; } ;
-                    "(?i:^Toroused$)" {$Cu5 = "Toroused" ; } ;
-                    "(?i:^EZLinkSupport$)" {$Cu5 = "EZLinkSupport" ; } ;
-                    "(?i:^TheToroCo$)" {$Cu5 = "TheToroCo" ; } ;
-                    "(?i:^Torodistributor$)" {$Cu5 = "Torodistributor" ; } ;
-                    "(?i:^Dripirrigation$)" {$Cu5 = "Dripirrigation" ; } ;
-                    "(?i:^Toro\.hu$)" {$Cu5 = "Toro.hu" ; } ;
-                    "(?i:^Toro\.co\.uk$)" {$Cu5 = "Toro.co.uk" ; } ;
-                    "(?i:^Torohosted$)" {$Cu5 = "Torohosted" ; } ;
-                    "(?i:^Uniquelighting$)" {$Cu5 = "Uniquelighting" ; } ;
-                    "(?i:^ToroExmark$)" {$Cu5 = "ToroExmark" ; } ;
-                    "(?i:^RainMaster$)" {$Cu5 = "RainMaster" ; } ;
-                    "(?i:^Boss$)" {$Cu5 = "Boss" ; } ;
-                } ;
+                # pulled switch out, it wasn't actually translating, just rgx of the final tags
                 $InputSplat.Cu5=$Cu5;
             } else {
                 $InputSplat.Cu5=$null ;
@@ -627,8 +581,6 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $reqMods+="load-ADMS;get-AdminInitials".split(";") ;
         if( !(check-ReqMods $reqMods) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; exit ;}  ;
         write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):(loading ADMS...)" ;
-        # 10:28 AM 11/26/2019 out to Null to suppress True in console
-        #load-ADMS | out-null ;
         load-ADMS -cmdlet get-aduser,Set-ADUser,Get-ADGroupMember,Get-ADDomainController,Get-ADObject,get-adforest | out-null ; 
 
         $AdminInits=get-AdminInitials ;
@@ -728,8 +680,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                     } # if-E
                 } ;
 
-                # 10:30 AM 5/21/2018 add exo mbx support
-                # 2:40 PM 2/8/2018 need to accommodate EXO-hosted MailUser owners
+                # need to accommodate EXO-hosted MailUser owners
                 switch ((get-recipient -Identity $($InputSplat.Owner)).RecipientType ){
                     "UserMailbox" {
                         if ( ($Tmbx=(get-mailbox -identity $($InputSplat.Owner) -ea stop)) ){
@@ -895,7 +846,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             }
 
 
-            # appears to be a 64char limit on names! "Cannot bind parameter 'Name' to the target. Exception setting "Name": "The length of the property is too long. The maximum length is 64 and the length of the value provided is 66."
+            # 64char limit on names
             if($InputSplat.DisplayName.length -gt 64){
                 $smsg= "`n **** NOTE TRUNCATING NAME, -GT 64 CHARS!  ****`N" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                 $MbxSplat.Name=$InputSplat.DisplayName.Substring(0,63) ;
@@ -945,7 +896,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
             $MbxSplat.samaccountname=$InputSplat.samaccountname;
             $MbxSplat.Alias = $InputSplat.samaccountname;
-            $MbxSplat.RetentionPolicy='Toro Retention Policy';
+            $MbxSplat.RetentionPolicy=$TORMeta['RetentionPolicy'];
             $MbxSplat.domaincontroller=$($InputSplat.domaincontroller)
 
             #or nonshared, make them reset pw on logon
@@ -977,12 +928,12 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 $bRet= read-host "Enable Vscan?[Y/N]" ;
                 # *** BREAKPOINT ;
                 if($bRet.ToUpper() -eq "Y"){
-                    $MbxSetSplat.CustomAttribute9 = "vscan.toro.com" ;
+                    $MbxSetSplat.CustomAttribute9 = $CU9Value ;
                 } ;
             } else {
                 $smsg= "$((get-date).ToString("HH:mm:ss")):-Vscan $($InputSplat.Vscan) parameter specified"; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                 if($InputSplat.Vscan -eq "YES"){
-                    $MbxSetSplat.CustomAttribute9 = "vscan.toro.com"  ;
+                    $MbxSetSplat.CustomAttribute9 = $CU9Value  ;
                 } elseif($InputSplat.Vscan -eq "NO"){
                     $MbxSetSplat.CustomAttribute9 = $null  ;
                 } ;  # if-E vscan
@@ -1062,7 +1013,6 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
             } ;
 
-            # *** BREAKPOINT ;
             if($oMbx){
                 if($bDebug){
                     $smsg= "Existing found: `$InputSplat.DisplayName:$($InputSplat.DisplayName)" ;if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
@@ -1079,7 +1029,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 if ($bRet.ToUpper() -eq "YYY") {
                     # *** BREAKPOINT ;
                     $smsg= "Executing...";if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
-                    if($bwhatif){
+                    if($Whatif){
                         $smsg= "SKIPPING EXEC: Whatif-only pass";if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                     } else {
                         $MbxSplat.Whatif=$false ;
@@ -1098,11 +1048,10 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                             } # try-E
                         } Until ($Exit -eq $Retries) # loop-E
 
-                        # put whatif back in, in case crash without proper exit
                         $MbxSplat.Whatif=$true ;
                     } ;
 
-                    if($bwhatif){
+                    if($Whatif){
                         $smsg= "SKIPPING EXEC: Whatif-only pass";if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                     } else {
                         do {Write-Host "." -NoNewLine;Start-Sleep -s 1} until ($oMbx = (get-mailbox -identity  $($Mbxsplat.samaccountname) -domaincontroller $($Mbxsplat.DomainController) -ea silentlycontinue)) ;
@@ -1120,7 +1069,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
             if($oMbx){
 
-                if($bwhatif){
+                if($Whatif){
                         $smsg= "SKIPPING REMAINING AD CMDS - NO OBJECT YET: Whatif-only pass";if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                 } else {
                     $MbxSetSplat.Whatif=$false ;
@@ -1157,7 +1106,6 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                         } # try-E
                     } Until ($Exit -eq $Retries) # loop-E
 
-                    # 11:02 AM 3/1/2016 looks like there's some latency to email addr updates, push a trigger on it.
                     if($MbxSetSplat.CustomAttribute5){
                         # force trigger EAP toggle
                         $smsg= "$((get-date).ToString("HH:mm:ss")):(toggling EAP to force variant email...)";if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
@@ -1207,7 +1155,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                         $lns = ($oADUsr.info.tostring().split("`n")) ;
                         $UpdInfo=$null;
                         foreach ($ln in $lns) {
-                                # 12:10 PM 3/24/2016 add stock Owner
+                                # add stock Owner
                                 if($ln -match "^(TargetMbx|PermsExpire|Incident|Admin|BusinessOwner|ITOwner|Owner):.*$"){
                                     # it's part of a defined Info tag
                                     $matches=$null ;
@@ -1262,7 +1210,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                     $ADOtherInfoProps.ADNotes="$($UpdInfo)" ;
                     #=========== ^ NOTES PARSER
 
-                    if($bWhatif){
+                    if($Whatif){
                         $smsg= "Whatif $($Mbxsplat.DisplayName) Update..."; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                         $ADSplat.whatif = $true ;
                         Set-ADUser @ADSplat -Replace @{info="$($UpdInfo)"} ;
@@ -1288,11 +1236,11 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
                     #region UPNFromEmail ; # ------
                     # pull the SMTP: addr and use it to force the UPN
-                    if($bWhatif){
+                    if($Whatif){
                         $smsg= "Whatif skipping UPN Update...";if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                     } else {
-                        # dynm pull the forestdom from the forest, match @toro.com
-                        $forestdom=get-adforest -ea stop | select -expand upnsuffixes |?{$_ -match 'toro((lab)*)'}
+                        # dynm pull the forestdom from the forest, match @DOMAIN.COM
+                        $forestdom=get-adforest -ea stop | select -expand upnsuffixes |?{$_ -match $rgxTTCDomainsLegacy}
                         if($forestdom -is [string]){
                             # pull primary SMTP:, verify -is [string]/non-array
                             Do {
@@ -1325,7 +1273,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
                                 if($bDebug){$smsg= "$((get-date).ToString("HH:mm:ss")):`$newUPN:$($newUPN)"; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; } ;
 
-                                # add retry support
+                                # retry support
                                 $Exit = 0 ;
                                 Do {
                                     Try {
