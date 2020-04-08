@@ -1,11 +1,11 @@
-# verb-Ex2010.psm1
+# verb-ex2010.psm1
 
 
 <#
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.9.0
+Version     : 1.1.11.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -55,11 +55,6 @@ $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:
 #*======v FUNCTIONS v======
 
 
-
-#*------v check-ReqMods.ps1 v------
-function check-ReqMods ($reqMods){    $bValidMods=$true ;    $reqMods | foreach-object {        if( !(test-path function:$_ ) ) {          write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing $($_) function." ;          $bValidMods=$false ;        }    } ;    write-output $bValidMods ;}
-
-#*------^ check-ReqMods.ps1 ^------
 
 #*------v Connect-Ex2010.ps1 v------
 Function Connect-Ex2010 {
@@ -968,7 +963,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $tMods+="verb-Ex2010;C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1;Connect-Ex2010";
         #$tMods+="verb-EXO;C:\sc\verb-EXO\verb-EXO\verb-EXO.psm1;Connect-Exo";
         #$tMods+="verb-L13;C:\sc\verb-L13\verb-L13\verb-L13.psm1;Connect-L13";
-        #$tMods+="verb-Network;C:\sc\verb-Network\verb-Network\verb-Network.psm1;Send-EmailNotif";
+        $tMods+="verb-Network;C:\sc\verb-Network\verb-Network\verb-Network.psm1;Send-EmailNotif";
         #$tMods+="verb-Teams;C:\sc\verb-Teams\verb-Teams\verb-Teams.psm1;Connect-Teams";
         #$tMods+="verb-SOL;C:\sc\verb-SOL\verb-SOL\verb-SOL.psm1;Connect-SOL" ;
         #$tMods+="verb-Azure;C:\sc\verb-Azure\verb-Azure\verb-Azure.psm1;get-AADBearToken" ;
@@ -2167,5 +2162,5 @@ Function toggle-ForestView {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function check-ReqMods,Connect-Ex2010,Disconnect-Ex2010,Get-ExchangeServerInSite,Get-ExchServerInLYN,get-GCFast,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,toggle-ForestView -Alias *
+Export-ModuleMember -Function Connect-Ex2010,Disconnect-Ex2010,Get-ExchangeServerInSite,Get-ExchServerInLYN,get-GCFast,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,toggle-ForestView -Alias *
 

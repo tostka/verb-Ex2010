@@ -1,11 +1,11 @@
-﻿# verb-Ex2010.psm1
+﻿# verb-ex2010.psm1
 
 
 <#
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.10.0
+Version     : 1.1.12.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -55,11 +55,6 @@ $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:
 #*======v FUNCTIONS v======
 
 
-
-#*------v check-ReqMods.ps1 v------
-function check-ReqMods ($reqMods){    $bValidMods=$true ;    $reqMods | foreach-object {        if( !(test-path function:$_ ) ) {          write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing $($_) function." ;          $bValidMods=$false ;        }    } ;    write-output $bValidMods ;}
-
-#*------^ check-ReqMods.ps1 ^------
 
 #*------v Connect-Ex2010.ps1 v------
 Function Connect-Ex2010 {
@@ -968,7 +963,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $tMods+="verb-Ex2010;C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1;Connect-Ex2010";
         #$tMods+="verb-EXO;C:\sc\verb-EXO\verb-EXO\verb-EXO.psm1;Connect-Exo";
         #$tMods+="verb-L13;C:\sc\verb-L13\verb-L13\verb-L13.psm1;Connect-L13";
-        #$tMods+="verb-Network;C:\sc\verb-Network\verb-Network\verb-Network.psm1;Send-EmailNotif";
+        $tMods+="verb-Network;C:\sc\verb-Network\verb-Network\verb-Network.psm1;Send-EmailNotif";
         #$tMods+="verb-Teams;C:\sc\verb-Teams\verb-Teams\verb-Teams.psm1;Connect-Teams";
         #$tMods+="verb-SOL;C:\sc\verb-SOL\verb-SOL\verb-SOL.psm1;Connect-SOL" ;
         #$tMods+="verb-Azure;C:\sc\verb-Azure\verb-Azure\verb-Azure.psm1;get-AADBearToken" ;
@@ -2167,14 +2162,14 @@ Function toggle-ForestView {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function check-ReqMods,Connect-Ex2010,Disconnect-Ex2010,Get-ExchangeServerInSite,Get-ExchServerInLYN,get-GCFast,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,toggle-ForestView -Alias *
+Export-ModuleMember -Function Connect-Ex2010,Disconnect-Ex2010,Get-ExchangeServerInSite,Get-ExchServerInLYN,get-GCFast,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,toggle-ForestView -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUsnGrt+now8WGEp/jtmee3AJT
-# miOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUsnsLtwHjP0RbxbIYFqm8Ncn9
+# MaOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -2189,9 +2184,9 @@ Export-ModuleMember -Function check-ReqMods,Connect-Ex2010,Disconnect-Ex2010,Get
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRY+yo3
-# GvYSr7e9iWuwuvxRZuNp4TANBgkqhkiG9w0BAQEFAASBgCxDffuu2LTlx7Jb6daD
-# SwQZY7cHh9p5qwYHvv3zuFPmKweE8iYRM2WX1ReRtuPsSFRks3/eJP14AsTQ/uHW
-# K2Mn3Jh3hh/26LOb2wdikacYGwVePxIyePKLHL7co6E56n9KKDg7GfxlASFpXQ84
-# jdonawlq4Xeo49BAvvdJ26bn
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQer2CH
+# 5UNUj0RqtwEPcsQa3vvuYjANBgkqhkiG9w0BAQEFAASBgK2TOC0EJXlGd5ULp4IE
+# uwqiokzMRBSaXy4G1MD8m80SSzhvdJ00Rvu+egrVm1ZciB56ZbfC1SYikEwTXyo2
+# ASFqOPNt7drud3oe7GdFD2NU89LGgE3ZU5/hdKqRVziu5uuyxIrqF0cB9RHYTMuP
+# j+MgweLoXzuMisobciI0Qi3r
 # SIG # End signature block
