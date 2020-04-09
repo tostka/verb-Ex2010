@@ -1,4 +1,4 @@
-# verb-Ex2010.psm1
+﻿# verb-Ex2010.psm1
 
 
 <#
@@ -71,9 +71,11 @@ function add-MailboxAccessGrant {
     License     : MIT License
     Copyright   : (c) 2020 Todd Kadrie
     Github      : https://github.com/tostka
-    Tags        : Powershell,Exchange,Permissions,Exchange2010
+    Tags        : Powershell
+    AddedCredit : REFERENCE
+    AddedWebsite:	URL
+    AddedTwitter:	URL
     REVISIONS
-    # 3:37 PM 4/9/2020 works fully on jumpbox, but ignores whatif, renamed $bwhatif -> $whatif (as the b variant was prev set in the same-script, now separate scopes); swapped out CU5 switch, moved settings into infra file, genericized
     # 1:38 PM 4/9/2020 modularized updated to reflect debugging on jumpbox
     # 9:57 AM 9/27/2019 added `a beep to all "YYY" prompts to draw attn
     # 12:50 PM 6/13/2019 repl get-timestamp() -> Get-Date -Format 'HH:mm:ss' throughout
@@ -682,10 +684,10 @@ function add-MailboxAccessGrant {
             # 12:28 PM 11/15/2017 we need to use the OwnerMbx - Owner currently is the alias, we want the object with it's dn
             $SiteCode = $InputSplat.OwnerMbx.identity.tostring().split("/")[1]  ;
         } ;
-        #$Domain = [xxx]
-        if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
+        $Domain = "global.ad.toro.com" ;
+        if ($env:USERDOMAIN -eq 'TORO') {
             $FindOU = "^OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,";
-        } ELSEif ($env:USERDOMAIN -eq $TOLMeta['legacyDomain']) {
+        } ELSEif ($env:USERDOMAIN -eq 'TORO-LAB') {
             # CN=Lab-SEC-Email-Thomas Jefferson,OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=LYN,DC=global,DC=ad,DC=torolab,DC=com
             $FindOU = "^OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,"; ;
         } else {
@@ -858,7 +860,7 @@ function add-MailboxAccessGrant {
             if ($bRet.ToUpper() -eq "YYY") {
 
 
-                if ($whatif) {
+                if ($bWhatif) {
                     $smsg = "-Whatif pass, skipping exec." ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
                 } else {
@@ -906,7 +908,7 @@ function add-MailboxAccessGrant {
             #8:41 AM 10/14/2015 add adp
             $ADMbxGrantSplat.Add("DomainController", $($InputSplat.domaincontroller)) ;
 
-            if ($whatif) {
+            if ($bWhatif) {
                 $smsg = "-Whatif pass, skipping exec." ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
             } else {
@@ -3204,3 +3206,29 @@ Function toggle-ForestView {
 
 Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-Ex2010,Get-ExchangeServerInSite,Get-ExchServerInLYN,get-GCFast,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,toggle-ForestView -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUsJC4NBDksPc0ComeTFdo+pck
+# ammgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBReW+9W
+# wB6JqqddYxvFv19QFs7vIzANBgkqhkiG9w0BAQEFAASBgE9ZZ7NBPxG9eqjFCByc
+# RrKy2GoR75O0L8HO8mUsoc70Ta5gRPdcfjkTnhH4QwFUpgPbbPQ4yLYTKfrzq00I
+# r86G8NTahKWARxTsJeBBtuVuInwkq8i5iKBi16PgDfc0ckw1pqZaVsSj1gHXd/wr
+# F1aPN5Cq06dbhZfIEYx5eCWP
+# SIG # End signature block
