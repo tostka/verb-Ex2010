@@ -1,11 +1,11 @@
-﻿# verb-Ex2010.psm1
+﻿# verb-ex2010.psm1
 
 
 <#
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.15.0
+Version     : 1.1.16.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1395,6 +1395,70 @@ if (!(get-alias dx10 -ea 0)) { set-alias -name dx10 -value Disconnect-Ex2010 }
 
 #*------^ Disconnect-Ex2010.ps1 ^------
 
+#*------v get-DCLocal.ps1 v------
+Function get-DCLocal {
+    <#
+    .SYNOPSIS
+    get-DCLocal - Function to locate a random DC in the local AD site (sub-250ms response)
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://tinstoys.blogspot.com
+    Twitter:	http://twitter.com/tostka
+
+    Additional Credits: Originated in Ben Lye's GetLocalDC()
+    Website:	http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
+    REVISIONS   :
+    12:32 PM 1/8/2015 - tweaked version of Ben lye's script, replaced broken .NET site query with get-addomaincontroller ADMT module command
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    Returns one DC object, .Name is name pointer
+    .EXAMPLE
+    C:\> get-dclocal
+    #>
+
+    #  alt command: Return one unverified connectivityDC in SITE site:
+    # Get-ADDomainController -discover -site "SITE"
+
+    # Set $ErrorActionPreference to continue so we don't see errors for the connectivity test
+    $ErrorActionPreference = 'SilentlyContinue'
+    # Get all the local domain controllers
+    # .Net call below fails in LYN, because LYN'S SITE LISTS NO SERVERS ATTRIBUTE!
+    #$LocalDCs = ([System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite()).Servers
+    # use get-addomaincontroller to do it
+    $Site = [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name ;
+    # gc filter
+    #$LocalDCs = Get-ADDomainController -filter {(isglobalcatalog -eq $true) -AND (Site -eq $Site)} ;
+    # any dc filter
+    $LocalDCs = Get-ADDomainController -filter { (Site -eq $Site) } ;
+    # Create an array for the potential DCs we could use
+    $PotentialDCs = @()
+    # Check connectivity to each DC
+    ForEach ($LocalDC in $LocalDCs) {
+        #write-verbose -verbose $localdc
+        # Create a new TcpClient object
+        $TCPClient = New-Object System.Net.Sockets.TCPClient
+        # Try connecting to port 389 on the DC
+        $Connect = $TCPClient.BeginConnect($LocalDC.Name, 389, $null, $null)
+        # Wait 250ms for the connection
+        $Wait = $Connect.AsyncWaitHandle.WaitOne(250, $False)
+        # If the connection was succesful add this DC to the array and close the connection
+        If ($TCPClient.Connected) {
+            # Add the FQDN of the DC to the array
+            $PotentialDCs += $LocalDC.Name
+            # Close the TcpClient connection
+            $Null = $TCPClient.Close()
+        } # if-E
+    } # loop-E
+    # Pick a random DC from the list of potentials
+    $DC = $PotentialDCs | Get-Random
+    #write-verbose -verbose $DC
+    # Return the DC
+    Return $DC
+}
+
+#*------^ get-DCLocal.ps1 ^------
+
 #*------v Get-ExchangeServerInSite.ps1 v------
 Function Get-ExchangeServerInSite {
     <#
@@ -1607,6 +1671,69 @@ function get-GCFast {
 }
 
 #*------^ get-GCFast.ps1 ^------
+
+#*------v get-GCLocal.ps1 v------
+Function get-GCLocal {
+    <#
+        .SYNOPSIS
+    get-GCLocal - Function to locate a random DC in the local AD site (sub-250ms response)
+        .NOTES
+    Author: Todd Kadrie
+    Website:	http://tinstoys.blogspot.com
+    Twitter:	http://twitter.com/tostka
+    Additional Credits: Originated in Ben Lye's GetLocalDC()
+    Website:	http://www.onesimplescript.com/2012/03/using-powershell-to-find-local-domain.html
+    REVISIONS   :
+    12:32 PM 1/8/2015 - tweaked version of Ben lye's script, replaced broken .NET site query with get-addomaincontroller ADMT module command
+        .INPUTS
+    None. Does not accepted piped input.
+        .OUTPUTS
+    Returns one DC object, .Name is name pointer
+        .EXAMPLE
+    C:\> get-dclocal
+    #>
+
+    #  alt command: Return one unverified connectivityDC in SITE site:
+    # Get-ADDomainController -discover -site "SITE"
+
+    # Set $ErrorActionPreference to continue so we don't see errors for the connectivity test
+    $ErrorActionPreference = 'SilentlyContinue'
+    # Get all the local domain controllers
+    # .Net call below fails in LYN, because LYN'S SITE LISTS NO SERVERS ATTRIBUTE!
+    #$LocalDCs = ([System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite()).Servers
+    # use get-addomaincontroller to do it
+    $Site = [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name ;
+    # gc filter
+    $LocalDCs = Get-ADDomainController -filter { (isglobalcatalog -eq $true) -AND (Site -eq $Site) } ;
+    # any dc filter
+    #$LocalDCs = Get-ADDomainController -filter {(Site -eq $Site)} ;
+    # Create an array for the potential DCs we could use
+    $PotentialDCs = @()
+    # Check connectivity to each DC
+    ForEach ($LocalDC in $LocalDCs) {
+        #write-verbose -verbose $localdc
+        # Create a new TcpClient object
+        $TCPClient = New-Object System.Net.Sockets.TCPClient
+        # Try connecting to port 389 on the DC
+        $Connect = $TCPClient.BeginConnect($LocalDC.Name, 389, $null, $null)
+        # Wait 250ms for the connection
+        $Wait = $Connect.AsyncWaitHandle.WaitOne(250, $False)
+        # If the connection was succesful add this DC to the array and close the connection
+        If ($TCPClient.Connected) {
+            # Add the FQDN of the DC to the array
+            $PotentialDCs += $LocalDC.Name
+            # Close the TcpClient connection
+            $Null = $TCPClient.Close()
+        } # if-E
+    } # loop-E
+    # Pick a random DC from the list of potentials
+    $DC = $PotentialDCs | Get-Random
+    #write-verbose -verbose $DC
+    # Return the DC
+    Return $DC
+}
+
+#*------^ get-GCLocal.ps1 ^------
 
 #*------v load-EMSLatest.ps1 v------
 function load-EMSLatest {
@@ -3202,14 +3329,14 @@ Function toggle-ForestView {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-Ex2010,Get-ExchangeServerInSite,Get-ExchServerInLYN,get-GCFast,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,toggle-ForestView -Alias *
+Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-Ex2010,get-DCLocal,Get-ExchangeServerInSite,Get-ExchServerInLYN,get-GCFast,get-GCLocal,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,toggle-ForestView -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUjTG7OglAiqJbqxJNRry+0Y2w
-# 6bOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUyVjuZKpJtU5Z3H0m5AWlnO9V
+# ppqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3224,9 +3351,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-E
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS5hUum
-# rSLdgXRgpzkcyTmNkgV1BTANBgkqhkiG9w0BAQEFAASBgGVAfBQfgiTSOBdAWzmn
-# wOF9DPIEF8tOr0dXjLgyuvQ+frQgO+/IQV22kXwotqigw8nofywV7/qRsq0Zms4k
-# jRyR/WuAk5XFd+uh5UbJKnfr1ddvkXpBt26I1qUCApr8cs7hKjMK2TmQOcw0UBWY
-# qwt+aKW4fq9M8Xvm44mR7pph
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQeljHh
+# IneE22xkdo0j3MxBy7SWcTANBgkqhkiG9w0BAQEFAASBgGjT319UN37ruWu6+N9Y
+# wTD6tZjRNCqNbqgXrPkdY/Q7RrtHVDgcl3Lm4oI7By61utOuehzHO7uXiKMhHgfa
+# ImfHtLoJYrQmSHYeev6kNqN/8Plfet7uh1pyCUz0byuLR67RUhcWm5JcYwwy8cT5
+# lDXc1/8DSqbbDX5fjlZBcy2w
 # SIG # End signature block
