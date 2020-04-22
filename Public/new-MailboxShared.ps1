@@ -18,6 +18,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 4:28 PM 4/22/2020 updated logging code, to accomodate dynamic locations and $ParentPath
     # 4:36 PM 4/8/2020 works fully on jumpbox, but ignores whatif, renamed $bwhatif -> $whatif (as the b variant was prev set in the same-script, now separate scopes); swapped out CU5 switch, moved settings into infra file, genericized
     # 2:15 PM 4/7/2020 updated to reflect debugging on jumpbox
     # 2:35 PM 4/3/2020 new-MailboxShared: genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules ; added -ParentPath to pass through a usable path for start-log, within new-mailboxshared()
@@ -336,23 +337,18 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         #*------^ END MOD LOADS ^------
 
         if($ParentPath){
+            $rgxProfilePaths='(\\Documents\\WindowsPowerShell\\scripts|\\Program\sFiles\\windowspowershell\\scripts)' ; 
+            if($ParentPath -match $rgxProfilePaths){
+                $ParentPath = "$(join-path -path 'c:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ; 
+            } ; 
             $logspec = start-Log -Path ($ParentPath) -showdebug:$($showdebug) -whatif:$($whatif) ;
             if($logspec){
                 $logging=$logspec.logging ;
                 $logfile=$logspec.logfile ;
                 $transcript=$logspec.transcript ;
-            } else {throw "Unable to configure logging!" } ;
-        } else {
-        
-        } ; 
+            } else {$smsg = "Unable to configure logging!" ; write-warning "$((get-date).ToString('HH:mm:ss')):$($sMsg)" ; Exit ;} ;
+        } else {$smsg = "No functional `$ParentPath found!" ; write-warning "$((get-date).ToString('HH:mm:ss')):$($sMsg)" ;  Exit ;} ;
 
-        <#$transcript = join-path -path $PSScriptRoot -ChildPath "logs" ;
-        if(!(test-path -path $transcript)){ "Creating missing log dir $($transcript)..." ; mkdir $transcript  ; } ;
-        $transcript=join-path -path $transcript -childpath $ScriptNameNoExt  ;
-        $transcript+= "-Transcript-BATCH-$(get-date -format 'yyyyMMdd-HHmmtt')-trans-log.txt"  ;
-        #>
-        # add log file variant as target of Write-Log:
-        $logfile=$transcript.replace("-Transcript","-LOG").replace("-trans-log","-log")
         if($whatif){
             $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
             $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;

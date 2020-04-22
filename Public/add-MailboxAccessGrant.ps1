@@ -15,6 +15,7 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    # 4:28 PM 4/22/2020 updated logging code, to accomodate dynamic locations and $ParentPath
     # 3:37 PM 4/9/2020 works fully on jumpbox, but ignores whatif, renamed $bwhatif -> $whatif (as the b variant was prev set in the same-script, now separate scopes); swapped out CU5 switch, moved settings into infra file, genericized
     # 1:38 PM 4/9/2020 modularized updated to reflect debugging on jumpbox
     # 9:57 AM 9/27/2019 added `a beep to all "YYY" prompts to draw attn
@@ -214,7 +215,7 @@ function add-MailboxAccessGrant {
 
         # don't use the LoadModFile(), it has scoping issues returning the mods, they aren't accessible outside the function itself
 
-                $verbose = ($VerbosePreference -eq "Continue") ;
+        $verbose = ($VerbosePreference -eq "Continue") ;
         $continue = $true ;
         switch -regex ($env:COMPUTERNAME){
             ($rgxMyBoxW){ $LocalInclDir="c:\usr\work\exch\scripts" ; }
@@ -313,23 +314,18 @@ function add-MailboxAccessGrant {
         #*------^ END MOD LOADS ^------
 
         if($ParentPath){
+            $rgxProfilePaths='(\\Documents\\WindowsPowerShell\\scripts|\\Program\sFiles\\windowspowershell\\scripts)' ; 
+            if($ParentPath -match $rgxProfilePaths){
+                $ParentPath = "$(join-path -path 'c:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ; 
+            } ; 
             $logspec = start-Log -Path ($ParentPath) -showdebug:$($showdebug) -whatif:$($whatif) ;
             if($logspec){
                 $logging=$logspec.logging ;
                 $logfile=$logspec.logfile ;
                 $transcript=$logspec.transcript ;
-            } else {throw "Unable to configure logging!" } ;
-        } else {
+            } else {$smsg = "Unable to configure logging!" ; write-warning "$((get-date).ToString('HH:mm:ss')):$($sMsg)" ; Exit ;} ;
+        } else {$smsg = "No functional `$ParentPath found!" ; write-warning "$((get-date).ToString('HH:mm:ss')):$($sMsg)" ;  Exit ;} ;
 
-        } ;
-
-        <#$transcript = join-path -path $PSScriptRoot -ChildPath "logs" ;
-        if(!(test-path -path $transcript)){ "Creating missing log dir $($transcript)..." ; mkdir $transcript  ; } ;
-        $transcript=join-path -path $transcript -childpath $ScriptNameNoExt  ;
-        $transcript+= "-Transcript-BATCH-$(get-date -format 'yyyyMMdd-HHmmtt')-trans-log.txt"  ;
-        #>
-        # add log file variant as target of Write-Log:
-        $logfile=$transcript.replace("-Transcript","-LOG").replace("-trans-log","-log")
         if($whatif){
             $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
             $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
