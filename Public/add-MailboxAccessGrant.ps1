@@ -15,6 +15,7 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    # 1:27 PM 4/23/2020 updated loadmod & dynamic logging/exec code
     # 4:28 PM 4/22/2020 updated logging code, to accomodate dynamic locations and $ParentPath
     # 3:37 PM 4/9/2020 works fully on jumpbox, but ignores whatif, renamed $bwhatif -> $whatif (as the b variant was prev set in the same-script, now separate scopes); swapped out CU5 switch, moved settings into infra file, genericized
     # 1:38 PM 4/9/2020 modularized updated to reflect debugging on jumpbox
@@ -250,9 +251,7 @@ function add-MailboxAccessGrant {
         #$tMods+="verb-SOL;C:\sc\verb-SOL\verb-SOL\verb-SOL.psm1;Connect-SOL" ;
         #$tMods+="verb-Azure;C:\sc\verb-Azure\verb-Azure\verb-Azure.psm1;get-AADBearToken" ;
         foreach($tMod in $tMods){
-            $tModName = $tMod.split(';')[0] ;
-            $tModFile = $tMod.split(';')[1] ;
-            $tModCmdlet = $tMod.split(';')[2] ;
+            $tModName = $tMod.split(';')[0] ;             $tModFile = $tMod.split(';')[1] ;             $tModCmdlet = $tMod.split(';')[2] ;
             $smsg = "( processing `$tModName:$($tModName)`t`$tModFile:$($tModFile)`t`$tModCmdlet:$($tModCmdlet) )" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
@@ -260,56 +259,10 @@ function add-MailboxAccessGrant {
                 write-host "GOTCHA!:$($tModName)" ;
             } ;
             $lVers = get-module -name $tModName -ListAvailable -ea 0 ;
-            if($lVers){
-                $lVers=($lVers | sort version)[-1];
-                try {
-                    import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking
-                }   catch {
-                     write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking
-                } ;
-            } elseif (test-path $tModFile) {
-                write-warning "*NO* INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;
-                try {import-module -name $tModDFile -force -DisableNameChecking}
-                catch {
-                    write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;
-                    $tModFile = "$($tModName).ps1" ;
-                    $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;
-                    if (Test-Path $sLoad) {
-                        Write-Verbose -verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;
-                        . $sLoad ;
-                        if ($showdebug) { Write-Verbose -verbose "Post $sLoad" };
-                    } else {
-                        $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;
-                        if (Test-Path $sLoad) {
-                            Write-Verbose -verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;
-                            . $sLoad ;
-                            if ($showdebug) { Write-Verbose -verbose "Post $sLoad" };
-                        } else {
-                            Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;
-                            exit;
-                        } ;
-                    } ;
-                } ;
-            } ;
-            if(!(test-path function:$tModCmdlet)){
-                write-warning -verbose:$true  "UNABLE TO VALIDATE PRESENCE OF $tModCmdlet`nfailing through to `$backInclDir .ps1 version" ;
-                $sLoad = (join-path -path $backInclDir -childpath "$($tModName).ps1") ;
-                if (Test-Path $sLoad) {
-                    Write-Verbose -verbose:$true ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;
-                    . $sLoad ;
-                    if ($showdebug) { Write-Verbose -verbose "Post $sLoad" };
-                    if(!(test-path function:$tModCmdlet)){
-                        write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TO CONFIRM `$tModCmdlet:$($tModCmdlet) FOR $($tModName)" ;
-                    } else {
-                        write-verbose -verbose:$true  "(confirmed $tModName loaded: $tModCmdlet present)"
-                    }
-                } else {
-                    Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;
-                    exit;
-                } ;
-            } else {
-                write-verbose -verbose:$true  "(confirmed $tModName loaded: $tModCmdlet present)"
-            } ;
+            if($lVers){                 $lVers=($lVers | sort version)[-1];                 try {                     import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking                 }   catch {                      write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking                 } ;
+            } elseif (test-path $tModFile) {                 write-warning "*NO* INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;                 try {import-module -name $tModDFile -force -DisableNameChecking}                 catch {                     write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;                     $tModFile = "$($tModName).ps1" ;                     $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;                     if (Test-Path $sLoad) {                         Write-Verbose -verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                         . $sLoad ;                         if ($showdebug) { Write-Verbose -verbose "Post $sLoad" };                     } else {                         $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;                         if (Test-Path $sLoad) {                             Write-Verbose -verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                             . $sLoad ;                             if ($showdebug) { Write-Verbose -verbose "Post $sLoad" };                         } else {                             Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                             exit;                         } ;                     } ;                 } ;             } ;
+            if(!(test-path function:$tModCmdlet)){                 write-warning -verbose:$true  "UNABLE TO VALIDATE PRESENCE OF $tModCmdlet`nfailing through to `$backInclDir .ps1 version" ;                 $sLoad = (join-path -path $backInclDir -childpath "$($tModName).ps1") ;                 if (Test-Path $sLoad) {                     Write-Verbose -verbose:$true ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                     . $sLoad ;                     if ($showdebug) { Write-Verbose -verbose "Post $sLoad" };                     if(!(test-path function:$tModCmdlet)){                         write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TO CONFIRM `$tModCmdlet:$($tModCmdlet) FOR $($tModName)" ;                     } else {                         write-verbose -verbose:$true  "(confirmed $tModName loaded: $tModCmdlet present)"                     }                 } else {                     Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                     exit;                 } ;
+            } else {                 write-verbose -verbose:$true  "(confirmed $tModName loaded: $tModCmdlet present)"             } ;
         } ;  # loop-E
         #*------^ END MOD LOADS ^------
 
@@ -325,7 +278,6 @@ function add-MailboxAccessGrant {
                 $transcript=$logspec.transcript ;
             } else {$smsg = "Unable to configure logging!" ; write-warning "$((get-date).ToString('HH:mm:ss')):$($sMsg)" ; Exit ;} ;
         } else {$smsg = "No functional `$ParentPath found!" ; write-warning "$((get-date).ToString('HH:mm:ss')):$($sMsg)" ;  Exit ;} ;
-
         if($whatif){
             $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
             $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
@@ -340,7 +292,6 @@ function add-MailboxAccessGrant {
             $logfile=$logfile.replace("-BATCH","-nnnnnn") ;
             $transcript=$transcript.replace("-BATCH","-nnnnnn") ;
         } ;
-        $logging = $True ;
 
         <#
         $sBnr="#*======v START PASS:$($ScriptBaseName) v======" ;
