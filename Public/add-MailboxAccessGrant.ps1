@@ -217,6 +217,10 @@ function add-MailboxAccessGrant {
         # don't use the LoadModFile(), it has scoping issues returning the mods, they aren't accessible outside the function itself
 
         $verbose = ($VerbosePreference -eq "Continue") ;
+        # Get the name of this function
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        # Get parameters this function was invoked with
+        $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters ;
         $continue = $true ;
         switch -regex ($env:COMPUTERNAME){
             ($rgxMyBoxW){ $LocalInclDir="c:\usr\work\exch\scripts" ; }
@@ -300,7 +304,7 @@ function add-MailboxAccessGrant {
         #>
 
         $xxx = "====VERB====";
-        $xxx = $xxx.replace("VERB", "NewMbx") ;
+        $xxx = $xxx.replace("VERB", "NewMbxAccess") ;
         $BARS = ("=" * 10);
         #write-host -fore green ((get-date).ToString('HH:mm:ss') + ":===PASS STARTED=== ")
 
@@ -324,8 +328,7 @@ function add-MailboxAccessGrant {
                 SiteOverride = "";
                 Members      = "LYNCTEST3"
             } ;
-            # 2:02 PM 5/10/2016 owner isn't a param on NEW-ADGroup => ManagedBy
-            # 7:28 AM 9/6/2018 switch to EXO-compatible group type: Univ, mail-enable
+            # switch to EXO-compatible group type: Univ, mail-enable
             $SGSplat = @{
                 Name            = "";
                 DisplayName     = "";
@@ -357,19 +360,13 @@ function add-MailboxAccessGrant {
                 AccessRights    = "FullAccess";
                 InheritanceType = "All";
             };
-            # 8:05 AM 10/14/2015 add for AD SendAs perms grant
-            <#$ADMbxGrantSplat=@{
-	          Identity="" ;
-	          User="" ;
-	          ExtendedRights="Send As" ;
-	        };#>
-            #8:59 AM 10/14/2015 try pulling id, pipeline it in
+            # pulling id, pipeline it in
             $ADMbxGrantSplat = @{
                 User           = "" ;
                 ExtendedRights = "Send As" ;
             };
         } else {
-            # 12:04 PM 2/10/2016 psv3 code
+            # psv3 code
             $InputSplat = [ordered]@{
                 TargetID     = "TARGETMBX";
                 SecGrpName   = "";
@@ -409,13 +406,8 @@ function add-MailboxAccessGrant {
                 AccessRights    = "FullAccess";
                 InheritanceType = "All";
             };
-            # 8:05 AM 10/14/2015 add for AD SendAs perms grant
-            <#$ADMbxGrantSplat=[ordered]@{
-	          Identity="" ;
-	          User="" ;
-	          ExtendedRights="Send As" ;
-	        };#>
-            #8:59 AM 10/14/2015 try pulling id, pipeline it in
+            # add for AD SendAs perms grant
+            #pulling id, pipeline it in
             $ADMbxGrantSplat = [ordered]@{
                 User           = "" ;
                 ExtendedRights = "Send As" ;
@@ -564,18 +556,16 @@ function add-MailboxAccessGrant {
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
             $Mgr = $($InputSplat.Owner);
         } ;
-        # 10:52 AM 6/20/2016 fixed typo $InputSplatSiteOverride => $InputSplat.SiteOverride (broke -SiteOverride function)
         if ($InputSplat.SiteOverride) {
             $SiteCode = $($InputSplat.SiteOverride);
         } else {
-            # 12:28 PM 11/15/2017 we need to use the OwnerMbx - Owner currently is the alias, we want the object with it's dn
+            # we need to use the OwnerMbx - Owner currently is the alias, we want the object with it's dn
             $SiteCode = $InputSplat.OwnerMbx.identity.tostring().split("/")[1]  ;
         } ;
-        #$Domain = [xxx]
         if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
             $FindOU = "^OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,";
         } ELSEif ($env:USERDOMAIN -eq $TOLMeta['legacyDomain']) {
-            # CN=Lab-SEC-Email-Thomas Jefferson,OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=LYN,DC=global,DC=ad,DC=torolab,DC=com
+            # CN=Lab-SEC-Email-Thomas Jefferson,OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=LYN,DC=SUBDOM,DC=DOMAIN,DC=DOMAIN,DC=com
             $FindOU = "^OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,"; ;
         } else {
             throw "UNRECOGNIZED USERDOMAIN:$($env:USERDOMAIN)" ;
@@ -651,7 +641,7 @@ function add-MailboxAccessGrant {
             if ($oSG.info) {
                 # existing info tag
                 # update the splat
-                # 12:19 PM 3/22/2016 just loop each line split on `n: (Get-ADUser lynctest9 -Properties info).info.split("`n")| foreach{"Ln:$_"}
+                # just loop each line split on `n: (Get-ADUser lynctest9 -Properties info).info.split("`n")| foreach{"Ln:$_"}
                 $oADOtherInfo = New-Object PSObject -Property $ADOtherInfoProps ;
 
                 #( $ln in ($oSG.info.tostring().split("`n") )  {
@@ -776,7 +766,6 @@ function add-MailboxAccessGrant {
 
         $smsg = "`nTesting SecGrp Members Add `nto group: $($oSG.Name)" ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
-        # *** BREAKPOINT ;
         if ($oSG) {
             $ExistMbrs = @() ;
             # 11:27 AM 6/23/2017 typo, vari with no leading $
@@ -859,7 +848,6 @@ function add-MailboxAccessGrant {
             # do loop until up to 4 retries...
             Do {
                 Try {
-
                     add-mailboxpermission @GrantSplat -whatif ;
                     $Exit = $Retries ;
                 } Catch {
@@ -906,9 +894,7 @@ function add-MailboxAccessGrant {
                 # do loop until up to 4 retries...
                 Do {
                     Try {
-
                         add-mailboxpermission @GrantSplat ;
-
                         $Exit = $Retries ;
                     } Catch {
                         $ErrTrapd = $Error[0] ;
@@ -996,8 +982,8 @@ function add-MailboxAccessGrant {
 
                 $smsg = "`n$((get-mailboxpermission -identity $($TMbx.Identity) -user $(($oSG).Name) -domaincontroller $($InputSplat.domaincontroller) | ?{$_.user -match ".*-(SEC|Data)-Email-.*$"} | format-list user,AccessRights,IsInhertied,Deny |out-string).trim())" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
-                $smsg = "`n$((get-mailboxpermission -identity $($TMbx.Identity) -user $(($oSG).Name) -domaincontroller $($InputSplat.domaincontroller) | ?{$_.user -match ".*-(SEC|Data)-Email-.*$"} | format-list user,AccessRights,IsInhertied,Deny|out-string).trim())" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
+                #$smsg = "`n$((get-mailboxpermission -identity $($TMbx.Identity) -user $(($oSG).Name) -domaincontroller $($InputSplat.domaincontroller) | ?{$_.user -match ".*-(SEC|Data)-Email-.*$"} | format-list user,AccessRights,IsInhertied,Deny|out-string).trim())" ;
+                #if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
 
                 $smsg = "`n==User mbx grant: Confirming $($TMbx.name) member of $($grpN):" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug

@@ -240,6 +240,10 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
     BEGIN {
         $verbose = ($VerbosePreference -eq "Continue") ; 
+        # Get the name of this function
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        # Get parameters this function was invoked with
+        $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters ;
         $continue = $true ;
         switch -regex ($env:COMPUTERNAME){
             ($rgxMyBoxW){ $LocalInclDir="c:\usr\work\exch\scripts" ; }
