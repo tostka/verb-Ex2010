@@ -1,11 +1,11 @@
-# verb-Ex2010.psm1
+# verb-ex2010.psm1
 
 
 <#
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.17.0
+Version     : 1.1.20.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1100,6 +1100,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 10:13 AM 5/15/2020 with vpn AD Ex lookup issue, patched in backup pass of get-ExchangeServerFromExGroup, in case of fail ; added failthrough to updated get-ExchangeServerFromExGroup, and finally to profile $smtpserver
     * 10:19 AM 2/24/2020 Connect-Ex2010/-OBS v1.1.0: updated cx10 to reflect infra file cred name change: cred####SID -> cred###SID, debugged, working, updated output banner to draw from global session, rather than imported module (was blank output). Ren'ing this one to the primary vers, and the prior to -OBS. Changed attribution, other than function names & concept, none of the code really sources back to Mike's original any more.
     * 6:59 PM 1/15/2020 cleanup
     * 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
@@ -1230,7 +1231,14 @@ Function Connect-Ex2010 {
         write-warning "$((get-date).ToString('HH:mm:ss')):UNRECOGNIZED CREDENTIAL!:$($Credential.Username)`nUNABLE TO RESOLVE DEFAULT EX10SERVER FOR CONNECTION!" ;
     }  ;  
     if($ExchangeServer -eq 'dynamic'){
-        $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN ; 
+        if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}
+        else {
+            write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchangeServerInSite *FAILED*,`ndeferring to Get-ExchServerFromExServersGroup" ;
+            if(!($ExchangeServer = Get-ExchServerFromExServersGroup)){
+                write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchServerFromExServersGroup *FAILED*,`n deferring to profile `$smtpserver:$($smtpserver))"  ; 
+                $ExchangeServer = $smtpserver ;
+            }; 
+        } ;  
     } ; 
 
   write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
@@ -1274,7 +1282,7 @@ Function Connect-Ex2010 {
   Add-PSTitleBar 'EMS' ;
   # tag E10IsDehydrated 
   $Global:E10IsDehydrated = $true ;
-  write-verbose -verbose:$true "$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
+  write-verbose -verbose:$true "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
 } ; #*------^ END Function Connect-Ex2010 ^------
 # 11:31 AM 5/6/2019 alias Add-EMSRemote-> Connect-Ex2010
 if (!(get-alias Add-EMSRemote -ea 0)) { set-alias -name Add-EMSRemote -value connect-Ex2010 } ;
@@ -1401,6 +1409,7 @@ Function Get-ExchangeServerInSite {
     Author: Mike Pfeiffer
     Website:	http://mikepfeiffer.net/2010/04/find-exchange-servers-in-the-local-active-directory-site-using-powershell/
     REVISIONS   :
+    * 12:08 PM 5/15/2020 fixed vpn issue: Try/Catch'd around recently failing $ADSite::GetComputerSite().GetDirectoryEntry().distinguishedName qry
     * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
     * 6:59 PM 1/15/2020 cleanup
     # 10:03 AM 11/16/2018 Get-ExchangeServerInSite:can't do AD-related functions when not AD authentictaed (home, pre-vpn connect). Added if/then test on status and abort balance when false.
@@ -1433,7 +1442,7 @@ Function Get-ExchangeServerInSite {
     get-exchangeserverinsite |?{$_.roles -match "(4|32|36)"}
     Return Hub,CAS,or Hub+CAS servers
     .EXAMPLE
-    If(!($ExchangeServer)){$ExchangeServer=(Get-ExchangeServerInSite |?{($_.roles -eq 36) -AND ($_.FQDN -match "LYN.*")} | Get-Random ).FQDN }
+    If(!($ExchangeServer)){$ExchangeServer=(Get-ExchangeServerInSite |?{($_.roles -eq 36) -AND ($_.FQDN -match "SITECODE.*")} | Get-Random ).FQDN }
     Return a random HubCas Role server with a name beginning LYN
     .EXAMPLE
     $regex = '(' + [regex]($ADSiteCodeUK,$ADSiteCodeAU -join "|") + ')'
@@ -1453,32 +1462,45 @@ Function Get-ExchangeServerInSite {
     ) ;
     $Verbose = ($VerbosePreference -eq 'Continue') ; 
     # 9:53 AM 11/16/2018 from vpn/home, $ADSite doesn't populate prior to domain logon (via vpn)
+    # 9:41 AM 5/15/2020 issue: vpn/home, $siteDN suddenly doesn't populate, no longer dyn locs an Ex box, implemented try/catch workaround
     if ($ADSite = [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]) {
-        $siteDN = $ADSite::GetComputerSite().GetDirectoryEntry().distinguishedName ;
-        # if conn'd rets: cn=lyndale,cn=sites,cn=configuration,dc=ad,dc=toro,dc=com
-        $configNC = ([ADSI]"LDAP://RootDse").configurationNamingContext ; # returns: "CN=Configuration,DC=ad,DC=toro,DC=com"
-        $search = new-object DirectoryServices.DirectorySearcher([ADSI]"LDAP://$configNC") ;
-        $objectClass = "objectClass=msExchExchangeServer" ;
-        $version = "versionNumber>=1937801568" ;
-        $site = "msExchServerSite=$siteDN" ;
-        $search.Filter = "(&($objectClass)($version)($site))" ;
-        $search.PageSize = 1000 ;
-        [void] $search.PropertiesToLoad.Add("name") ;
-        [void] $search.PropertiesToLoad.Add("msexchcurrentserverroles") ;
-        [void] $search.PropertiesToLoad.Add("networkaddress") ;
-        $search.FindAll() | % {
-            $matched = New-Object PSObject -Property @{
-                Name  = $_.Properties.name[0] ;
-                FQDN  = $_.Properties.networkaddress |
-                    % { if ($_ -match "ncacn_ip_tcp") { $_.split(":")[1] } } ;
-                Roles = $_.Properties.msexchcurrentserverroles[0] ;
+        TRY {$siteDN = $ADSite::GetComputerSite().GetDirectoryEntry().distinguishedName}
+        CATCH {
+            $siteDN =$Ex10siteDN # [infra] returns DN to : cn=[SITENAME],cn=sites,cn=configuration,dc=ad,dc=[DOMAIN],dc=com
+            write-warning "$((get-date).ToString('HH:mm:ss')):`$siteDN lookup FAILED, deferring to hardcoded `$Ex10siteDN string in infra file!" ;
+        } ; 
+        TRY {$configNC = ([ADSI]"LDAP://RootDse").configurationNamingContext}
+        CATCH {
+            $configNC =$Ex10configNC #  [infra] returns: "CN=Configuration,DC=ad,DC=[DOMAIN],DC=com"
+            write-warning "$((get-date).ToString('HH:mm:ss')):`$configNC lookup FAILED, deferring to hardcoded `$Ex10configNC string in infra file!" ;
+        } ; 
+        if($siteDN -AND $configNC){
+            $search = new-object DirectoryServices.DirectorySearcher([ADSI]"LDAP://$configNC") ;
+            $objectClass = "objectClass=msExchExchangeServer" ;
+            $version = "versionNumber>=1937801568" ;
+            $site = "msExchServerSite=$siteDN" ;
+            $search.Filter = "(&($objectClass)($version)($site))" ;
+            $search.PageSize = 1000 ;
+            [void] $search.PropertiesToLoad.Add("name") ;
+            [void] $search.PropertiesToLoad.Add("msexchcurrentserverroles") ;
+            [void] $search.PropertiesToLoad.Add("networkaddress") ;
+            $search.FindAll() | % {
+                $matched = New-Object PSObject -Property @{
+                    Name  = $_.Properties.name[0] ;
+                    FQDN  = $_.Properties.networkaddress |
+                        % { if ($_ -match "ncacn_ip_tcp") { $_.split(":")[1] } } ;
+                    Roles = $_.Properties.msexchcurrentserverroles[0] ;
+                } ;
+                if($NoPing){
+                    $matched | write-output ; 
+                } else { 
+                    $matched | %{If(test-connection $_.FQDN -count 1 -ea 0) {$_} else {} } | 
+                        write-output ; 
+                } ; 
             } ;
-            if($NoPing){
-                $matched | write-output ; 
-            } else { 
-                $matched | %{If(test-connection $_.FQDN -count 1 -ea 0) {$_} else {} } | 
-                    write-output ; 
-            } ; 
+        }else {
+            write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):MISSING `$siteDN:($($siteDN)) `nOR `$configNC:($($configNC)) values`nABORTING!" ;
+            $false | write-output ;
         } ;
     }else {
         write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):`$ADSite blank, not authenticated to a domain! ABORTING!" ;
@@ -1488,33 +1510,48 @@ Function Get-ExchangeServerInSite {
 
 #*------^ Get-ExchangeServerInSite.ps1 ^------
 
-#*------v Get-ExchServerInLYN.ps1 v------
-Function Get-ExchServerInLYN {
+#*------v Get-ExchServerFromExServersGroup.ps1 v------
+Function Get-ExchServerFromExServersGroup {
   <#
     .SYNOPSIS
-    Get-ExchServerInLYN - Returns the name of an Exchange server in the LYN site (much simpler, pulls random box from ad.toro.com\Exchange Servers grp, & filters names for LYN and hubcas nameschemes).
+    Get-ExchServerFromExServersGroup - Returns the name of an Exchange server by drawing a random box from ad.DOMAIN.com\Exchange Servers grp & regex matches for desired site hubCas names.
     .NOTES
     Author: Todd Kadrie
     Website:	http://tintoys.blogspot.com
     REVISIONS   :
+    * 10:02 AM 5/15/2020 pushed the post regex into a infra string & defaulted param, so this could work with any post-filter ;ren Get-ExchServerInLYN -> Get-ExchServerFromExServersGroup
     * 6:59 PM 1/15/2020 cleanup
     # 10:44 AM 9/2/2016 - initial tweak
-    .PARAMETER  Site
-    Optional: Ex Servers from which Site (defaults to AD lookup against local computer's Site)
+    .PARAMETER  ServerRegex
+    Server filter Regular Expression[-ServerRegex '^CN=(SITE1|SITE2)BOX1[0,1].*$']
     .DESCRIPTION
-    Get-ExchServerInLYN - Returns the name of an Exchange server in the local LYN AD site.
+    Get-ExchServerFromExServersGroup - Returns the name of an Exchange server by drawing a random box from ad.DOMAIN.com\Exchange Servers grp & regex matches for desired site hubCas names.
+    Leverages the ActiveDirectory module Get-ADGroupMember cmdlet
     .INPUTS
     None. Does not accepted piped input.
     .OUTPUTS
     Returns the name of an Exchange server in the local AD site.
     .EXAMPLE
-    .\Get-ExchServerInLYN
+    .\Get-ExchServerFromExServersGroup
+    Draw random matching ex server with defaulted settings
+    .EXAMPLE
+    .\Get-ExchServerFromExServersGroup -ServerRegex '^CN=SITEPREFIX.*$' 
+    Draw random matching ex server with explicit ServerRegex match
     .LINK
     #>
-  (Get-ADGroupMember -Identity 'Exchange Servers' -server $DomTORParentfqdn | ? { $_.distinguishedname -match $rgxLocalHubCAS }).name | get-random | write-output ;
+    #Requires -Modules ActiveDirectory
+    PARAM(
+        [Parameter(HelpMessage="Server filter Regular Expression[-ServerRegex '^CN=(SITE1|SITE2)BOX1[0,1].*$']")]
+        $ServerRegex=$rgxLocalHubCAS,
+        [Parameter(HelpMessage="AD ParentDomain fqdn [-ADParentDomain 'ROOTDOMAIN.DOMAIN.com']")]
+        $ADParentDomain=$DomTORParentfqdn
+    ) ;
+    (Get-ADGroupMember -Identity 'Exchange Servers' -server $DomTORParentfqdn | 
+        ? { $_.distinguishedname -match $ServerRegex }).name | 
+            get-random | write-output ;
 }
 
-#*------^ Get-ExchServerInLYN.ps1 ^------
+#*------^ Get-ExchServerFromExServersGroup.ps1 ^------
 
 #*------v get-GCFast.ps1 v------
 function get-GCFast {
@@ -3213,5 +3250,5 @@ Function toggle-ForestView {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-Ex2010,get-DCLocal,Get-ExchangeServerInSite,Get-ExchServerInLYN,get-GCFast,get-GCLocal,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,toggle-ForestView -Alias *
+Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-Ex2010,get-DCLocal,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,get-GCFast,get-GCLocal,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,toggle-ForestView -Alias *
 

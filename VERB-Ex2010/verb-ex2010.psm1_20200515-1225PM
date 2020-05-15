@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.21.0
+Version     : 1.1.20.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1100,7 +1100,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
-    * 10:13 AM 5/15/2020 with vpn AD Ex lookup issue, patched in backup pass of get-ExchangeServerFromExGroup, in case of fail ; added failthrough to updated get-ExchangeServerFromExGroup, and finally to profile $smtpserver
+    * 10:13 AM 5/15/2020 with vpn AD Ex lookup issue, patched in backup pass of get-ExchangeServerFromExGroup, in case of fail
     * 10:19 AM 2/24/2020 Connect-Ex2010/-OBS v1.1.0: updated cx10 to reflect infra file cred name change: cred####SID -> cred###SID, debugged, working, updated output banner to draw from global session, rather than imported module (was blank output). Ren'ing this one to the primary vers, and the prior to -OBS. Changed attribution, other than function names & concept, none of the code really sources back to Mike's original any more.
     * 6:59 PM 1/15/2020 cleanup
     * 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
@@ -1232,13 +1232,7 @@ Function Connect-Ex2010 {
     }  ;  
     if($ExchangeServer -eq 'dynamic'){
         if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}
-        else {
-            write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchangeServerInSite *FAILED*,`ndeferring to Get-ExchServerFromExServersGroup" ;
-            if(!($ExchangeServer = Get-ExchServerFromExServersGroup)){
-                write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchServerFromExServersGroup *FAILED*,`n deferring to profile `$smtpserver:$($smtpserver))"  ; 
-                $ExchangeServer = $smtpserver ;
-            }; 
-        } ;  
+        else {$ExchangeServer = Get-ExchServerFromExServersGroup} ;  
     } ; 
 
   write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
@@ -1282,7 +1276,7 @@ Function Connect-Ex2010 {
   Add-PSTitleBar 'EMS' ;
   # tag E10IsDehydrated 
   $Global:E10IsDehydrated = $true ;
-  write-verbose -verbose:$true "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
+  write-verbose -verbose:$true "$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
 } ; #*------^ END Function Connect-Ex2010 ^------
 # 11:31 AM 5/6/2019 alias Add-EMSRemote-> Connect-Ex2010
 if (!(get-alias Add-EMSRemote -ea 0)) { set-alias -name Add-EMSRemote -value connect-Ex2010 } ;
@@ -3256,8 +3250,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-E
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUmLPpvoc2UTif7Rd0Dk+0QYDk
-# W1igggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUzhaFJB3RANG2oltn1SF1YkIp
+# Ev2gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3272,9 +3266,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-E
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQVSUU8
-# XxaKKvdQ2VPApMwzan8lxzANBgkqhkiG9w0BAQEFAASBgI0Enymo00uifmMYiMsu
-# lahK7PnQcrYWzNx+9bDXejcV5KJhdptAQM0ZFU+Je9IvVhwFfW/Zrvs3YRkl6gOE
-# BVax/C9zzuJYEUauyzF8oITWxoM2KZ6vNAufvP8sEEvapPOYvcpGk+4aMdWLhfOu
-# Rrv0CcPY8r2HiII0pGCaJcbN
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRcR1ys
+# f8EQVOIsNudVvZcju06OdjANBgkqhkiG9w0BAQEFAASBgHH+lGdTdKDlmoIRTTf4
+# eIfqmIhVkEBpVGhySjFEzgOUzEzJlel9xRNcixnhGOqwN5D57jC76vRPJEq80CL0
+# /az/JStDZW3XAWnAcsc4LqXoh2w4kQrS5ezuoCarKs6siG4l8s/I+unqmiomvQ9G
+# G/KVNDj79n2+ONnralGyEvZQ
 # SIG # End signature block

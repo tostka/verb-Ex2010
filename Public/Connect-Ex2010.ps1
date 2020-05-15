@@ -1,4 +1,4 @@
-﻿#*------v Function Connect-Ex2010 v------
+﻿#*------v Connect-Ex2010.ps1 v------
 Function Connect-Ex2010 {
   <#
     .SYNOPSIS
@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 10:13 AM 5/15/2020 with vpn AD Ex lookup issue, patched in backup pass of get-ExchangeServerFromExGroup, in case of fail ; added failthrough to updated get-ExchangeServerFromExGroup, and finally to profile $smtpserver
     * 10:19 AM 2/24/2020 Connect-Ex2010/-OBS v1.1.0: updated cx10 to reflect infra file cred name change: cred####SID -> cred###SID, debugged, working, updated output banner to draw from global session, rather than imported module (was blank output). Ren'ing this one to the primary vers, and the prior to -OBS. Changed attribution, other than function names & concept, none of the code really sources back to Mike's original any more.
     * 6:59 PM 1/15/2020 cleanup
     * 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
@@ -147,7 +148,14 @@ Function Connect-Ex2010 {
         write-warning "$((get-date).ToString('HH:mm:ss')):UNRECOGNIZED CREDENTIAL!:$($Credential.Username)`nUNABLE TO RESOLVE DEFAULT EX10SERVER FOR CONNECTION!" ;
     }  ;  
     if($ExchangeServer -eq 'dynamic'){
-        $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN ; 
+        if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}
+        else {
+            write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchangeServerInSite *FAILED*,`ndeferring to Get-ExchServerFromExServersGroup" ;
+            if(!($ExchangeServer = Get-ExchServerFromExServersGroup)){
+                write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchServerFromExServersGroup *FAILED*,`n deferring to profile `$smtpserver:$($smtpserver))"  ; 
+                $ExchangeServer = $smtpserver ;
+            }; 
+        } ;  
     } ; 
 
   write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
@@ -191,8 +199,10 @@ Function Connect-Ex2010 {
   Add-PSTitleBar 'EMS' ;
   # tag E10IsDehydrated 
   $Global:E10IsDehydrated = $true ;
-  write-verbose -verbose:$true "$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
+  write-verbose -verbose:$true "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
 } ; #*------^ END Function Connect-Ex2010 ^------
 # 11:31 AM 5/6/2019 alias Add-EMSRemote-> Connect-Ex2010
 if (!(get-alias Add-EMSRemote -ea 0)) { set-alias -name Add-EMSRemote -value connect-Ex2010 } ;
-if (!(get-alias cx10 -ea 0)) { set-alias -name cx10 -value connect-Ex2010 } ;
+if (!(get-alias cx10 -ea 0)) { set-alias -name cx10 -value connect-Ex2010 }
+
+#*------^ Connect-Ex2010.ps1 ^------
