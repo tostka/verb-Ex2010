@@ -6,10 +6,18 @@ Function Reconnect-Ex2010 {
     .NOTES
     Author: Todd Kadrie
     Website:	http://toddomation.com
-    Twitter:	http://twitter.com/tostka
-    Author: ExactMike Perficient, Global Knowl... (Partner)
-    Website:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
+    Twitter     :	@tostka / http://twitter.com/tostka
+    AddedCredit : Inspired by concept code by ExactMike Perficient, Global Knowl... (Partner)
+    AddedWebsite:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
+    Version     : 1.1.0
+    CreatedDate : 2020-02-24
+    FileName    : Reonnect-Ex2010()
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell
     REVISIONS   :
+    * 12:20 PM 5/27/2020 updated cbh, moved alias: rx10 win func
     * 6:59 PM 1/15/2020 cleanup
     * 8:09 AM 11/1/2017 updated example to pretest for reqMods
     * 1:26 PM 12/9/2016 split no-session and reopen code, to suppress notfound errors, add pshelpported to local EMSRemote
@@ -45,4 +53,3 @@ Function Reconnect-Ex2010 {
     } ;
   } ;
 }#*------^ END Function Reconnect-Ex2010 ^------ ;
-if (!(get-alias rx10 -ea 0)) { set-alias -name rx10 -value Reconnect-Ex2010 } ;

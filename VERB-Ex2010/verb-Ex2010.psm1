@@ -1,11 +1,11 @@
-﻿# verb-ex2010.psm1
+﻿# verb-Ex2010.psm1
 
 
 <#
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.21.0
+Version     : 1.1.22.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1100,6 +1100,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 12:20 PM 5/27/2020 moved aliases: Add-EMSRemote,cx10 win func
     * 10:13 AM 5/15/2020 with vpn AD Ex lookup issue, patched in backup pass of get-ExchangeServerFromExGroup, in case of fail ; added failthrough to updated get-ExchangeServerFromExGroup, and finally to profile $smtpserver
     * 10:19 AM 2/24/2020 Connect-Ex2010/-OBS v1.1.0: updated cx10 to reflect infra file cred name change: cred####SID -> cred###SID, debugged, working, updated output banner to draw from global session, rather than imported module (was blank output). Ren'ing this one to the primary vers, and the prior to -OBS. Changed attribution, other than function names & concept, none of the code really sources back to Mike's original any more.
     * 6:59 PM 1/15/2020 cleanup
@@ -1176,7 +1177,8 @@ Function Connect-Ex2010 {
     .LINK
     https://github.com/tostka/verb-Ex2010/
     #>
-
+    [CmdletBinding()]
+    [Alias('Add-EMSRemote','cx10')]
     Param(
         [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
         [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')][switch]$ExAdmin,
@@ -1283,10 +1285,7 @@ Function Connect-Ex2010 {
   # tag E10IsDehydrated 
   $Global:E10IsDehydrated = $true ;
   write-verbose -verbose:$true "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
-} ; #*------^ END Function Connect-Ex2010 ^------
-# 11:31 AM 5/6/2019 alias Add-EMSRemote-> Connect-Ex2010
-if (!(get-alias Add-EMSRemote -ea 0)) { set-alias -name Add-EMSRemote -value connect-Ex2010 } ;
-if (!(get-alias cx10 -ea 0)) { set-alias -name cx10 -value connect-Ex2010 }
+}
 
 #*------^ Connect-Ex2010.ps1 ^------
 
@@ -1303,7 +1302,13 @@ Function Disconnect-Ex2010 {
     AddedWebsite:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
     Version     : 1.1.0
     CreatedDate : 2020-02-24
+    FileName    : Connect-Ex2010()
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Exchange,ExchangeOnline
     REVISIONS   :
+    * 12:23 PM 5/27/2020 updated cbh, moved aliases:Disconnect-EMSR','dx10' win func
     * 10:51 AM 2/24/2020 updated attrib   
     * 6:59 PM 1/15/2020 cleanup
     * 8:01 AM 11/1/2017 added Remove-PSTitlebar 'EMS', and Disconnect-PssBroken to the bottom - to halt growth of unrepaired broken connections. Updated example to pretest for reqMods
@@ -1322,17 +1327,18 @@ Function Disconnect-Ex2010 {
     Disconnect-Ex2010 ;
     .LINK
     #>
-  $Global:E10Mod | Remove-Module -Force ;
-  $Global:E10Sess | Remove-PSSession ;
-  # 7:56 AM 11/1/2017 remove titlebar tag
-  Remove-PSTitlebar 'EMS' ;
-  # kill any other sessions using distinctive name; add verbose, to ensure they're echo'd that they were missed
-  Get-PSSession | ? { $_.name -eq 'Exchange2010' } | Remove-PSSession -verbose ;
-  # kill any broken PSS, self regen's even for L13 leave the original borked and create a new 'Session for implicit remoting module at C:\Users\', toast them, they don't reopen. Same for Ex2010 REMS, identical new PSS, indistinguishable from the L13 regen, except the random tmp_xxxx.psm1 module name. Toast them, it's just a growing stack of broken's
-  Disconnect-PssBroken ;
-} ; #*------^ END Function Disconnect-Ex2010 ^------
-if (!(get-alias Disconnect-EMSR -ea 0)) { set-alias -name Disconnect-EMSR -value Disconnect-Ex2010 } ;
-if (!(get-alias dx10 -ea 0)) { set-alias -name dx10 -value Disconnect-Ex2010 }
+    [CmdletBinding()]
+    [Alias('Disconnect-EMSR','dx10')]
+    Param()
+    $Global:E10Mod | Remove-Module -Force ;
+    $Global:E10Sess | Remove-PSSession ;
+    # 7:56 AM 11/1/2017 remove titlebar tag
+    Remove-PSTitlebar 'EMS' ;
+    # kill any other sessions using distinctive name; add verbose, to ensure they're echo'd that they were missed
+    Get-PSSession | ? { $_.name -eq 'Exchange2010' } | Remove-PSSession -verbose ;
+    # kill any broken PSS, self regen's even for L13 leave the original borked and create a new 'Session for implicit remoting module at C:\Users\', toast them, they don't reopen. Same for Ex2010 REMS, identical new PSS, indistinguishable from the L13 regen, except the random tmp_xxxx.psm1 module name. Toast them, it's just a growing stack of broken's
+    Disconnect-PssBroken ;
+}
 
 #*------^ Disconnect-Ex2010.ps1 ^------
 
@@ -3187,10 +3193,18 @@ Function Reconnect-Ex2010 {
     .NOTES
     Author: Todd Kadrie
     Website:	http://toddomation.com
-    Twitter:	http://twitter.com/tostka
-    Author: ExactMike Perficient, Global Knowl... (Partner)
-    Website:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
+    Twitter     :	@tostka / http://twitter.com/tostka
+    AddedCredit : Inspired by concept code by ExactMike Perficient, Global Knowl... (Partner)
+    AddedWebsite:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
+    Version     : 1.1.0
+    CreatedDate : 2020-02-24
+    FileName    : Reonnect-Ex2010()
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell
     REVISIONS   :
+    * 12:20 PM 5/27/2020 updated cbh, moved alias: rx10 win func
     * 6:59 PM 1/15/2020 cleanup
     * 8:09 AM 11/1/2017 updated example to pretest for reqMods
     * 1:26 PM 12/9/2016 split no-session and reopen code, to suppress notfound errors, add pshelpported to local EMSRemote
@@ -3225,8 +3239,7 @@ Function Reconnect-Ex2010 {
       Connect-Ex2010 -Credential:$($Credential) ;
     } ;
   } ;
-}#*------^ END Function Reconnect-Ex2010 ^------ ;
-if (!(get-alias rx10 -ea 0)) { set-alias -name rx10 -value Reconnect-Ex2010 }
+}
 
 #*------^ Reconnect-Ex2010.ps1 ^------
 
@@ -3256,8 +3269,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-E
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUmLPpvoc2UTif7Rd0Dk+0QYDk
-# W1igggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU47ZKiIOWzy7NTgjUGJTE2zYq
+# sxigggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3272,9 +3285,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-E
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQVSUU8
-# XxaKKvdQ2VPApMwzan8lxzANBgkqhkiG9w0BAQEFAASBgI0Enymo00uifmMYiMsu
-# lahK7PnQcrYWzNx+9bDXejcV5KJhdptAQM0ZFU+Je9IvVhwFfW/Zrvs3YRkl6gOE
-# BVax/C9zzuJYEUauyzF8oITWxoM2KZ6vNAufvP8sEEvapPOYvcpGk+4aMdWLhfOu
-# Rrv0CcPY8r2HiII0pGCaJcbN
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQOb36W
+# y90bBDEkPxx15z3TgP+/CzANBgkqhkiG9w0BAQEFAASBgHNUy2eeiB0mxOoXv+pb
+# Ipo6FnQTQKGiwDAWILh0htDwOxaTMdIxbpknyXlSzswnomfPlHulMgX3coqj7j/k
+# WDZYDNfmZdkowiTck3fLKduNysb+cOSSAHuLmjLVisH23tsmTT9XnTMbmMZKWkYp
+# sAa1cC6g3ulMKOvmdtNUMR3t
 # SIG # End signature block

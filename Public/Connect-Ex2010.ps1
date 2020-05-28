@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 12:20 PM 5/27/2020 moved aliases: Add-EMSRemote,cx10 win func
     * 10:13 AM 5/15/2020 with vpn AD Ex lookup issue, patched in backup pass of get-ExchangeServerFromExGroup, in case of fail ; added failthrough to updated get-ExchangeServerFromExGroup, and finally to profile $smtpserver
     * 10:19 AM 2/24/2020 Connect-Ex2010/-OBS v1.1.0: updated cx10 to reflect infra file cred name change: cred####SID -> cred###SID, debugged, working, updated output banner to draw from global session, rather than imported module (was blank output). Ren'ing this one to the primary vers, and the prior to -OBS. Changed attribution, other than function names & concept, none of the code really sources back to Mike's original any more.
     * 6:59 PM 1/15/2020 cleanup
@@ -93,7 +94,8 @@ Function Connect-Ex2010 {
     .LINK
     https://github.com/tostka/verb-Ex2010/
     #>
-
+    [CmdletBinding()]
+    [Alias('Add-EMSRemote','cx10')]
     Param(
         [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
         [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')][switch]$ExAdmin,
@@ -200,9 +202,5 @@ Function Connect-Ex2010 {
   # tag E10IsDehydrated 
   $Global:E10IsDehydrated = $true ;
   write-verbose -verbose:$true "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
-} ; #*------^ END Function Connect-Ex2010 ^------
-# 11:31 AM 5/6/2019 alias Add-EMSRemote-> Connect-Ex2010
-if (!(get-alias Add-EMSRemote -ea 0)) { set-alias -name Add-EMSRemote -value connect-Ex2010 } ;
-if (!(get-alias cx10 -ea 0)) { set-alias -name cx10 -value connect-Ex2010 }
-
-#*------^ Connect-Ex2010.ps1 ^------
+} ; 
+#*------^ END Function Connect-Ex2010 ^------
