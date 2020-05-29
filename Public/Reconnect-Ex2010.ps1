@@ -17,6 +17,7 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 9:33 AM 5/28/2020 actually added the alias:rx10 
     * 12:20 PM 5/27/2020 updated cbh, moved alias: rx10 win func
     * 6:59 PM 1/15/2020 cleanup
     * 8:09 AM 11/1/2017 updated example to pretest for reqMods
@@ -35,14 +36,17 @@ Function Reconnect-Ex2010 {
     Reconnect-Ex2010 ;
     .LINK
     #>
-  if (!$E10Sess) {
-    if (!$Credential) {
-      Connect-Ex2010
+    [CmdletBinding()]
+    [Alias('rx10')]
+    Param()
+    if (!$E10Sess) {
+      if (!$Credential) {
+        Connect-Ex2010
+      }
+      else {
+        Connect-Ex2010 -Credential:$($Credential) ;
+      } ;
     }
-    else {
-      Connect-Ex2010 -Credential:$($Credential) ;
-    } ;
-  }
   elseif ($E10Sess.state -ne 'Opened' -OR $E10Sess.Availability -ne 'Available' ) {
     Disconnect-Ex2010 ; Start-Sleep -S 3;
     if (!$Credential) {

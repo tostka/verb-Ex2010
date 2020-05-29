@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.24.0
+Version     : 1.1.23.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -3225,7 +3225,6 @@ Function Reconnect-Ex2010 {
     #>
     [CmdletBinding()]
     [Alias('rx10')]
-    Param()
     if (!$E10Sess) {
       if (!$Credential) {
         Connect-Ex2010
@@ -3273,8 +3272,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-E
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUxe8O2BdHmEbanNTUQszVtQjP
-# zJOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUKjIMaEnM/tKcZneydfurfL/1
+# BlagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3289,9 +3288,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-E
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTsVZH3
-# wzdtHR2e02OJOhrvCvbUbDANBgkqhkiG9w0BAQEFAASBgDudo68oGo9g5SPwH3yT
-# kFCzBLvvYTzmQZWmD2iEiCA3U7+Yok9aZs6FbNYZpMpSaSyujDwTq7dyRSiJm8vL
-# HhpeeAac5X/9FQateN9K0fMHScSYNMzIzvc/Us6Z6vqM8Yft3GLYUK4BnZpmI0rY
-# n/v2JLJf+0/DShKZausCbrh0
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQTQkJZ
+# Un02K5J7skEXCjAzTIZXlDANBgkqhkiG9w0BAQEFAASBgDTDDemtJ3NZn6tVrZZC
+# bHKozuxrF6MAUmdZhv/+KGb8SOAVWno6tHsG8uRc2YB8aKdvRy7oQlAWP6akewgp
+# VlaSuZvWA0833KHtJqLORFUSVJTSifVxiYjHqWU5f5N4K5OnB/2+xvckEfdQP/5U
+# MnMphyV0gd0SBuk5M313g11m
 # SIG # End signature block
