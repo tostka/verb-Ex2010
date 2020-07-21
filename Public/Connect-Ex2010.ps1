@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 5:11 PM 7/21/2020 added VEN support
     * 12:20 PM 5/27/2020 moved aliases: Add-EMSRemote,cx10 win func
     * 10:13 AM 5/15/2020 with vpn AD Ex lookup issue, patched in backup pass of get-ExchangeServerFromExGroup, in case of fail ; added failthrough to updated get-ExchangeServerFromExGroup, and finally to profile $smtpserver
     * 10:19 AM 2/24/2020 Connect-Ex2010/-OBS v1.1.0: updated cx10 to reflect infra file cred name change: cred####SID -> cred###SID, debugged, working, updated output banner to draw from global session, rather than imported module (was blank output). Ren'ing this one to the primary vers, and the prior to -OBS. Changed attribution, other than function names & concept, none of the code really sources back to Mike's original any more.
@@ -122,6 +123,10 @@ Function Connect-Ex2010 {
                 $ExchangeServer = $CMWMeta['Ex10Server']
                 $ExAdmin = $false ;
             }
+            "$VENMeta['legacyDomain'])" {
+                $ExchangeServer = $VENMeta['Ex10Server']
+                $ExAdmin = $false ;
+            }
             default {
                 $ExchangeServer = 'dynamic' ; 
             } ;
@@ -140,6 +145,10 @@ Function Connect-Ex2010 {
             }
             "$CMWMeta['o365_OPDomain'])" {
                 $ExchangeServer = $CMWMeta['Ex10Server']
+                $ExAdmin = $false ;
+            }
+            "$VENMeta['o365_OPDomain'])" {
+                $ExchangeServer = $VENMeta['Ex10Server']
                 $ExAdmin = $false ;
             }
             default {
