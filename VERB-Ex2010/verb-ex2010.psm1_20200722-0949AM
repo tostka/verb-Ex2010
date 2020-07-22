@@ -1,11 +1,11 @@
-﻿# verb-ex2010.psm1
+﻿# verb-Ex2010.psm1
 
 
 <#
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.27.0
+Version     : 1.1.26.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1100,7 +1100,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
-    * 7:13 AM 7/22/2020 replaced codeblock w get-TenantTag(), flipped ExAdmin fr switch to un-typed
+    * 7:13 AM 7/22/2020 replaced codeblock w get-TenantTag()
     * 5:11 PM 7/21/2020 added VEN support
     * 12:20 PM 5/27/2020 moved aliases: Add-EMSRemote,cx10 win func
     * 10:13 AM 5/15/2020 with vpn AD Ex lookup issue, patched in backup pass of get-ExchangeServerFromExGroup, in case of fail ; added failthrough to updated get-ExchangeServerFromExGroup, and finally to profile $smtpserver
@@ -1183,7 +1183,7 @@ Function Connect-Ex2010 {
     [Alias('Add-EMSRemote','cx10')]
     Param(
         [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
-        [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')]$ExAdmin,
+        [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')][switch]$ExAdmin,
         [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credTORSID
     )  ;
     $verbose = ($VerbosePreference -eq "Continue") ; 
@@ -3252,8 +3252,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-E
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUAUYK7hIHNr/ApfrcT3RyH+zq
-# 4FugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUBKxaEvKssSzW9GBwFJ5G0LXr
+# a+igggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3268,9 +3268,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-E
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT2wLLQ
-# bxHvUhfB4tgux9sQWKY23zANBgkqhkiG9w0BAQEFAASBgHFR/Upv0X+rIEwq7bSK
-# vLAQhXpVSs5ohJcAQhz7UltGPPSJ3eLOjEjpEw+mJf0uTDoQbU8Pah/8NYlFWHnU
-# JXNDluQOHVxtdUWO+C5BniallYllMn89UsaSLzj02zuy31WAUc2v+LW/6SQZNMvz
-# 4LEK8Xe8EUDF+mPCt2HQy+ew
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS5fIH4
+# qaX5N8Ju7UTrtK1owxsSSTANBgkqhkiG9w0BAQEFAASBgHSPYdUBhDhhGaMeya+Z
+# NxB7yi8Kmf9FKHIQSUJ1vNJpyjQoa/hfBR8lCDcr0u5SWiSDlTQb/feuM7+Loe4s
+# M1FReBBnaOqWaNgiDpUAFnHtjCqBxaB941JxbegE6k4g0TbRxYbe3lGB7oBur8Ct
+# S53H1RJNCAs5ymoM3V//zatx
 # SIG # End signature block

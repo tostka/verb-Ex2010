@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 7:13 AM 7/22/2020 replaced codeblock w get-TenantTag(), flipped ExAdmin fr switch to un-typed
     * 5:11 PM 7/21/2020 added VEN support
     * 12:20 PM 5/27/2020 moved aliases: Add-EMSRemote,cx10 win func
     * 10:13 AM 5/15/2020 with vpn AD Ex lookup issue, patched in backup pass of get-ExchangeServerFromExGroup, in case of fail ; added failthrough to updated get-ExchangeServerFromExGroup, and finally to profile $smtpserver
@@ -99,7 +100,7 @@ Function Connect-Ex2010 {
     [Alias('Add-EMSRemote','cx10')]
     Param(
         [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
-        [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')][switch]$ExAdmin,
+        [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')]$ExAdmin,
         [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credTORSID
     )  ;
     $verbose = ($VerbosePreference -eq "Continue") ; 
@@ -109,55 +110,24 @@ Function Connect-Ex2010 {
     $rgxLegacyLogon = '\w*\\\w*' ; 
     if($Credential.username -match $rgxLegacyLogon){
         $credDom =$Credential.username.split('\')[0] ; 
-        switch ($credDom){
-            "$($TORMeta['legacyDomain'])" {
-                $ExchangeServer = $TORMeta['Ex10Server'] ; 
-                $ExAdmin = $true ;
-            }
-            "$($TOLMeta['legacyDomain'])" {
-                $ExchangeServer = $TOLMeta['Ex10Server'] ; 
-                $ExchangeServer = $TOL_Ex10Server # (src tor-incl-infrastrings.ps1)
-                $ExAdmin = $true ;
-            }
-            "$CMWMeta['legacyDomain'])" {
-                $ExchangeServer = $CMWMeta['Ex10Server']
-                $ExAdmin = $false ;
-            }
-            "$VENMeta['legacyDomain'])" {
-                $ExchangeServer = $VENMeta['Ex10Server']
-                $ExAdmin = $false ;
-            }
-            default {
-                $ExchangeServer = 'dynamic' ; 
-            } ;
-        } ; 
     } elseif ($Credential.username.contains('@')){
         $credDom = ($Credential.username.split("@"))[1] ;
-        switch ($credDom){
-            "$($TORMeta['o365_OPDomain'])" {
-                $ExchangeServer = $TORMeta['Ex10Server'] ; 
-                $ExAdmin = $true ;
-            }
-            "$($TOLMeta['o365_OPDomain'])" {
-                $ExchangeServer = $TOLMeta['Ex10Server'] ; 
-                $ExchangeServer = $TOL_Ex10Server # (src tor-incl-infrastrings.ps1)
-                $ExAdmin = $true ;
-            }
-            "$CMWMeta['o365_OPDomain'])" {
-                $ExchangeServer = $CMWMeta['Ex10Server']
-                $ExAdmin = $false ;
-            }
-            "$VENMeta['o365_OPDomain'])" {
-                $ExchangeServer = $VENMeta['Ex10Server']
-                $ExAdmin = $false ;
-            }
-            default {
-                $ExchangeServer = 'dynamic' ; 
-            } ;
-        } ; 
     } else {
         write-warning "$((get-date).ToString('HH:mm:ss')):UNRECOGNIZED CREDENTIAL!:$($Credential.Username)`nUNABLE TO RESOLVE DEFAULT EX10SERVER FOR CONNECTION!" ;
-    }  ;  
+    } ;
+    $ExchangeServer=$null ; 
+    $Metas=(get-variable *meta|?{$_.name -match '^\w{3}Meta$'}) ; 
+    foreach ($Meta in $Metas){
+            if( ($credDom -eq $Meta.value.legacyDomain) -OR ($credDom -eq $Meta.value.o365_TenantDomain) -OR ($credDom -eq $Meta.value.o365_OPDomain)){
+                $ExchangeServer = $Meta.value.Ex10Server ; 
+                $ExAdmin = $Meta.value.Ex10WebPoolVariant ; 
+                break ; 
+            } ; 
+    } ;
+    # force unresolved to dyn 
+    if(!$ExchangeServer){
+        $ExchangeServer = 'dynamic' ; 
+    } ;
     if($ExchangeServer -eq 'dynamic'){
         if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}
         else {
