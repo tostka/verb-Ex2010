@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.27.0
+Version     : 1.1.28.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1267,6 +1267,51 @@ Function Connect-Ex2010 {
 }
 
 #*------^ Connect-Ex2010.ps1 ^------
+
+#*------v cx10cmw.ps1 v------
+function cx10cmw {
+    <#
+    .SYNOPSIS
+    cx10tol - Connect-EX2010 to specified on-prem Exchange
+    .DESCRIPTION
+    Connect-EX2010 - Connect-EX2010 to specified on-prem Exchange
+    .EXAMPLE
+    cx10cmw
+    #>
+    Connect-EX2010 -cred $credCMWSID -Verbose:($VerbosePreference -eq 'Continue') ; 
+}
+
+#*------^ cx10cmw.ps1 ^------
+
+#*------v cx10tol.ps1 v------
+function cx10tol {
+    <#
+    .SYNOPSIS
+    cx10tol - Connect-EX2010 to specified on-prem Exchange
+    .DESCRIPTION
+    Connect-EX2010 - Connect-EX2010 to specified on-prem Exchange
+    .EXAMPLE
+    cx10tol
+    #>
+    Connect-EX2010 -cred $credtolSID -Verbose:($VerbosePreference -eq 'Continue') ; 
+}
+
+#*------^ cx10tol.ps1 ^------
+
+#*------v cx10tor.ps1 v------
+function cx10tor {
+    <#
+    .SYNOPSIS
+    cx10tor - Connect-EX2010 to specified on-prem Exchange
+    .DESCRIPTION
+    Connect-EX2010 - Connect-EX2010 to specified on-prem Exchange
+    .EXAMPLE
+    cx10tor
+    #>
+    Connect-EX2010 -cred $credTorSID -Verbose:($VerbosePreference -eq 'Continue') ; 
+}
+
+#*------^ cx10tor.ps1 ^------
 
 #*------v Disconnect-Ex2010.ps1 v------
 Function Disconnect-Ex2010 {
@@ -3226,6 +3271,51 @@ Function Reconnect-Ex2010 {
 
 #*------^ Reconnect-Ex2010.ps1 ^------
 
+#*------v rx10cmw.ps1 v------
+function rx10cmw {
+    <#
+    .SYNOPSIS
+    rx10cmw - Reonnect-EX2010 to specified on-prem Exchange
+    .DESCRIPTION
+    Reconnect-EX2010 - Reonnect to specified on-prem Exchange
+    .EXAMPLE
+    rx10cmw
+    #>
+    Reconnect-EX2010 -cred $credCMWSID -Verbose:($VerbosePreference -eq 'Continue') ; 
+}
+
+#*------^ rx10cmw.ps1 ^------
+
+#*------v rx10tol.ps1 v------
+function rx10tol {
+    <#
+    .SYNOPSIS
+    rx10tol - Reonnect-EX2010 to specified on-prem Exchange
+    .DESCRIPTION
+    Reconnect-EX2010 - Reonnect to specified on-prem Exchange
+    .EXAMPLE
+    rx10tol
+    #>
+    Reconnect-EX2010 -cred $credtolSID -Verbose:($VerbosePreference -eq 'Continue') ; 
+}
+
+#*------^ rx10tol.ps1 ^------
+
+#*------v rx10tor.ps1 v------
+function rx10tor {
+    <#
+    .SYNOPSIS
+    rx10tor - Reonnect-EX2010 to specified on-prem Exchange
+    .DESCRIPTION
+    Reconnect-EX2010 - Reonnect to specified on-prem Exchange
+    .EXAMPLE
+    rx10tor
+    #>
+    Reconnect-EX2010 -cred $credTorSID -Verbose:($VerbosePreference -eq 'Continue') ; 
+}
+
+#*------^ rx10tor.ps1 ^------
+
 #*------v toggle-ForestView.ps1 v------
 Function toggle-ForestView {
   # 7:37 AM 6/2/2014 toggle forest view
@@ -3246,14 +3336,14 @@ Function toggle-ForestView {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-Ex2010,get-DCLocal,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,get-GCFast,get-GCLocal,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,toggle-ForestView -Alias *
+Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,cx10cmw,cx10tol,cx10tor,Disconnect-Ex2010,get-DCLocal,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,get-GCFast,get-GCLocal,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUAUYK7hIHNr/ApfrcT3RyH+zq
-# 4FugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUi6YQhFm2ppCeIKDXtUAMg/P4
+# 6qWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3268,9 +3358,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Disconnect-E
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT2wLLQ
-# bxHvUhfB4tgux9sQWKY23zANBgkqhkiG9w0BAQEFAASBgHFR/Upv0X+rIEwq7bSK
-# vLAQhXpVSs5ohJcAQhz7UltGPPSJ3eLOjEjpEw+mJf0uTDoQbU8Pah/8NYlFWHnU
-# JXNDluQOHVxtdUWO+C5BniallYllMn89UsaSLzj02zuy31WAUc2v+LW/6SQZNMvz
-# 4LEK8Xe8EUDF+mPCt2HQy+ew
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQO/UsE
+# 5ziJ9pDbgTWWHN/NFeNSQjANBgkqhkiG9w0BAQEFAASBgHVJPgydE5uFI/9H5N/u
+# NbGs5Ei/t2JW4IJQ72KaDKLtlHWHKkWEt4W5pN6hP1zJuhRgB4JbsAhJfQxbumaS
+# aQtsU3lK1tITJiB3g76fNA1KZvserw1LEJgOmH0wlEdJI4n5imUFUJ6OrTkmUuvU
+# inTAqBtqBj9JEzBnrsIj7vK8
 # SIG # End signature block
