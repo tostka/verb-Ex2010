@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.28.0
+Version     : 1.1.29.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1735,6 +1735,106 @@ Function get-GCLocal {
 
 #*------^ get-GCLocal.ps1 ^------
 
+#*------v Invoke-ExchangeCommand.ps1 v------
+function Invoke-ExchangeCommand{
+    <#
+    .SYNOPSIS
+    Invoke-ExchangeCommand.ps1 - PowerShell function allows you to run PowerShell commands and script blocks on Exchange servers in different forests without a forest trust.
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2020-09-15
+    FileName    : IInvoke-ExchangeCommand.ps1
+    License     : MIT License
+    Copyright   : (c) 2015 Mark Gossa
+    Github      : https://github.com/tostka/verb-ex2010
+    Tags        : Powershell,Exchange,ExchangeForestMigration,CrossForest,ExchangeRemotePowerShell,ExchangePowerShell
+    AddedCredit : Mark Gossa
+    AddedWebsite: https://gallery.technet.microsoft.com/Exchange-Cross-Forest-e25d48eb
+    AddedTwitter:
+    REVISIONS
+    * 4:28 PM 9/15/2020 cleanedup, added CBH, added to verb-Ex2010
+    * 10/26/2015 posted vers
+    .DESCRIPTION
+    Invoke-ExchangeCommand.ps1 - PowerShell function allows you to run PowerShell commands and script blocks on Exchange servers in different forests without a forest trust.
+    .PARAMETER  ExchangeServer
+    Target Exchange Server[-ExchangeServer server.domain.com]
+    .PARAMETER  Scriptblock
+    Scriptblock/Command to be executed on target server[-ScriptBlock {Get-Mailbox | ft}]
+    .PARAMETER  $Credential
+    Credential object to be used for connection[-Credential cred]
+    .PARAMETER Whatif
+    Parameter to run a Test no-change pass [-Whatif switch]
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    Returns objects returned to pipeline
+    .EXAMPLE
+    .\Invoke-ExchangeCommand.ps1
+    .EXAMPLE
+    .\Invoke-ExchangeCommand.ps1
+    .LINK
+    https://github.com/tostka/verb-Ex2010
+    .LINK
+    https://gallery.technet.microsoft.com/Exchange-Cross-Forest-e25d48eb
+    #>
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory = $true, HelpMessage = "Target Exchange Server[-ExchangeServer server.domain.com]")]
+        [string] $ExchangeServer,
+        [Parameter(Mandatory = $true, HelpMessage = "Scriptblock/Command to be executed[-ScriptBlock {Get-Mailbox | ft}]")]
+        [string] $ScriptBlock,
+        [Parameter(Mandatory = $true, HelpMessage = "Credentials [-Credential credobj]")]
+        [System.Management.Automation.PSCredential] $Credential
+    ) ;
+    BEGIN {
+        #${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        # Get parameters this function was invoked with
+        #$PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters ;
+        $Verbose = ($VerbosePreference -eq 'Continue') ;
+        # silently stop any running transcripts
+        $stopResults = try { Stop-transcript -ErrorAction stop } catch {} ;
+        $WarningPreference = "SilentlyContinue" ;
+    } ; # BEGIN-E
+    PROCESS {
+        $Error.Clear() ;
+        #Connect to DC and pass through credential variable
+        $pltICPS = @{
+            ComputerName   = $ExchangeServer ;
+            ArgumentList   = $Credential, $ExchangeServer, $ScriptBlock, $WarningPreference ;
+            Credential     = $Credential ;
+            Authentication = 'Negotiate'
+        } ;
+        write-verbose "Invoke-Command  w`n$(($pltICPS|out-string).trim())`n`$ScriptBlock:`n$(($ScriptBlock|out-string).trim())" ;
+        #Invoke-Command -ComputerName $ExchangeServer -ArgumentList $Credential,$ExchangeServer,$ScriptBlock,$WarningPreference -Credential $Credential -Authentication Negotiate
+        Invoke-Command @pltICPS -ScriptBlock {
+
+                #Specify parameters
+                param($Credential,$ExchangeServer,$ScriptBlock,$WarningPreference)
+
+                #Create new PS Session
+                $Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri http://$ExchangeServer/PowerShell/ `
+                -Authentication Kerberos -Credential $Credential
+
+                #Import PS Session
+                Import-PSSession $Session | Out-Null
+
+                #Run commands
+                foreach($Script in $ScriptBlock){
+                    Invoke-Expression $Script
+                }
+
+                #Close all open sessions
+                Get-PSSession | Remove-PSSession -Confirm:$false
+            }
+    } ; # PROC-E
+    END {    } ; # END-E
+}
+
+#*------^ Invoke-ExchangeCommand.ps1 ^------
+
 #*------v load-EMSLatest.ps1 v------
 function load-EMSLatest {
   #  #Checks local machine for registred E20[13|10|07] EMS, and then loads the newest one found
@@ -3336,14 +3436,14 @@ Function toggle-ForestView {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,cx10cmw,cx10tol,cx10tor,Disconnect-Ex2010,get-DCLocal,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,get-GCFast,get-GCLocal,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
+Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,cx10cmw,cx10tol,cx10tor,Disconnect-Ex2010,get-DCLocal,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,get-GCFast,get-GCLocal,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUi6YQhFm2ppCeIKDXtUAMg/P4
-# 6qWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnpb+dxAmumttka4ALWiE1r6/
+# BJ+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3358,9 +3458,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,cx10cmw,cx10
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQO/UsE
-# 5ziJ9pDbgTWWHN/NFeNSQjANBgkqhkiG9w0BAQEFAASBgHVJPgydE5uFI/9H5N/u
-# NbGs5Ei/t2JW4IJQ72KaDKLtlHWHKkWEt4W5pN6hP1zJuhRgB4JbsAhJfQxbumaS
-# aQtsU3lK1tITJiB3g76fNA1KZvserw1LEJgOmH0wlEdJI4n5imUFUJ6OrTkmUuvU
-# inTAqBtqBj9JEzBnrsIj7vK8
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSZlnsZ
+# jZx6PDGAJ8BVLlz2FFjujTANBgkqhkiG9w0BAQEFAASBgAcwssUg6B3HXzSz6dQh
+# 0Z+JzLBHYyqpN16fdYHAS8/xJmnVeGa7cmTjactM52uoU8mxARZhcG8GKsbBgAYC
+# mGT8YYGiDqThJBcSho8TURDmX63DXIhvJTxtBVAkQw1qoCbaP0IxgReLHR4fU7TE
+# F6trFkSD/IYTyKbuVuZm428r
 # SIG # End signature block
