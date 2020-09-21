@@ -1,4 +1,4 @@
-# verb-ex2010.psm1
+﻿# verb-ex2010.psm1
 
 
 <#
@@ -1755,7 +1755,6 @@ function Invoke-ExchangeCommand{
     AddedWebsite: https://gallery.technet.microsoft.com/Exchange-Cross-Forest-e25d48eb
     AddedTwitter:
     REVISIONS
-    * 2:40 PM 9/17/2020 cleanup <?> encode damage (emdash's for dashes)
     * 4:28 PM 9/15/2020 cleanedup, added CBH, added to verb-Ex2010
     * 10/26/2015 posted vers
     .DESCRIPTION
@@ -1766,9 +1765,9 @@ function Invoke-ExchangeCommand{
     1. Enable connections to all PowerShell hosts:
     winrm s winrm/config/client '@{TrustedHosts="*"}'
     # or better: selective hosts:
-    Set-Item -Path WSMan:\localhost\Client\TrustedHosts -Value 'client.domain.com' -Concatenate -Force ; Get-Item -Path WSMan:\localhost\Client\TrustedHosts | fl Name, Value ;
+    Set-Item -Path WSMan:\localhost\Client\TrustedHosts -Value 'client.domain.com' -Concatenate �Force ; Get-Item -Path WSMan:\localhost\Client\TrustedHosts | fl Name, Value ;
     cd WSMan:\localhost\Client ;
-    dir | format-table -auto ; # review existing settings:
+    dir | format-table �auto ; # review existing settings:
     # AllowEncrypted is defined on the client end, via the WSMAN: drive
     set-item .\allowunencrypted $true ;
     # You probably will need to set the AllowUnencrypted config setting in the Service as well, which has to be changed in the remote server using the following:
@@ -1781,7 +1780,7 @@ function Invoke-ExchangeCommand{
     Need to set to permit Basic Auth too?
     cd .\Auth ;
     Set-Item Basic $True ;
-    Check if the user you're connecting with has proper authorizations on the remote machine (triggers GUI after the confirm prompt; use -force to suppress).
+    Check if the user you're connecting with has proper authorizations on the remote machine (triggers GUI after the confirm prompt; use �force to suppress).
     Set-PSSessionConfiguration -ShowSecurityDescriptorUI -Name Microsoft.PowerShell ;
     .PARAMETER  ExchangeServer
     Target Exchange Server[-ExchangeServer server.domain.com]
@@ -3462,3 +3461,29 @@ Function toggle-ForestView {
 
 Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,cx10cmw,cx10tol,cx10tor,Disconnect-Ex2010,get-DCLocal,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,get-GCFast,get-GCLocal,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUKclsVOyCZNzPelholg9FnUbs
+# WAWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT0OODB
+# f/QXTvlWqGYTJtRiJSMPPDANBgkqhkiG9w0BAQEFAASBgDpQCgQameKFhWNp6U/N
+# n1wg7L/I0HE/4AO4C54zD9xLeK34T1HqExUZYaBM/sEUNOFT3/1WMXh7FFR0pXLT
+# 6VIqAzDuJqSDBE7dpZ6+8Qz9PwNwwUm6HuCtF3EdhEjlVR0zl07/o/ys2tJS6Mfe
+# 4ZITd3cJWY16WUUpoKmQk84l
+# SIG # End signature block

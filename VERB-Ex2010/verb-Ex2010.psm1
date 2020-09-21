@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.29.0
+Version     : 1.1.31.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1755,10 +1755,34 @@ function Invoke-ExchangeCommand{
     AddedWebsite: https://gallery.technet.microsoft.com/Exchange-Cross-Forest-e25d48eb
     AddedTwitter:
     REVISIONS
+    * 2:40 PM 9/17/2020 cleanup <?> encode damage (emdash's for dashes)
     * 4:28 PM 9/15/2020 cleanedup, added CBH, added to verb-Ex2010
     * 10/26/2015 posted vers
     .DESCRIPTION
     Invoke-ExchangeCommand.ps1 - PowerShell function allows you to run PowerShell commands and script blocks on Exchange servers in different forests without a forest trust.
+    This PowerShell function allows you to run PowerShell commands and script blocks on Exchange servers in different forests without a forest trust.
+    To run Invoke-ExchangeCommand, you must connect to the Exchange server using a hostname and not an IP address. Invoke-ExchangeCommand works best on Server 2012 R2/Windows 8.1 and later but also works on Server 2008 R2/Windows 7. Tested on Exchange 2010 and later. More information on cross-forest Exchange PowerShell can be found here: http://markgossa.blogspot.com/2015/10/exchange-2010-2013-cross-forest-remote-powershell.html
+    Usage:
+    1. Enable connections to all PowerShell hosts:
+    winrm s winrm/config/client '@{TrustedHosts="*"}'
+    # or better: selective hosts:
+    Set-Item -Path WSMan:\localhost\Client\TrustedHosts -Value 'client.domain.com' -Concatenate -Force ; Get-Item -Path WSMan:\localhost\Client\TrustedHosts | fl Name, Value ;
+    cd WSMan:\localhost\Client ;
+    dir | format-table -auto ; # review existing settings:
+    # AllowEncrypted is defined on the client end, via the WSMAN: drive
+    set-item .\allowunencrypted $true ;
+    # You probably will need to set the AllowUnencrypted config setting in the Service as well, which has to be changed in the remote server using the following:
+    set-item -force WSMan:\localhost\Service\AllowUnencrypted $true ;
+    # And don't forget to also enable Digest Authorization:
+    set-item -force WSMan:\localhost\Service\Auth\Digest $true ;
+    # (to allow the system to digest the new settings)
+    TSK: I don't even see the path existing on the lab Ex651
+    WSMan:\localhost\Service\Auth\Digest
+    Need to set to permit Basic Auth too?
+    cd .\Auth ;
+    Set-Item Basic $True ;
+    Check if the user you're connecting with has proper authorizations on the remote machine (triggers GUI after the confirm prompt; use -force to suppress).
+    Set-PSSessionConfiguration -ShowSecurityDescriptorUI -Name Microsoft.PowerShell ;
     .PARAMETER  ExchangeServer
     Target Exchange Server[-ExchangeServer server.domain.com]
     .PARAMETER  Scriptblock
@@ -3442,8 +3466,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,cx10cmw,cx10
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnpb+dxAmumttka4ALWiE1r6/
-# BJ+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUaTifFDwQ3GRzFmDYgmZTDN2G
+# 9i+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3458,9 +3482,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,cx10cmw,cx10
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSZlnsZ
-# jZx6PDGAJ8BVLlz2FFjujTANBgkqhkiG9w0BAQEFAASBgAcwssUg6B3HXzSz6dQh
-# 0Z+JzLBHYyqpN16fdYHAS8/xJmnVeGa7cmTjactM52uoU8mxARZhcG8GKsbBgAYC
-# mGT8YYGiDqThJBcSho8TURDmX63DXIhvJTxtBVAkQw1qoCbaP0IxgReLHR4fU7TE
-# F6trFkSD/IYTyKbuVuZm428r
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT7Sy3u
+# Q/N6ecs/1d5Lbg2f1jUMVzANBgkqhkiG9w0BAQEFAASBgHAknciEJcAH7KsiztVq
+# w55sJzHbkJpHJYTZcAo0SfRew+eMNqaZ9TUoW+eEjjC2xUvFrLkNgHQWCMGKM+04
+# 1/+MX8ejdD2kfwqsTOpv/hYddBme0qtOomil5LgK2Wz/Z/qma85X1NJDfzfR+PTh
+# nDNvBqgeEVLXLPZHkItxl27k
 # SIG # End signature block
