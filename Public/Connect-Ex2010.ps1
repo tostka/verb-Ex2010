@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 5:16 PM 10/22/2020 switched to no-loop meta lookup; debugged, fixed 
     * 7:13 AM 7/22/2020 replaced codeblock w get-TenantTag(), flipped ExAdmin fr switch to un-typed
     * 5:11 PM 7/21/2020 added VEN support
     * 12:20 PM 5/27/2020 moved aliases: Add-EMSRemote,cx10 win func
@@ -103,83 +104,95 @@ Function Connect-Ex2010 {
         [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')]$ExAdmin,
         [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credTORSID
     )  ;
-    $verbose = ($VerbosePreference -eq "Continue") ; 
-    $sWebPoolVariant = "exadmin" ;
-    $CommandPrefix = $null ;
-    # use credential domain to determine target org
-    $rgxLegacyLogon = '\w*\\\w*' ; 
-    if($Credential.username -match $rgxLegacyLogon){
-        $credDom =$Credential.username.split('\')[0] ; 
-    } elseif ($Credential.username.contains('@')){
-        $credDom = ($Credential.username.split("@"))[1] ;
-    } else {
-        write-warning "$((get-date).ToString('HH:mm:ss')):UNRECOGNIZED CREDENTIAL!:$($Credential.Username)`nUNABLE TO RESOLVE DEFAULT EX10SERVER FOR CONNECTION!" ;
-    } ;
-    $ExchangeServer=$null ; 
-    $Metas=(get-variable *meta|?{$_.name -match '^\w{3}Meta$'}) ; 
-    foreach ($Meta in $Metas){
-            if( ($credDom -eq $Meta.value.legacyDomain) -OR ($credDom -eq $Meta.value.o365_TenantDomain) -OR ($credDom -eq $Meta.value.o365_OPDomain)){
-                $ExchangeServer = $Meta.value.Ex10Server ; 
-                $ExAdmin = $Meta.value.Ex10WebPoolVariant ; 
-                break ; 
-            } ; 
-    } ;
-    # force unresolved to dyn 
-    if(!$ExchangeServer){
-        $ExchangeServer = 'dynamic' ; 
-    } ;
-    if($ExchangeServer -eq 'dynamic'){
-        if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}
-        else {
-            write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchangeServerInSite *FAILED*,`ndeferring to Get-ExchServerFromExServersGroup" ;
-            if(!($ExchangeServer = Get-ExchServerFromExServersGroup)){
-                write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchServerFromExServersGroup *FAILED*,`n deferring to profile `$smtpserver:$($smtpserver))"  ; 
-                $ExchangeServer = $smtpserver ;
-            }; 
-        } ;  
-    } ; 
+    BEGIN{
+        $verbose = ($VerbosePreference -eq "Continue") ; 
+        $sWebPoolVariant = "exadmin" ;
+        $CommandPrefix = $null ;
+        # use credential domain to determine target org
+        $rgxLegacyLogon = '\w*\\\w*' ; 
+        $TenOrg = get-TenantTag -Credential $Credential ;
+        <#
+        if($Credential.username -match $rgxLegacyLogon){
+            $credDom =$Credential.username.split('\')[0] ; 
+        } elseif ($Credential.username.contains('@')){
+            $credDom = ($Credential.username.split("@"))[1] ;
+        } else {
+            write-warning "$((get-date).ToString('HH:mm:ss')):UNRECOGNIZED CREDENTIAL!:$($Credential.Username)`nUNABLE TO RESOLVE DEFAULT EX10SERVER FOR CONNECTION!" ;
+        } ;
+        #>
+    } ;  # BEG-E
+    PROCESS{
+        $ExchangeServer=$null ; 
+        <#
+        $Metas=(get-variable *meta|?{$_.name -match '^\w{3}Meta$'}) ; 
+        foreach ($Meta in $Metas){
+                if( ($credDom -eq $Meta.value.legacyDomain) -OR ($credDom -eq $Meta.value.o365_TenantDomain) -OR ($credDom -eq $Meta.value.o365_OPDomain)){
+                    $ExchangeServer = $Meta.value.Ex10Server ; 
+                    $ExAdmin = $Meta.value.Ex10WebPoolVariant ; 
+                    break ; 
+                } ; 
+        } ;
+        #>
+        # non-loop
+        #$TenOrg = get-TenantTag -Credential $Credential ;
+        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server ; 
+        $ExAdmin = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant ; 
+        # force unresolved to dyn 
+        if(!$ExchangeServer){
+            $ExchangeServer = 'dynamic' ; 
+        } ;
+        if($ExchangeServer -eq 'dynamic'){
+            if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}
+            else {
+                write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchangeServerInSite *FAILED*,`ndeferring to Get-ExchServerFromExServersGroup" ;
+                if(!($ExchangeServer = Get-ExchServerFromExServersGroup)){
+                    write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchServerFromExServersGroup *FAILED*,`n deferring to profile `$smtpserver:$($smtpserver))"  ; 
+                    $ExchangeServer = $smtpserver ;
+                }; 
+            } ;  
+        } ; 
 
-  write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
-  # splat to open a session - # stock 'PSLanguageMode=Restricted' powershell IIS Webpool
-  $EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = 'Exchange2010' } ;
-  if ($ExAdmin) {
-    # use variant IIS Webpool
-    $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
-  }
-  if ($Credential) { $EMSsplat.Add("Credential", $Credential) } ;
-  # -Authentication Basic only if specif needed: for Ex configured to connect via IP vs hostname)
-  # try catch against and retry into stock if fails
-  $error.clear() ;
-  TRY {
-    $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
-  }
-  CATCH {
-    $ErrTrapd = $_ ; 
-    write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
-    if ($ExAdmin) {
-      # switch to stock pool and retry
-      $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
-      write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($EMSSplat|out-string).trim())" ;
-      $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
-    }
-    else {
-      STOP ;
-    } ;
-  } ;
+        write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
+        # splat to open a session - # stock 'PSLanguageMode=Restricted' powershell IIS Webpool
+        $EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = 'Exchange2010' } ;
+        if ($ExAdmin) {
+          # use variant IIS Webpool
+          $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
+        }
+        if ($Credential) { $EMSsplat.Add("Credential", $Credential) } ;
+        # -Authentication Basic only if specif needed: for Ex configured to connect via IP vs hostname)
+        # try catch against and retry into stock if fails
+        $error.clear() ;
+        TRY {
+          $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+        } CATCH {
+          $ErrTrapd = $_ ; 
+          write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+          if ($ExAdmin) {
+            # switch to stock pool and retry
+            $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
+            write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($EMSSplat|out-string).trim())" ;
+            $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+          }
+          else {
+            STOP ;
+          } ;
+        } ;
 
-  write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
+        write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
 
-  if ($CommandPrefix) {
-    write-verbose -verbose:$true  "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
-    $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -Prefix $CommandPrefix -AllowClobber) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
-  }
-  else {
-    $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -AllowClobber) -Global -PassThru -DisableNameChecking   ;
-  } ;
-  # 7:54 AM 11/1/2017 add titlebar tag
-  Add-PSTitleBar 'EMS' ;
-  # tag E10IsDehydrated 
-  $Global:E10IsDehydrated = $true ;
-  write-verbose -verbose:$true "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
-} ; 
-#*------^ END Function Connect-Ex2010 ^------
+        if ($CommandPrefix) {
+          write-verbose -verbose:$true  "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
+          $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -Prefix $CommandPrefix -AllowClobber) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
+        } else {
+          $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -AllowClobber) -Global -PassThru -DisableNameChecking   ;
+        } ;
+        # 7:54 AM 11/1/2017 add titlebar tag
+        Add-PSTitleBar 'EMS' ;
+        # tag E10IsDehydrated 
+        $Global:E10IsDehydrated = $true ;
+        write-verbose -verbose:$true "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
+    } ;  # PROC-E
+}
+
+#*------^ Connect-Ex2010.ps1 ^------

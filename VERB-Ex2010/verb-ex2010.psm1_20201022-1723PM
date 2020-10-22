@@ -1,4 +1,4 @@
-# verb-ex2010.psm1
+﻿# verb-ex2010.psm1
 
 
 <#
@@ -1100,7 +1100,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
-    * 5:16 PM 10/22/2020 switched to no-loop meta lookup; debugged, fixed 
+    * 9:37 AM 10/22/2020 switched to no-loop meta lookup
     * 7:13 AM 7/22/2020 replaced codeblock w get-TenantTag(), flipped ExAdmin fr switch to un-typed
     * 5:11 PM 7/21/2020 added VEN support
     * 12:20 PM 5/27/2020 moved aliases: Add-EMSRemote,cx10 win func
@@ -1399,17 +1399,13 @@ Function Connect-Ex2010XO {
         # non-looping vers:
         #$TenOrg = get-TenantTag -Credential $Credential ;
         #.OP_ExADRoot
-        if( (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName ){
-
-        } else { 
+        if(!(Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName){
             #.OP_rgxEMSComputerName
-            if((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot){
-                set-Variable  -name "$($TenOrg)Meta" -value ( (Get-Variable  -name "$($TenOrg)Meta").value += @{'OP_rgxEMSComputerName' = "^\w*\.$([Regex]::Escape((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot))$"} )
-            } else {
-                $smsg = "Missing `$$((Get-Variable  -name "$($TenOrg)Meta").value.o365_Prefix).OP_ExADRoot value.`nProfile hasn't loaded proper tor-incl-infrastrings file)!"
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } #Error|Warn|Debug 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            if(!(Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName){
+                set-Variable  -name "$($TenOrg)Meta" -value ( (Get-Variable  -name "$($TenOrg)Meta").value += @{'OP_rgxEMSComputerName' = "^\w*\.$([Regex]::Escape($Meta.value.OP_ExADRoot))$"} )
             } ;
+        } else {
+            throw "Missing `$$((Get-Variable  -name "$($TenOrg)Meta").value.o365_Prefix).OP_ExADRoot value.`nProfile hasn't loaded proper tor-incl-infrastrings file)!"
         } ;
     
     } ;  # BEG-E
@@ -1417,8 +1413,10 @@ Function Connect-Ex2010XO {
         # if we're using ems-style BasicAuth, clear incompatible existing Rems PSS's
         # ComputerName      : curlyhoward.cmw.internal ;  ComputerType      : RemoteMachine ;  State             : Opened ;  ConfigurationName : Microsoft.Exchange ;  Availability      : Available ;  Name              : Session1 ;   ;
         $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
+        #$Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
         $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
         # Computername wrong fqdn suffix
+        #$Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
         $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
         $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
         $Rems2Closed = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Closed*") } ;
@@ -1429,6 +1427,7 @@ Function Connect-Ex2010XO {
         # preclear until proven *up*
         $bExistingREms = $false ;
 
+        #if( Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ){
         if( Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ){
             $bExistingREms= $true ;
 
@@ -1593,7 +1592,6 @@ Function Disconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,ExchangeOnline
     REVISIONS   :
-    * 4:13 PM 10/22/2020 added pretest of $Global:*'s before running at remove-module (suppresses errors)
     * 12:23 PM 5/27/2020 updated cbh, moved aliases:Disconnect-EMSR','dx10' win func
     * 10:51 AM 2/24/2020 updated attrib   
     * 6:59 PM 1/15/2020 cleanup
@@ -1616,8 +1614,8 @@ Function Disconnect-Ex2010 {
     [CmdletBinding()]
     [Alias('Disconnect-EMSR','dx10')]
     Param()
-    if($Global:E10Mod){$Global:E10Mod | Remove-Module -Force } ; 
-    if($Global:E10Sess){$Global:E10Sess | Remove-PSSession } ;
+    $Global:E10Mod | Remove-Module -Force ;
+    $Global:E10Sess | Remove-PSSession ;
     # 7:56 AM 11/1/2017 remove titlebar tag
     Remove-PSTitlebar 'EMS' ;
     # kill any other sessions using distinctive name; add verbose, to ensure they're echo'd that they were missed
@@ -3964,17 +3962,13 @@ Function Reconnect-Ex2010XO {
         # non-looping vers:
         #$TenOrg = get-TenantTag -Credential $Credential ;
         #.OP_ExADRoot
-        if( (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName ){
-
-        } else { 
+        if(!(Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName){
             #.OP_rgxEMSComputerName
-            if((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot){
+            if(!(Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName){
                 set-Variable  -name "$($TenOrg)Meta" -value ( (Get-Variable  -name "$($TenOrg)Meta").value += @{'OP_rgxEMSComputerName' = "^\w*\.$([Regex]::Escape((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot))$"} )
-            } else {
-                $smsg = "Missing `$$((Get-Variable  -name "$($TenOrg)Meta").value.o365_Prefix).OP_ExADRoot value.`nProfile hasn't loaded proper tor-incl-infrastrings file)!"
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } #Error|Warn|Debug 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             } ;
+        } else {
+            throw "Missing `$$((Get-Variable  -name "$($TenOrg)Meta").value.o365_Prefix).OP_ExADRoot value.`nProfile hasn't loaded proper tor-incl-infrastrings file)!"
         } ;
     } ;  # BEG-E
 
@@ -4106,3 +4100,29 @@ Function toggle-ForestView {
 
 Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex2010XO,cx10cmw,cx10tol,cx10tor,Disconnect-Ex2010,get-DCLocal,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,get-GCFast,get-GCLocal,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,Reconnect-Ex2010XO,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUtaSDV6xpaKBUVaGhq4ILaOBK
+# k8agggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSN7XGY
+# m9YrukdoelqOwk2xbpch3TANBgkqhkiG9w0BAQEFAASBgLHaFHVw2p0uO1C+S3nY
+# YE+4X9nUEXyMWKl76TFd3XpKn/iALn8LZc/3RIiIpbkh5RVaiy43LIvC2e4wOFgd
+# BgyrQOK3rL0pToFeRNrQXmPvyzGX7IAwieeij1J37mJHk4J8R9DWjcjWLR0lZ/At
+# gPZHzcmlJ8lB1k5BeacT++pA
+# SIG # End signature block

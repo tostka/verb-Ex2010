@@ -1,4 +1,4 @@
-﻿#*------v Function Disconnect-Ex2010 v------
+﻿#*------v Disconnect-Ex2010.ps1 v------
 Function Disconnect-Ex2010 {
   <#
     .SYNOPSIS
@@ -17,6 +17,7 @@ Function Disconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,ExchangeOnline
     REVISIONS   :
+    * 4:13 PM 10/22/2020 added pretest of $Global:*'s before running at remove-module (suppresses errors)
     * 12:23 PM 5/27/2020 updated cbh, moved aliases:Disconnect-EMSR','dx10' win func
     * 10:51 AM 2/24/2020 updated attrib   
     * 6:59 PM 1/15/2020 cleanup
@@ -39,12 +40,14 @@ Function Disconnect-Ex2010 {
     [CmdletBinding()]
     [Alias('Disconnect-EMSR','dx10')]
     Param()
-    $Global:E10Mod | Remove-Module -Force ;
-    $Global:E10Sess | Remove-PSSession ;
+    if($Global:E10Mod){$Global:E10Mod | Remove-Module -Force } ; 
+    if($Global:E10Sess){$Global:E10Sess | Remove-PSSession } ;
     # 7:56 AM 11/1/2017 remove titlebar tag
     Remove-PSTitlebar 'EMS' ;
     # kill any other sessions using distinctive name; add verbose, to ensure they're echo'd that they were missed
     Get-PSSession | ? { $_.name -eq 'Exchange2010' } | Remove-PSSession -verbose ;
     # kill any broken PSS, self regen's even for L13 leave the original borked and create a new 'Session for implicit remoting module at C:\Users\', toast them, they don't reopen. Same for Ex2010 REMS, identical new PSS, indistinguishable from the L13 regen, except the random tmp_xxxx.psm1 module name. Toast them, it's just a growing stack of broken's
     Disconnect-PssBroken ;
-} ; #*------^ END Function Disconnect-Ex2010 ^------
+}
+
+#*------^ Disconnect-Ex2010.ps1 ^------

@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.32.0
+Version     : 1.1.34.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1100,6 +1100,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 5:16 PM 10/22/2020 switched to no-loop meta lookup; debugged, fixed 
     * 7:13 AM 7/22/2020 replaced codeblock w get-TenantTag(), flipped ExAdmin fr switch to un-typed
     * 5:11 PM 7/21/2020 added VEN support
     * 12:20 PM 5/27/2020 moved aliases: Add-EMSRemote,cx10 win func
@@ -1186,84 +1187,95 @@ Function Connect-Ex2010 {
         [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')]$ExAdmin,
         [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credTORSID
     )  ;
-    $verbose = ($VerbosePreference -eq "Continue") ; 
-    $sWebPoolVariant = "exadmin" ;
-    $CommandPrefix = $null ;
-    # use credential domain to determine target org
-    $rgxLegacyLogon = '\w*\\\w*' ; 
-    if($Credential.username -match $rgxLegacyLogon){
-        $credDom =$Credential.username.split('\')[0] ; 
-    } elseif ($Credential.username.contains('@')){
-        $credDom = ($Credential.username.split("@"))[1] ;
-    } else {
-        write-warning "$((get-date).ToString('HH:mm:ss')):UNRECOGNIZED CREDENTIAL!:$($Credential.Username)`nUNABLE TO RESOLVE DEFAULT EX10SERVER FOR CONNECTION!" ;
-    } ;
-    $ExchangeServer=$null ; 
-    $Metas=(get-variable *meta|?{$_.name -match '^\w{3}Meta$'}) ; 
-    foreach ($Meta in $Metas){
-            if( ($credDom -eq $Meta.value.legacyDomain) -OR ($credDom -eq $Meta.value.o365_TenantDomain) -OR ($credDom -eq $Meta.value.o365_OPDomain)){
-                $ExchangeServer = $Meta.value.Ex10Server ; 
-                $ExAdmin = $Meta.value.Ex10WebPoolVariant ; 
-                break ; 
-            } ; 
-    } ;
-    # force unresolved to dyn 
-    if(!$ExchangeServer){
-        $ExchangeServer = 'dynamic' ; 
-    } ;
-    if($ExchangeServer -eq 'dynamic'){
-        if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}
-        else {
-            write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchangeServerInSite *FAILED*,`ndeferring to Get-ExchServerFromExServersGroup" ;
-            if(!($ExchangeServer = Get-ExchServerFromExServersGroup)){
-                write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchServerFromExServersGroup *FAILED*,`n deferring to profile `$smtpserver:$($smtpserver))"  ; 
-                $ExchangeServer = $smtpserver ;
-            }; 
-        } ;  
-    } ; 
+    BEGIN{
+        $verbose = ($VerbosePreference -eq "Continue") ; 
+        $sWebPoolVariant = "exadmin" ;
+        $CommandPrefix = $null ;
+        # use credential domain to determine target org
+        $rgxLegacyLogon = '\w*\\\w*' ; 
+        $TenOrg = get-TenantTag -Credential $Credential ;
+        <#
+        if($Credential.username -match $rgxLegacyLogon){
+            $credDom =$Credential.username.split('\')[0] ; 
+        } elseif ($Credential.username.contains('@')){
+            $credDom = ($Credential.username.split("@"))[1] ;
+        } else {
+            write-warning "$((get-date).ToString('HH:mm:ss')):UNRECOGNIZED CREDENTIAL!:$($Credential.Username)`nUNABLE TO RESOLVE DEFAULT EX10SERVER FOR CONNECTION!" ;
+        } ;
+        #>
+    } ;  # BEG-E
+    PROCESS{
+        $ExchangeServer=$null ; 
+        <#
+        $Metas=(get-variable *meta|?{$_.name -match '^\w{3}Meta$'}) ; 
+        foreach ($Meta in $Metas){
+                if( ($credDom -eq $Meta.value.legacyDomain) -OR ($credDom -eq $Meta.value.o365_TenantDomain) -OR ($credDom -eq $Meta.value.o365_OPDomain)){
+                    $ExchangeServer = $Meta.value.Ex10Server ; 
+                    $ExAdmin = $Meta.value.Ex10WebPoolVariant ; 
+                    break ; 
+                } ; 
+        } ;
+        #>
+        # non-loop
+        #$TenOrg = get-TenantTag -Credential $Credential ;
+        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server ; 
+        $ExAdmin = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant ; 
+        # force unresolved to dyn 
+        if(!$ExchangeServer){
+            $ExchangeServer = 'dynamic' ; 
+        } ;
+        if($ExchangeServer -eq 'dynamic'){
+            if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}
+            else {
+                write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchangeServerInSite *FAILED*,`ndeferring to Get-ExchServerFromExServersGroup" ;
+                if(!($ExchangeServer = Get-ExchServerFromExServersGroup)){
+                    write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchServerFromExServersGroup *FAILED*,`n deferring to profile `$smtpserver:$($smtpserver))"  ; 
+                    $ExchangeServer = $smtpserver ;
+                }; 
+            } ;  
+        } ; 
 
-  write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
-  # splat to open a session - # stock 'PSLanguageMode=Restricted' powershell IIS Webpool
-  $EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = 'Exchange2010' } ;
-  if ($ExAdmin) {
-    # use variant IIS Webpool
-    $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
-  }
-  if ($Credential) { $EMSsplat.Add("Credential", $Credential) } ;
-  # -Authentication Basic only if specif needed: for Ex configured to connect via IP vs hostname)
-  # try catch against and retry into stock if fails
-  $error.clear() ;
-  TRY {
-    $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
-  }
-  CATCH {
-    $ErrTrapd = $_ ; 
-    write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
-    if ($ExAdmin) {
-      # switch to stock pool and retry
-      $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
-      write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($EMSSplat|out-string).trim())" ;
-      $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
-    }
-    else {
-      STOP ;
-    } ;
-  } ;
+        write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
+        # splat to open a session - # stock 'PSLanguageMode=Restricted' powershell IIS Webpool
+        $EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = 'Exchange2010' } ;
+        if ($ExAdmin) {
+          # use variant IIS Webpool
+          $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
+        }
+        if ($Credential) { $EMSsplat.Add("Credential", $Credential) } ;
+        # -Authentication Basic only if specif needed: for Ex configured to connect via IP vs hostname)
+        # try catch against and retry into stock if fails
+        $error.clear() ;
+        TRY {
+          $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+        } CATCH {
+          $ErrTrapd = $_ ; 
+          write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+          if ($ExAdmin) {
+            # switch to stock pool and retry
+            $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
+            write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($EMSSplat|out-string).trim())" ;
+            $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+          }
+          else {
+            STOP ;
+          } ;
+        } ;
 
-  write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
+        write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
 
-  if ($CommandPrefix) {
-    write-verbose -verbose:$true  "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
-    $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -Prefix $CommandPrefix -AllowClobber) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
-  }
-  else {
-    $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -AllowClobber) -Global -PassThru -DisableNameChecking   ;
-  } ;
-  # 7:54 AM 11/1/2017 add titlebar tag
-  Add-PSTitleBar 'EMS' ;
-  # tag E10IsDehydrated 
-  $Global:E10IsDehydrated = $true ;
-  write-verbose -verbose:$true "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
+        if ($CommandPrefix) {
+          write-verbose -verbose:$true  "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
+          $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -Prefix $CommandPrefix -AllowClobber) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
+        } else {
+          $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -AllowClobber) -Global -PassThru -DisableNameChecking   ;
+        } ;
+        # 7:54 AM 11/1/2017 add titlebar tag
+        Add-PSTitleBar 'EMS' ;
+        # tag E10IsDehydrated 
+        $Global:E10IsDehydrated = $true ;
+        write-verbose -verbose:$true "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
+    } ;  # PROC-E
 }
 
 #*------^ Connect-Ex2010.ps1 ^------
@@ -1291,6 +1303,7 @@ Function Connect-Ex2010XO {
     AddedWebsite2:	https://github.com/JeremyTBradshaw
     AddedTwitter2:
     REVISIONS   :
+    * 8:30 AM 10/22/2020 ren'd $TentantTag -> $TenOrg, swapped looping meta resolve with 1-liner approach ; added AcceptedDom caching to the middle status test (suppress one more get-exoaccepteddomain call if possible), replaced all $Meta.value with the $TenOrg version
     * 12:56 PM 10/15/2020 converted connect-exo to Ex2010, adding onprem validation
     .DESCRIPTION
     Connect-Ex2010XO - Establish PSS to Ex2010, with multi-org support & validation
@@ -1361,12 +1374,12 @@ Function Connect-Ex2010XO {
         $sTitleBarTag = "EMS" ;
         $CommandPrefix = $null ;
 
-        $TentantTag=get-TenantTag -Credential $Credential ;
-        if($TentantTag -ne 'TOR'){
+        $TenOrg=get-TenantTag -Credential $Credential ;
+        if($TenOrg -ne 'TOR'){
             # explicitly leave this tenant (default) untagged
-            $sTitleBarTag += $TentantTag ;
+            $sTitleBarTag += $TenOrg ;
         } ;
-
+        <#
         $credDom = ($Credential.username.split("\"))[0] ;
         $Metas=(get-variable *meta|Where-Object{$_.name -match '^\w{3}Meta$'}) ;
         foreach ($Meta in $Metas){
@@ -1382,14 +1395,31 @@ Function Connect-Ex2010XO {
                 } ;
             } ; # if-E $credDom
         } ; # loop-E
+        #>
+        # non-looping vers:
+        #$TenOrg = get-TenantTag -Credential $Credential ;
+        #.OP_ExADRoot
+        if( (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName ){
+
+        } else { 
+            #.OP_rgxEMSComputerName
+            if((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot){
+                set-Variable  -name "$($TenOrg)Meta" -value ( (Get-Variable  -name "$($TenOrg)Meta").value += @{'OP_rgxEMSComputerName' = "^\w*\.$([Regex]::Escape((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot))$"} )
+            } else {
+                $smsg = "Missing `$$((Get-Variable  -name "$($TenOrg)Meta").value.o365_Prefix).OP_ExADRoot value.`nProfile hasn't loaded proper tor-incl-infrastrings file)!"
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } #Error|Warn|Debug 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } ;
+        } ;
+    
     } ;  # BEG-E
     PROCESS{
         # if we're using ems-style BasicAuth, clear incompatible existing Rems PSS's
         # ComputerName      : curlyhoward.cmw.internal ;  ComputerType      : RemoteMachine ;  State             : Opened ;  ConfigurationName : Microsoft.Exchange ;  Availability      : Available ;  Name              : Session1 ;   ;
         $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
-        $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
+        $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
         # Computername wrong fqdn suffix
-        $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
+        $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
         $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
         $Rems2Closed = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Closed*") } ;
 
@@ -1399,8 +1429,7 @@ Function Connect-Ex2010XO {
         # preclear until proven *up*
         $bExistingREms = $false ;
 
-        if( Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ){
-
+        if( Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ){
             $bExistingREms= $true ;
 
         } ;
@@ -1408,18 +1437,18 @@ Function Connect-Ex2010XO {
             #$TorMeta.Ex10Server: dynamic
             #$TorMeta.Ex10ServerXO: lynms650.global.ad.toro.com
             # force unresolved to dyn
-            if($Meta.value.Ex10ServerXO){
+            if((Get-Variable  -name "$($TenOrg)Meta").value.Ex10ServerXO){
                 write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($TorMeta.Ex10ServerXO))..." ;
             } ;
 
             $EMSsplat = @{
-                ConnectionURI = "http://$($Meta.value.Ex10ServerXO)/powershell";
+                ConnectionURI = "http://$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10ServerXO)/powershell";
                 ConfigurationName = 'Microsoft.Exchange' ;
                 name = 'Exchange2010' ;
             } ;
-            if ($Meta.value.Ex10WebPoolVariant) {
+            if ((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant) {
               # use variant IIS Webpool
-              $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$($Meta.value.Ex10WebPoolVariant)") ;
+              $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant)") ;
             }
             $EMSsplat.Add("Credential", $Credential); # just use the passed $Credential vari
             $cMsg = "Connecting to OP Ex20XX ($($credDom))";
@@ -1431,9 +1460,9 @@ Function Connect-Ex2010XO {
             } CATCH {
                 $ErrTrapd = $_ ;
                 write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
-                if ($Meta.value.Ex10WebPoolVariant) {
+                if ((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant) {
                   # switch to stock pool and retry
-                  $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/$($Meta.value.Ex10WebPoolVariant)", "/powershell") ;
+                  $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant)", "/powershell") ;
                   write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING VARIANT POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($EMSSplat|out-string).trim())" ;
                   $global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
                 } else {
@@ -1487,7 +1516,7 @@ Function Connect-Ex2010XO {
     } ;  # PROC-E
     END {
         if($bExistingREms -eq $false){
-            if( Get-PSSession | where-object {$_.ConfigurationName -eq "Microsoft.Exchange" -AND $_.Name -match $rgxRemsPSSName -AND $_.State -eq "Opened" -AND ($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') }  ){
+            if( Get-PSSession | where-object {$_.ConfigurationName -eq "Microsoft.Exchange" -AND $_.Name -match $rgxRemsPSSName -AND $_.State -eq "Opened" -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') }  ){
                 $bExistingREms= $true ;
             } else {
                 write-error "(Credential mismatch:disconnecting from existing Ex201X:$($eEXO.Identity) tenant)" ;
@@ -1564,6 +1593,7 @@ Function Disconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,ExchangeOnline
     REVISIONS   :
+    * 4:13 PM 10/22/2020 added pretest of $Global:*'s before running at remove-module (suppresses errors)
     * 12:23 PM 5/27/2020 updated cbh, moved aliases:Disconnect-EMSR','dx10' win func
     * 10:51 AM 2/24/2020 updated attrib   
     * 6:59 PM 1/15/2020 cleanup
@@ -1586,8 +1616,8 @@ Function Disconnect-Ex2010 {
     [CmdletBinding()]
     [Alias('Disconnect-EMSR','dx10')]
     Param()
-    $Global:E10Mod | Remove-Module -Force ;
-    $Global:E10Sess | Remove-PSSession ;
+    if($Global:E10Mod){$Global:E10Mod | Remove-Module -Force } ; 
+    if($Global:E10Sess){$Global:E10Sess | Remove-PSSession } ;
     # 7:56 AM 11/1/2017 remove titlebar tag
     Remove-PSTitlebar 'EMS' ;
     # kill any other sessions using distinctive name; add verbose, to ensure they're echo'd that they were missed
@@ -3835,6 +3865,7 @@ Function Reconnect-Ex2010XO {
     Based on original function Author: ExactMike Perficient, Global Knowl... (Partner)
     Website:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
     REVISIONS   :
+    * 8:30 AM 10/22/2020 ren'd $TentantTag -> $TenOrg, swapped looping meta resolve with 1-liner approach ; added AcceptedDom caching to the middle status test (suppress one more get-exoaccepteddomain call if possible), replaced all $Meta.value with the $TenOrg version
     * 1:19 PM 10/15/2020 converted connect-exo to Ex2010, adding onprem validation
     .DESCRIPTION
     Reconnect-Ex2010XO - Reconnect Remote Exch2010 Mgmt Shell connection Cross-Org (XO)
@@ -3908,12 +3939,12 @@ Function Reconnect-Ex2010XO {
         $sTitleBarTag = "EMS" ;
         $CommandPrefix = $null ;
 
-        $TentantTag=get-TenantTag -Credential $Credential ;
-        if($TentantTag -ne 'TOR'){
+        $TenOrg=get-TenantTag -Credential $Credential ;
+        if($TenOrg -ne 'TOR'){
             # explicitly leave this tenant (default) untagged
-            $sTitleBarTag += $TentantTag ;
+            $sTitleBarTag += $TenOrg ;
         } ;
-
+        <#
         $credDom = ($Credential.username.split("\"))[0] ;
         $Metas=(get-variable *meta|Where-Object{$_.name -match '^\w{3}Meta$'}) ;
         foreach ($Meta in $Metas){
@@ -3929,6 +3960,22 @@ Function Reconnect-Ex2010XO {
                 } ;
             } ; # if-E $credDom
         } ; # loop-E
+        #>
+        # non-looping vers:
+        #$TenOrg = get-TenantTag -Credential $Credential ;
+        #.OP_ExADRoot
+        if( (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName ){
+
+        } else { 
+            #.OP_rgxEMSComputerName
+            if((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot){
+                set-Variable  -name "$($TenOrg)Meta" -value ( (Get-Variable  -name "$($TenOrg)Meta").value += @{'OP_rgxEMSComputerName' = "^\w*\.$([Regex]::Escape((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot))$"} )
+            } else {
+                $smsg = "Missing `$$((Get-Variable  -name "$($TenOrg)Meta").value.o365_Prefix).OP_ExADRoot value.`nProfile hasn't loaded proper tor-incl-infrastrings file)!"
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } #Error|Warn|Debug 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } ;
+        } ;
     } ;  # BEG-E
 
     PROCESS{
@@ -3936,9 +3983,9 @@ Function Reconnect-Ex2010XO {
         # if we're using ems-style BasicAuth, clear incompatible existing Rems PSS's
         # ComputerName      : curlyhoward.cmw.internal ;  ComputerType      : RemoteMachine ;  State             : Opened ;  ConfigurationName : Microsoft.Exchange ;  Availability      : Available ;  Name              : Session1 ;   ;
         $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
-        $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
+        $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
         # Computername wrong fqdn suffix
-        $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
+        $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
         $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
         $Rems2Closed = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Closed*") } ;
 
@@ -3951,7 +3998,7 @@ Function Reconnect-Ex2010XO {
         # preclear until proven *up*
         $bExistingREms = $false ;
 
-        if( Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ){
+        if( Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ){
 
             $bExistingREms= $true ;
             write-verbose "(Authenticated to Ex20XX:$($Credential.username.split('\')[0].tostring()))" ;
@@ -3963,7 +4010,7 @@ Function Reconnect-Ex2010XO {
                 if($1F){Sleep -s 5} ;
                 $tryNo++ ;
                 write-host "." -NoNewLine; if($tryNo -gt 1){Start-Sleep -m (1000 * 5)} ;
-                write-verbose "$((get-date).ToString('HH:mm:ss')):Reconnecting:No existing PSSESSION matching`n (ConfigurationName -eq 'Microsoft.Exchange') -AND (Name -match $($rgxRemsPSSName)) -AND ($_.ComputerName -match $($Meta.value.OP_rgxEMSComputerName))`nwith valid Open/Availability:$((Get-PSSession | where-object { ($_.ConfigurationName -eq 'Microsoft.Exchange') -AND ($_.Name -match $rgxRemsPSSName)} |ft -a Id,Name,ComputerName,ComputerType,State,ConfigurationName,Availability|out-string).trim())" ;
+                write-verbose "$((get-date).ToString('HH:mm:ss')):Reconnecting:No existing PSSESSION matching`n (ConfigurationName -eq 'Microsoft.Exchange') -AND (Name -match $($rgxRemsPSSName)) -AND ($_.ComputerName -match $((Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName))`nwith valid Open/Availability:$((Get-PSSession | where-object { ($_.ConfigurationName -eq 'Microsoft.Exchange') -AND ($_.Name -match $rgxRemsPSSName)} |ft -a Id,Name,ComputerName,ComputerType,State,ConfigurationName,Availability|out-string).trim())" ;
                 Disconnect-Ex2010 ; Disconnect-PssBroken ;Start-Sleep -Seconds 3;
 
                 $bExistingREms = $false ;
@@ -3972,14 +4019,14 @@ Function Reconnect-Ex2010XO {
 
                 $1F=$true ;
                 if($tryNo -gt $DoRetries ){throw "RETRIED EX20XX CONNECT $($tryNo) TIMES, ABORTING!" } ;
-            } Until ( Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ) ;
+            } Until ( Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ) ;
 
         } ;
 
     } ;  # PROC-E
     END {
         if($bExistingREms -eq $false){
-            if( Get-PSSession | where-object {$_.ConfigurationName -eq "Microsoft.Exchange" -AND $_.Name -match $rgxRemsPSSName -AND $_.State -eq "Opened" -AND ($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') }  ){
+            if( Get-PSSession | where-object {$_.ConfigurationName -eq "Microsoft.Exchange" -AND $_.Name -match $rgxRemsPSSName -AND $_.State -eq "Opened" -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') }  ){
                 $bExistingREms= $true ;
             } else {
                 write-error "(Credential mismatch:disconnecting from existing Ex201X:$($eEXO.Identity) tenant)" ;
@@ -4063,8 +4110,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUD6gFyOOFM4tGt4M1Nv0y7NVp
-# /wygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUhiklw2vo2SRGtUnlsIlW+XLk
+# 9/OgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4079,9 +4126,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQsm/L5
-# fraoxF1K9Kx2s/q2gk7HizANBgkqhkiG9w0BAQEFAASBgB8+nEOvs3ZSgbXeTwaq
-# 2nOv7JZkwLs9NdM0LIZ25R3DWYGFp6mHN9D+cb/fg9kcoKeZ1PvdOZWCtQcgJDD9
-# cZTyk8SFV3G0uoaAJvXScRbUa/YjNZLCOFzfhmHzLE/Ut9Epp0xUtH0PvIDdy8bj
-# i96iybtUdPhfixASdSKSUsj3
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBR9XZj4
+# R3csEtxWIrztS8GOo7n9FDANBgkqhkiG9w0BAQEFAASBgJXKrxdnO3YVqvtn8h5i
+# PFCno2YhQD3PP5FYoszwrN4w/9l7fp5k0n52Ew4p2E6Nns5zbRJvwR/yxcFyDLpf
+# HlSm7ZVwF/GeFvAWuu0C0/atGTWoWHv59C+Dy/YLO2/npU4n/lHW0kV0vIFcEOBa
+# S/KulbwixNnbbXS1QCrEeCHo
 # SIG # End signature block

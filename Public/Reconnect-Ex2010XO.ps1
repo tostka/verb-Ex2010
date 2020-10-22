@@ -10,6 +10,7 @@ Function Reconnect-Ex2010XO {
     Based on original function Author: ExactMike Perficient, Global Knowl... (Partner)
     Website:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
     REVISIONS   :
+    * 8:30 AM 10/22/2020 ren'd $TentantTag -> $TenOrg, swapped looping meta resolve with 1-liner approach ; added AcceptedDom caching to the middle status test (suppress one more get-exoaccepteddomain call if possible), replaced all $Meta.value with the $TenOrg version
     * 1:19 PM 10/15/2020 converted connect-exo to Ex2010, adding onprem validation
     .DESCRIPTION
     Reconnect-Ex2010XO - Reconnect Remote Exch2010 Mgmt Shell connection Cross-Org (XO)
@@ -83,12 +84,12 @@ Function Reconnect-Ex2010XO {
         $sTitleBarTag = "EMS" ;
         $CommandPrefix = $null ;
 
-        $TentantTag=get-TenantTag -Credential $Credential ;
-        if($TentantTag -ne 'TOR'){
+        $TenOrg=get-TenantTag -Credential $Credential ;
+        if($TenOrg -ne 'TOR'){
             # explicitly leave this tenant (default) untagged
-            $sTitleBarTag += $TentantTag ;
+            $sTitleBarTag += $TenOrg ;
         } ;
-
+        <#
         $credDom = ($Credential.username.split("\"))[0] ;
         $Metas=(get-variable *meta|Where-Object{$_.name -match '^\w{3}Meta$'}) ;
         foreach ($Meta in $Metas){
@@ -104,6 +105,22 @@ Function Reconnect-Ex2010XO {
                 } ;
             } ; # if-E $credDom
         } ; # loop-E
+        #>
+        # non-looping vers:
+        #$TenOrg = get-TenantTag -Credential $Credential ;
+        #.OP_ExADRoot
+        if( (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName ){
+
+        } else { 
+            #.OP_rgxEMSComputerName
+            if((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot){
+                set-Variable  -name "$($TenOrg)Meta" -value ( (Get-Variable  -name "$($TenOrg)Meta").value += @{'OP_rgxEMSComputerName' = "^\w*\.$([Regex]::Escape((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot))$"} )
+            } else {
+                $smsg = "Missing `$$((Get-Variable  -name "$($TenOrg)Meta").value.o365_Prefix).OP_ExADRoot value.`nProfile hasn't loaded proper tor-incl-infrastrings file)!"
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } #Error|Warn|Debug 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } ;
+        } ;
     } ;  # BEG-E
 
     PROCESS{
@@ -111,9 +128,9 @@ Function Reconnect-Ex2010XO {
         # if we're using ems-style BasicAuth, clear incompatible existing Rems PSS's
         # ComputerName      : curlyhoward.cmw.internal ;  ComputerType      : RemoteMachine ;  State             : Opened ;  ConfigurationName : Microsoft.Exchange ;  Availability      : Available ;  Name              : Session1 ;   ;
         $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
-        $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
+        $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
         # Computername wrong fqdn suffix
-        $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
+        $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
         $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
         $Rems2Closed = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Closed*") } ;
 
@@ -126,7 +143,7 @@ Function Reconnect-Ex2010XO {
         # preclear until proven *up*
         $bExistingREms = $false ;
 
-        if( Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ){
+        if( Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ){
 
             $bExistingREms= $true ;
             write-verbose "(Authenticated to Ex20XX:$($Credential.username.split('\')[0].tostring()))" ;
@@ -138,7 +155,7 @@ Function Reconnect-Ex2010XO {
                 if($1F){Sleep -s 5} ;
                 $tryNo++ ;
                 write-host "." -NoNewLine; if($tryNo -gt 1){Start-Sleep -m (1000 * 5)} ;
-                write-verbose "$((get-date).ToString('HH:mm:ss')):Reconnecting:No existing PSSESSION matching`n (ConfigurationName -eq 'Microsoft.Exchange') -AND (Name -match $($rgxRemsPSSName)) -AND ($_.ComputerName -match $($Meta.value.OP_rgxEMSComputerName))`nwith valid Open/Availability:$((Get-PSSession | where-object { ($_.ConfigurationName -eq 'Microsoft.Exchange') -AND ($_.Name -match $rgxRemsPSSName)} |ft -a Id,Name,ComputerName,ComputerType,State,ConfigurationName,Availability|out-string).trim())" ;
+                write-verbose "$((get-date).ToString('HH:mm:ss')):Reconnecting:No existing PSSESSION matching`n (ConfigurationName -eq 'Microsoft.Exchange') -AND (Name -match $($rgxRemsPSSName)) -AND ($_.ComputerName -match $((Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName))`nwith valid Open/Availability:$((Get-PSSession | where-object { ($_.ConfigurationName -eq 'Microsoft.Exchange') -AND ($_.Name -match $rgxRemsPSSName)} |ft -a Id,Name,ComputerName,ComputerType,State,ConfigurationName,Availability|out-string).trim())" ;
                 Disconnect-Ex2010 ; Disconnect-PssBroken ;Start-Sleep -Seconds 3;
 
                 $bExistingREms = $false ;
@@ -147,14 +164,14 @@ Function Reconnect-Ex2010XO {
 
                 $1F=$true ;
                 if($tryNo -gt $DoRetries ){throw "RETRIED EX20XX CONNECT $($tryNo) TIMES, ABORTING!" } ;
-            } Until ( Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ) ;
+            } Until ( Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ) ;
 
         } ;
 
     } ;  # PROC-E
     END {
         if($bExistingREms -eq $false){
-            if( Get-PSSession | where-object {$_.ConfigurationName -eq "Microsoft.Exchange" -AND $_.Name -match $rgxRemsPSSName -AND $_.State -eq "Opened" -AND ($_.ComputerName -match $Meta.value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') }  ){
+            if( Get-PSSession | where-object {$_.ConfigurationName -eq "Microsoft.Exchange" -AND $_.Name -match $rgxRemsPSSName -AND $_.State -eq "Opened" -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') }  ){
                 $bExistingREms= $true ;
             } else {
                 write-error "(Credential mismatch:disconnecting from existing Ex201X:$($eEXO.Identity) tenant)" ;
@@ -163,5 +180,6 @@ Function Reconnect-Ex2010XO {
             } ;
         } ;
     } ; # END-E
-} ;
+}
+
 #*------^ Reconnect-Ex2010XO.ps1 ^------
