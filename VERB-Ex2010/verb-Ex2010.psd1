@@ -12,7 +12,7 @@
 RootModule = 'VERB-Ex2010.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.1.34'
+ModuleVersion = '1.1.35'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'Exchange 2010 PS Module-related generic functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('add-MailboxAccessGrant','Connect-Ex2010','Connect-Ex2010XO','cx10cmw','cx10tol','cx10tor','Disconnect-Ex2010','get-DCLocal','Get-ExchangeServerInSite','Get-ExchServerFromExServersGroup','get-GCFast','get-GCLocal','Invoke-ExchangeCommand','load-EMSLatest','Load-EMSSnap','new-MailboxShared','Reconnect-Ex2010','Reconnect-Ex2010XO','rx10cmw','rx10tol','rx10tor','toggle-ForestView')
+FunctionsToExport = @('add-MailboxAccessGrant','Connect-Ex2010','Connect-Ex2010XO','cx10cmw','cx10tol','cx10tor','Disconnect-Ex2010','Get-ExchangeServerInSite','Get-ExchServerFromExServersGroup','Invoke-ExchangeCommand','load-EMSLatest','Load-EMSSnap','new-MailboxShared','Reconnect-Ex2010','Reconnect-Ex2010XO','rx10cmw','rx10tol','rx10tor','toggle-ForestView')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUlJIXIZlECAXQXIZJoLExxAU4
-# fj6gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUmAuYaErNUcgZgp5PdF80MfPY
+# IdOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTovmca
-# gCB/+jumfotvfVfxvgEEVjANBgkqhkiG9w0BAQEFAASBgJqLYpGD2YMS0oaO3ajV
-# eiXUaysr5FILdHDCZ+MH9vSHG37nwDN6WH7lIoYFOCRngkVy5aMSrfSpy8HsF/SK
-# +LI5i1nCYQO41CE+CYMQotMIuuuTGi6oAKNHarFcRGu6pgeyynGqDZlcKPS5R/po
-# Qro1gHIY7usG4Gpxy9oCaZ92
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRc8XJS
+# 2bbMFEsdvo8z+shzaH/tUjANBgkqhkiG9w0BAQEFAASBgFtCeDKCIp1tVzLgihy1
+# myMJZGD5/Kdoe1eBB7aGL85mGi/ClnydmKbk4pnF1KkiPOEMj+5aRDKbR8eQ7qE8
+# vg27tfFNES7KrFu2RbSQm+Q81rWEPwJsN9FLQlmLYb7g/DcpVBTub5G2FzSeyL4L
+# OdWILJBcTrbiY5hD9HyBnPqt
 # SIG # End signature block
