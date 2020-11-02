@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.37.0
+Version     : 1.1.35.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -3870,50 +3870,18 @@ function rx10tor {
 
 #*------v toggle-ForestView.ps1 v------
 Function toggle-ForestView {
-<#
-.SYNOPSIS
-toggle-ForestView.ps1 - Toggle Exchange onprem AD ViewEntireForest setting (permits org-wide object access, wo use of proper explicit -domaincontroller sub.domain.com)
-.NOTES
-Version     : 1.0.2
-Author      : Todd Kadrie
-Website     : http://www.toddomation.com
-Twitter     : @tostka / http://twitter.com/tostka
-CreatedDate : 2020-10-26
-FileName    : 
-License     : MIT License
-Copyright   : (c) 2020 Todd Kadrie
-Github      : https://github.com/tostka/verb-XXX
-Tags        : Powershell
-REVISIONS
-* 10:07 AM 10/26/2020 added CBH
-.DESCRIPTION
-toggle-ForestView.ps1 - Toggle Exchange onprem AD ViewEntireForest setting (permits org-wide object access, wo use of proper explicit -domaincontroller sub.domain.com)
-.INPUTS
-None. Does not accepted piped input.
-.OUTPUTS
-None. Returns no objects or output
-.EXAMPLE
-toggle-ForestView
-.LINK
-https://github.com/tostka/verb-ex2010
-.LINK
-#>
-[CmdletBinding()]
-PARAM() ;
-    # toggle forest view
-    if (get-command -name set-AdServerSettings){ 
-        if (!(get-AdServerSettings).ViewEntireForest ) {
-              write-warning "Enabling WholeForest"
-              write-host "`a"
-              if (get-command -name set-AdServerSettings -ea 0) { set-AdServerSettings -ViewEntireForest $TRUE } ;
-        } else {
-          write-warning "Disableing WholeForest"
-          write-host "`a"
-          set-AdServerSettings -ViewEntireForest $FALSE ;
-        } ;
-    } else {
-        THROW "MISSING:set-AdServerSettings`nOPEN an Exchange OnPrem connection FIRST!"
-    } ; 
+  # 7:37 AM 6/2/2014 toggle forest view
+  if (!(get-AdServerSettings).ViewEntireForest ) {
+    write-warning "Enabling WholeForest"
+    write-host "`a"
+    if (get-command -name set-AdServerSettings -ea 0) { set-AdServerSettings -ViewEntireForest $true } ;
+  }
+  else {
+    write-warning "Disableing WholeForest"
+    write-host "`a"
+    if (get-command -name set-AdServerSettings -ea 0) { set-AdServerSettings -ViewEntireForest $true } ;
+  } # if-block end
+
 }
 
 #*------^ toggle-ForestView.ps1 ^------
@@ -3926,8 +3894,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUZGeKhFnRQfvZH9/pEhmyksOP
-# a2GgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUCHEe9Epb79l88gcSnGwpYopE
+# w+ygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3942,9 +3910,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT91IxH
-# 44zUvXiyis4dbZpNiQVXdTANBgkqhkiG9w0BAQEFAASBgCesImdER2b0EGeb6WML
-# pFobTOuxppZfSaH1UBcYiZxYierDUa5VBhoLWdSh/KnwN8fZRVcoQ60AtuMzo49R
-# tQxsjjU1uDS7kU6b9RT1u7s6OcK88IbUOfvkX7cPfAKP8UMug/2CxtJcwW/wUNfj
-# SXO8OEeD9gz7x9FK1Qql6MRb
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRxUHvF
+# rkgmoEh2AViuzYDP9CbciTANBgkqhkiG9w0BAQEFAASBgJFCUIo5aFs4l6kXCtI1
+# BUkwvEju4RMMeNRAVAAuQ56oYlV3CHYYVuZ/AaaNvlo2u70g18E0nN2U1VLu7Mn/
+# S6McVPw/JbLsESzKXEBEb8R3DwjYAGARUshxuLOb0uQnbBZZCW362HYV2hpd4npi
+# P06050wr1XKHe4Y/k04yCJ2l
 # SIG # End signature block

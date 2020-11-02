@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.37.0
+Version     : 1.1.36.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -3901,7 +3901,7 @@ https://github.com/tostka/verb-ex2010
 [CmdletBinding()]
 PARAM() ;
     # toggle forest view
-    if (get-command -name set-AdServerSettings){ 
+    if ((get-command -name set-AdServerSettings){ 
         if (!(get-AdServerSettings).ViewEntireForest ) {
               write-warning "Enabling WholeForest"
               write-host "`a"
@@ -3926,8 +3926,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUZGeKhFnRQfvZH9/pEhmyksOP
-# a2GgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUA1geYAbDetpWfpPXyzjK/b5S
+# vbWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3942,9 +3942,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT91IxH
-# 44zUvXiyis4dbZpNiQVXdTANBgkqhkiG9w0BAQEFAASBgCesImdER2b0EGeb6WML
-# pFobTOuxppZfSaH1UBcYiZxYierDUa5VBhoLWdSh/KnwN8fZRVcoQ60AtuMzo49R
-# tQxsjjU1uDS7kU6b9RT1u7s6OcK88IbUOfvkX7cPfAKP8UMug/2CxtJcwW/wUNfj
-# SXO8OEeD9gz7x9FK1Qql6MRb
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRcguQ6
+# i4UdvSfAqM+1znSPNkaGhDANBgkqhkiG9w0BAQEFAASBgEBUi11OWwJg60OkmdGR
+# 3wSeQ02pdiS8LbA5nGniz9kAsNLofJhJfuYVBK7jS3ZupDmARsMI8QvbEFGZBIEf
+# S+IpNSB5OILFEzay4HeNT+hp0l+9A6iRGe/eJt6Cw2i4JpB8Kay86Ia+abv1loQY
+# xUkULeFVlajCImgZh3vRwQxJ
 # SIG # End signature block
