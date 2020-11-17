@@ -1,4 +1,4 @@
-﻿#*------v Function Reconnect-Ex2010 v------
+﻿#*------v Reconnect-Ex2010.ps1 v------
 Function Reconnect-Ex2010 {
   <#
     .SYNOPSIS
@@ -17,6 +17,7 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 8:29 AM 11/17/2020 added missing $Credential param 
     * 9:33 AM 5/28/2020 actually added the alias:rx10 
     * 12:20 PM 5/27/2020 updated cbh, moved alias: rx10 win func
     * 6:59 PM 1/15/2020 cleanup
@@ -38,7 +39,10 @@ Function Reconnect-Ex2010 {
     #>
     [CmdletBinding()]
     [Alias('rx10')]
-    Param()
+    Param(
+        [Parameter(HelpMessage="Credential to use for this connection [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
+        $Credential = $global:credo365TORSID
+    )
     if (!$E10Sess) {
       if (!$Credential) {
         Connect-Ex2010
@@ -56,4 +60,6 @@ Function Reconnect-Ex2010 {
       Connect-Ex2010 -Credential:$($Credential) ;
     } ;
   } ;
-}#*------^ END Function Reconnect-Ex2010 ^------ ;
+}
+
+#*------^ Reconnect-Ex2010.ps1 ^------
