@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 3:28 PM 2/17/2021 updated to support cross-org, leverages new $XXXMeta.ExRevision, ExViewForest
     * 5:16 PM 10/22/2020 switched to no-loop meta lookup; debugged, fixed 
     * 7:13 AM 7/22/2020 replaced codeblock w get-TenantTag(), flipped ExAdmin fr switch to un-typed
     * 5:11 PM 7/21/2020 added VEN support
@@ -123,20 +124,11 @@ Function Connect-Ex2010 {
     } ;  # BEG-E
     PROCESS{
         $ExchangeServer=$null ; 
-        <#
-        $Metas=(get-variable *meta|?{$_.name -match '^\w{3}Meta$'}) ; 
-        foreach ($Meta in $Metas){
-                if( ($credDom -eq $Meta.value.legacyDomain) -OR ($credDom -eq $Meta.value.o365_TenantDomain) -OR ($credDom -eq $Meta.value.o365_OPDomain)){
-                    $ExchangeServer = $Meta.value.Ex10Server ; 
-                    $ExAdmin = $Meta.value.Ex10WebPoolVariant ; 
-                    break ; 
-                } ; 
-        } ;
-        #>
-        # non-loop
-        #$TenOrg = get-TenantTag -Credential $Credential ;
         $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server ; 
         $ExAdmin = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant ; 
+        $ExVers = (Get-Variable  -name "$($TenOrg)Meta").value.ExRevision ; 
+        $ExVwForest = (Get-Variable  -name "$($TenOrg)Meta").value.ExViewForest ;         
+        $ExOPAccessFromToro = (Get-Variable  -name "$($TenOrg)Meta").value.ExOPAccessFromToro
         # force unresolved to dyn 
         if(!$ExchangeServer){
             $ExchangeServer = 'dynamic' ; 
@@ -154,7 +146,14 @@ Function Connect-Ex2010 {
 
         write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
         # splat to open a session - # stock 'PSLanguageMode=Restricted' powershell IIS Webpool
-        $EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = 'Exchange2010' } ;
+        #$EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = 'Exchange2010' } ;
+        $EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = "Exchange$($ExVers)" } ;
+        if($env:USERDOMAIN -ne (Get-Variable  -name "$($TenOrg)Meta").value.legacyDomain){
+            # if not in the $TenOrg legacy domain - running cross-org -  add auth:Kerberos
+            <#suppresses: The WinRM client cannot process the request. It cannot determine the content type of the HTTP response f rom the destination computer. The content type is absent or invalid
+            #>
+            $EMSsplat.add('Authentication','Kerberos') ;
+        } ; 
         if ($ExAdmin) {
           # use variant IIS Webpool
           $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
@@ -187,6 +186,10 @@ Function Connect-Ex2010 {
         } else {
           $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -AllowClobber) -Global -PassThru -DisableNameChecking   ;
         } ;
+        if($ExVwForest){
+            write-host "Setting EMS Session: Set-AdServerSettings -ViewEntireForest `$True" ; 
+            Set-AdServerSettings -ViewEntireForest $True ; 
+        } ; 
         # 7:54 AM 11/1/2017 add titlebar tag
         Add-PSTitleBar 'EMS' ;
         # tag E10IsDehydrated 
@@ -194,5 +197,4 @@ Function Connect-Ex2010 {
         write-verbose -verbose:$true "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
     } ;  # PROC-E
 }
-
 #*------^ Connect-Ex2010.ps1 ^------

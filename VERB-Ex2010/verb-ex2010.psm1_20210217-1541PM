@@ -1,4 +1,4 @@
-# verb-ex2010.psm1
+﻿# verb-ex2010.psm1
 
 
 <#
@@ -1100,7 +1100,6 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
-    * 3:28 PM 2/17/2021 updated to support cross-org, leverages new $XXXMeta.ExRevision, ExViewForest
     * 5:16 PM 10/22/2020 switched to no-loop meta lookup; debugged, fixed 
     * 7:13 AM 7/22/2020 replaced codeblock w get-TenantTag(), flipped ExAdmin fr switch to un-typed
     * 5:11 PM 7/21/2020 added VEN support
@@ -1207,11 +1206,20 @@ Function Connect-Ex2010 {
     } ;  # BEG-E
     PROCESS{
         $ExchangeServer=$null ; 
+        <#
+        $Metas=(get-variable *meta|?{$_.name -match '^\w{3}Meta$'}) ; 
+        foreach ($Meta in $Metas){
+                if( ($credDom -eq $Meta.value.legacyDomain) -OR ($credDom -eq $Meta.value.o365_TenantDomain) -OR ($credDom -eq $Meta.value.o365_OPDomain)){
+                    $ExchangeServer = $Meta.value.Ex10Server ; 
+                    $ExAdmin = $Meta.value.Ex10WebPoolVariant ; 
+                    break ; 
+                } ; 
+        } ;
+        #>
+        # non-loop
+        #$TenOrg = get-TenantTag -Credential $Credential ;
         $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server ; 
         $ExAdmin = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant ; 
-        $ExVers = (Get-Variable  -name "$($TenOrg)Meta").value.ExRevision ; 
-        $ExVwForest = (Get-Variable  -name "$($TenOrg)Meta").value.ExViewForest ;         
-        $ExOPAccessFromToro = (Get-Variable  -name "$($TenOrg)Meta").value.ExOPAccessFromToro
         # force unresolved to dyn 
         if(!$ExchangeServer){
             $ExchangeServer = 'dynamic' ; 
@@ -1229,14 +1237,7 @@ Function Connect-Ex2010 {
 
         write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
         # splat to open a session - # stock 'PSLanguageMode=Restricted' powershell IIS Webpool
-        #$EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = 'Exchange2010' } ;
-        $EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = "Exchange$($ExVers)" } ;
-        if($env:USERDOMAIN -ne (Get-Variable  -name "$($TenOrg)Meta").value.legacyDomain){
-            # if not in the $TenOrg legacy domain - running cross-org -  add auth:Kerberos
-            <#suppresses: The WinRM client cannot process the request. It cannot determine the content type of the HTTP response f rom the destination computer. The content type is absent or invalid
-            #>
-            $EMSsplat.add('Authentication','Kerberos') ;
-        } ; 
+        $EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = 'Exchange2010' } ;
         if ($ExAdmin) {
           # use variant IIS Webpool
           $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
@@ -1269,10 +1270,6 @@ Function Connect-Ex2010 {
         } else {
           $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -AllowClobber) -Global -PassThru -DisableNameChecking   ;
         } ;
-        if($ExVwForest){
-            write-host "Setting EMS Session: Set-AdServerSettings -ViewEntireForest `$True" ; 
-            Set-AdServerSettings -ViewEntireForest $True ; 
-        } ; 
         # 7:54 AM 11/1/2017 add titlebar tag
         Add-PSTitleBar 'EMS' ;
         # tag E10IsDehydrated 
@@ -1533,28 +1530,16 @@ Function Connect-Ex2010XO {
 #*------^ Connect-Ex2010XO.ps1 ^------
 
 #*------v cx10cmw.ps1 v------
-function cx10tor {
+function cx10cmw {
     <#
     .SYNOPSIS
-    cx10tor - Connect-EX2010 to specified on-prem Exchange
+    cx10tol - Connect-EX2010 to specified on-prem Exchange
     .DESCRIPTION
     Connect-EX2010 - Connect-EX2010 to specified on-prem Exchange
     .EXAMPLE
-    cx10tor
+    cx10cmw
     #>
-    [CmdletBinding()] 
-    Param()
-    $Verbose = ($VerbosePreference -eq 'Continue') ;
-    $pltGHOpCred=@{TenOrg="TOR" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
-    if($OPCred=(get-HybridOPCredentials @pltGHOpCred).cred){
-        Connect-EX2010 -cred $OPCred -Verbose:($VerbosePreference -eq 'Continue') ; 
-    } else {
-        $smsg = "Unable to resolve get-HybridOPCredentials -TenOrg $($TenOrg) -userrole $($UserRole -join '|') value!"
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        throw "Unable to resolve $($tenorg) `$OPCred value!`nEXIT!"
-        exit ;
-    } ;
+    Connect-EX2010 -cred $credCMWSID -Verbose:($VerbosePreference -eq 'Continue') ; 
 }
 
 #*------^ cx10cmw.ps1 ^------
@@ -1569,19 +1554,7 @@ function cx10tol {
     .EXAMPLE
     cx10tol
     #>
-    [CmdletBinding()] 
-    Param()
-    $Verbose = ($VerbosePreference -eq 'Continue') ;
-    $pltGHOpCred=@{TenOrg="TOL" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
-    if($OPCred=(get-HybridOPCredentials @pltGHOpCred).cred){
-        Connect-EX2010 -cred $OPCred -Verbose:($VerbosePreference -eq 'Continue') ; 
-    } else {
-        $smsg = "Unable to resolve get-HybridOPCredentials -TenOrg $($TenOrg) -userrole $($UserRole -join '|') value!"
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        throw "Unable to resolve $($tenorg) `$OPCred value!`nEXIT!"
-        exit ;
-    } ;
+    Connect-EX2010 -cred $credtolSID -Verbose:($VerbosePreference -eq 'Continue') ; 
 }
 
 #*------^ cx10tol.ps1 ^------
@@ -3864,19 +3837,7 @@ function rx10cmw {
     .EXAMPLE
     rx10cmw
     #>
-    [CmdletBinding()] 
-    Param()
-    $Verbose = ($VerbosePreference -eq 'Continue') ;
-    $pltGHOpCred=@{TenOrg="CMW" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
-    if($OPCred=(get-HybridOPCredentials @pltGHOpCred).cred){
-        ReConnect-EX2010 -cred $OPCred -Verbose:($VerbosePreference -eq 'Continue') ; 
-    } else {
-        $smsg = "Unable to resolve get-HybridOPCredentials -TenOrg $($TenOrg) -userrole $($UserRole -join '|') value!"
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        throw "Unable to resolve $($tenorg) `$OPCred value!`nEXIT!"
-        exit ;
-    } ;
+    Reconnect-EX2010 -cred $credCMWSID -Verbose:($VerbosePreference -eq 'Continue') ; 
 }
 
 #*------^ rx10cmw.ps1 ^------
@@ -3891,19 +3852,7 @@ function rx10tol {
     .EXAMPLE
     rx10tol
     #>
-    [CmdletBinding()] 
-    Param()
-    $Verbose = ($VerbosePreference -eq 'Continue') ;
-    $pltGHOpCred=@{TenOrg="TOL" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
-    if($OPCred=(get-HybridOPCredentials @pltGHOpCred).cred){
-        ReConnect-EX2010 -cred $OPCred -Verbose:($VerbosePreference -eq 'Continue') ; 
-    } else {
-        $smsg = "Unable to resolve get-HybridOPCredentials -TenOrg $($TenOrg) -userrole $($UserRole -join '|') value!"
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        throw "Unable to resolve $($tenorg) `$OPCred value!`nEXIT!"
-        exit ;
-    } ;
+    Reconnect-EX2010 -cred $credtolSID -Verbose:($VerbosePreference -eq 'Continue') ; 
 }
 
 #*------^ rx10tol.ps1 ^------
@@ -3918,19 +3867,7 @@ function rx10tor {
     .EXAMPLE
     rx10tor
     #>
-    [CmdletBinding()] 
-    Param()
-    $Verbose = ($VerbosePreference -eq 'Continue') ;
-    $pltGHOpCred=@{TenOrg="TOR" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
-    if($OPCred=(get-HybridOPCredentials @pltGHOpCred).cred){
-        ReConnect-EX2010 -cred $OPCred -Verbose:($VerbosePreference -eq 'Continue') ; 
-    } else {
-        $smsg = "Unable to resolve get-HybridOPCredentials -TenOrg $($TenOrg) -userrole $($UserRole -join '|') value!"
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        throw "Unable to resolve $($tenorg) `$OPCred value!`nEXIT!"
-        exit ;
-    } ;
+    Reconnect-EX2010 -cred $credTorSID -Verbose:($VerbosePreference -eq 'Continue') ; 
 }
 
 #*------^ rx10tor.ps1 ^------
@@ -3987,5 +3924,31 @@ PARAM() ;
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex2010XO,cx10tor,cx10tol,cx10tor,Disconnect-Ex2010,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,Reconnect-Ex2010XO,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
+Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex2010XO,cx10cmw,cx10tol,cx10tor,Disconnect-Ex2010,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,Reconnect-Ex2010XO,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUYi/w8aizEnc6tqLrKYFvV0dX
+# mv6gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSJ6les
+# hIw0PRkyEsE0Ji/MIEvtrDANBgkqhkiG9w0BAQEFAASBgGCRDbWG7Wt1qqs3iMvA
+# db+5ESHZWmlk3eIScK2q5wxrXMnISSnUgvV9dNNuNzDqpcK11WIH6zEduVaUmvuM
+# OuVxjVJxDDDOUnDg4U/2DT6t/SMS8QG4LFPWNIxB48WeGb9M5r3gAMeJkT1amEo1
+# d1wbhPqgY5mp6a6dzZgMzYCm
+# SIG # End signature block
