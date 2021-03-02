@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.38.0
+Version     : 1.1.40.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1100,6 +1100,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 1:15 PM 3/1/2021 added org-level color-coded console
     * 3:28 PM 2/17/2021 updated to support cross-org, leverages new $XXXMeta.ExRevision, ExViewForest
     * 5:16 PM 10/22/2020 switched to no-loop meta lookup; debugged, fixed 
     * 7:13 AM 7/22/2020 replaced codeblock w get-TenantTag(), flipped ExAdmin fr switch to un-typed
@@ -1279,6 +1280,12 @@ Function Connect-Ex2010 {
         $Global:E10IsDehydrated = $true ;
         write-verbose -verbose:$true "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
     } ;  # PROC-E
+    END {
+        if(($PSFgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSFgColor) -AND ($PSBgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSBgColor)){
+            $Host.UI.RawUI.BackgroundColor = $PSBgColor
+            $Host.UI.RawUI.ForegroundColor = $PSFgColor ; 
+        } ;
+    }
 }
 
 #*------^ Connect-Ex2010.ps1 ^------
@@ -1620,6 +1627,7 @@ Function Disconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,ExchangeOnline
     REVISIONS   :
+    * 1:14 PM 3/1/2021 added color reset
     * 4:13 PM 10/22/2020 added pretest of $Global:*'s before running at remove-module (suppresses errors)
     * 12:23 PM 5/27/2020 updated cbh, moved aliases:Disconnect-EMSR','dx10' win func
     * 10:51 AM 2/24/2020 updated attrib   
@@ -1651,6 +1659,7 @@ Function Disconnect-Ex2010 {
     Get-PSSession | ? { $_.name -eq 'Exchange2010' } | Remove-PSSession -verbose ;
     # kill any broken PSS, self regen's even for L13 leave the original borked and create a new 'Session for implicit remoting module at C:\Users\', toast them, they don't reopen. Same for Ex2010 REMS, identical new PSS, indistinguishable from the L13 regen, except the random tmp_xxxx.psm1 module name. Toast them, it's just a growing stack of broken's
     Disconnect-PssBroken ;
+    [console]::ResetColor()  # reset console colorscheme
 }
 
 #*------^ Disconnect-Ex2010.ps1 ^------

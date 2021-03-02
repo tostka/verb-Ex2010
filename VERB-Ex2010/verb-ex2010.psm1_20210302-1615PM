@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.41.0
+Version     : 1.1.40.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1283,7 +1283,7 @@ Function Connect-Ex2010 {
     END {
         if(($PSFgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSFgColor) -AND ($PSBgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSBgColor)){
             $Host.UI.RawUI.BackgroundColor = $PSBgColor
-            $Host.UI.RawUI.ForegroundColor = $PSFgColor ; 
+            $Host.UI.RawUI.ForegroundColor = $PSForegrnd ; 
         } ;
     }
 }
@@ -4002,8 +4002,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUcr0oaqaHvqO/jpl4sbn040PS
-# J1+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQULFghLXvkRwItf7w1f01/krjc
+# y3OgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4018,9 +4018,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTBpI/i
-# mPCThq6GP3Z6OiHXUCZ1RjANBgkqhkiG9w0BAQEFAASBgAEerolrU9FVmO7CzM7s
-# uEkVKpXmFjk6plvXHJIhZhc+Twp7Nrw5WDWXiRo/sl+ERb3kA8ashIOS78PIRFLA
-# MTdwAtIPYQK5anUisjJ3efboAD3WAekElfSjismS1MQEyV3KtEFjcZ/DfQHaWq8L
-# f9DOf6Q+lRVvl9/2rcgatmhb
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRox+bs
+# 6ZUiwr0Qn8gE94kl4NnLEjANBgkqhkiG9w0BAQEFAASBgJpAEUJNtyY3GchuR8Ub
+# r+NROs+H6vCCy1Ka/2MHFBy6K3sOl+VdRk/VNuCVfso30kLD++qQHvA82ZNzrwBJ
+# t7wZ7FaXTtzyWi3v2qfm6op3uIkedSAk/Zj/tXxZV0x+1UxnYcy8eMgXB0d8H5eB
+# 01G3uE+6eC2dGPRQuC3kGFYY
 # SIG # End signature block

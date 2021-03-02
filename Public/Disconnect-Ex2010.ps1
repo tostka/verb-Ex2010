@@ -17,6 +17,7 @@ Function Disconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,ExchangeOnline
     REVISIONS   :
+    * 1:14 PM 3/1/2021 added color reset
     * 4:13 PM 10/22/2020 added pretest of $Global:*'s before running at remove-module (suppresses errors)
     * 12:23 PM 5/27/2020 updated cbh, moved aliases:Disconnect-EMSR','dx10' win func
     * 10:51 AM 2/24/2020 updated attrib   
@@ -48,6 +49,7 @@ Function Disconnect-Ex2010 {
     Get-PSSession | ? { $_.name -eq 'Exchange2010' } | Remove-PSSession -verbose ;
     # kill any broken PSS, self regen's even for L13 leave the original borked and create a new 'Session for implicit remoting module at C:\Users\', toast them, they don't reopen. Same for Ex2010 REMS, identical new PSS, indistinguishable from the L13 regen, except the random tmp_xxxx.psm1 module name. Toast them, it's just a growing stack of broken's
     Disconnect-PssBroken ;
+    [console]::ResetColor()  # reset console colorscheme
 }
 
 #*------^ Disconnect-Ex2010.ps1 ^------

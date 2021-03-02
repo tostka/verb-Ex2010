@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 1:15 PM 3/1/2021 added org-level color-coded console
     * 3:28 PM 2/17/2021 updated to support cross-org, leverages new $XXXMeta.ExRevision, ExViewForest
     * 5:16 PM 10/22/2020 switched to no-loop meta lookup; debugged, fixed 
     * 7:13 AM 7/22/2020 replaced codeblock w get-TenantTag(), flipped ExAdmin fr switch to un-typed
@@ -196,5 +197,11 @@ Function Connect-Ex2010 {
         $Global:E10IsDehydrated = $true ;
         write-verbose -verbose:$true "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
     } ;  # PROC-E
+    END {
+        if(($PSFgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSFgColor) -AND ($PSBgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSBgColor)){
+            $Host.UI.RawUI.BackgroundColor = $PSBgColor
+            $Host.UI.RawUI.ForegroundColor = $PSFgColor ; 
+        } ;
+    }
 }
 #*------^ Connect-Ex2010.ps1 ^------
