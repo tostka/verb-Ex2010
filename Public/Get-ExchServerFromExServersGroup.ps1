@@ -37,5 +37,6 @@ Function Get-ExchServerFromExServersGroup {
     (Get-ADGroupMember -Identity 'Exchange Servers' -server $DomTORParentfqdn | 
         ? { $_.distinguishedname -match $ServerRegex }).name | 
             get-random | write-output ;
-} ; 
+}
+
 #*------^ Get-ExchServerFromExServersGroup.ps1 ^------

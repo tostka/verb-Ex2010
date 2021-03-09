@@ -1,5 +1,4 @@
-﻿
-#*------v Function Invoke-ExchangeCommand v------
+﻿#*------v Invoke-ExchangeCommand.ps1 v------
 function Invoke-ExchangeCommand{
     <#
     .SYNOPSIS
@@ -315,6 +314,6 @@ function Invoke-ExchangeCommand{
             }
     } ; # PROC-E
     END {    } ; # END-E
-} #*------^ END Function Invoke-ExchangeCommand ^------
+}
 
-
+#*------^ Invoke-ExchangeCommand.ps1 ^------

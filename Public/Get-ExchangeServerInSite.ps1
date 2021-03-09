@@ -97,11 +97,11 @@ Function Get-ExchangeServerInSite {
                 } ; 
             } ;
         }else {
-            write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):MISSING `$siteDN:($($siteDN)) `nOR `$configNC:($($configNC)) values`nABORTING!" ;
+            write-warning  "$((get-date).ToString('HH:mm:ss')):MISSING `$siteDN:($($siteDN)) `nOR `$configNC:($($configNC)) values`nABORTING!" ;
             $false | write-output ;
         } ;
     }else {
-        write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):`$ADSite blank, not authenticated to a domain! ABORTING!" ;
+        write-warning -verbose:$true  "$((get-date).ToString('HH:mm:ss')):`$ADSite blank, not authenticated to a domain! ABORTING!" ;
         $false | write-output ;
     } ;
 }

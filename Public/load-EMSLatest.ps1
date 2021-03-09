@@ -1,4 +1,4 @@
-﻿#*-----v Function load-EMSLatest v-----
+﻿#*------v load-EMSLatest.ps1 v------
 function load-EMSLatest {
   #  #Checks local machine for registred E20[13|10|07] EMS, and then loads the newest one found
   #Returns the string 2013|2010|2007 for reuse for version-specific code
@@ -70,4 +70,6 @@ function load-EMSLatest {
       Exit;
     } # try-E
   }# if-E
-} #*-----^END Function load-EMSLatest ^-----
+}
+
+#*------^ load-EMSLatest.ps1 ^------

@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.43.0
+Version     : 1.1.42.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1287,13 +1287,11 @@ Function Connect-Ex2010 {
         write-host -foregroundcolor darkgray "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
     } ;  # PROC-E
     END {
-        <# borked by psreadline v1/v2 breaking changes
         if(($PSFgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSFgColor) -AND ($PSBgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSBgColor)){
             write-verbose "(setting console colors:$($TenOrg)Meta.PSFgColor:$($PSFgColor),PSBgColor:$($PSBgColor))" ; 
             $Host.UI.RawUI.BackgroundColor = $PSBgColor
             $Host.UI.RawUI.ForegroundColor = $PSFgColor ; 
         } ;
-        #>
     }
 }
 
@@ -4103,8 +4101,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUaHLvV05F3xbvhs2gf+HqOvZQ
-# kvugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUoaWilMICJ/C769iFYprC0Mbw
+# +2ygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4119,9 +4117,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS+D3gp
-# qUKalruIDLbbBI+ESIZ1bDANBgkqhkiG9w0BAQEFAASBgLJhnfoJX6tjPvXjYxAp
-# xvKcA7uafnSbN4dLvhGv0P6/fX8RxnJOlbkKnXqlCHrXVL9hJOMlrQFg1J657Ahq
-# HfoQ7s5Vzm72tnOvjw3/Nw6RN6cHNCyDF8WuUqIqporqH5JGghyQQS2+J6pNLNn8
-# RYzMvECEl7du/uRz2law1NU5
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRsaLaD
+# JWKJt7pm47SppQcd7Sib+TANBgkqhkiG9w0BAQEFAASBgE1iJZrToaXvGEa29Fya
+# RPj4RdBj9GqQVI6+NkTJWpzpEVWFc3VEK/Y/08xKucJhR9lEKwqkqR29uz+cDaKu
+# rz4ANs7dYlTWxOsyLLxIUUQYilOR4HsCY35KOXU4ulaDjutSf2Ys3e1xmgUSYLr3
+# ykaOiQasY9J7Va/IAwdBQIup
 # SIG # End signature block

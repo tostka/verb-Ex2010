@@ -156,7 +156,7 @@ Function Connect-Ex2010XO {
             #$TorMeta.Ex10ServerXO: lynms650.global.ad.toro.com
             # force unresolved to dyn
             if((Get-Variable  -name "$($TenOrg)Meta").value.Ex10ServerXO){
-                write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($TorMeta.Ex10ServerXO))..." ;
+                write-host -foregroundcolor darkgray "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($TorMeta.Ex10ServerXO))..." ;
             } ;
 
             $EMSsplat = @{
@@ -196,7 +196,7 @@ Function Connect-Ex2010XO {
 
             $pltIMod=@{Global = $true ;PassThru = $true;DisableNameChecking = $true ; } ;
             if ($CommandPrefix) {
-                write-verbose -verbose:$true  "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
+                write-host -foregroundcolor white "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
                 $pltIMod.add('Prefix',$CommandPrefix) ;
             } ;
             $pltPSS = [ordered]@{

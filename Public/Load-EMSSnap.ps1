@@ -1,4 +1,4 @@
-﻿#*------v Function Load-EMSSnap v------
+﻿#*------v Load-EMSSnap.ps1 v------
 function Load-EMSSnap {
   <#
     .SYNOPSIS
@@ -90,4 +90,6 @@ function Load-EMSSnap {
         Exit #STOP(debug)|EXIT(close)|Continue(move on in loop cycle) ;
   } ;
 
-} #*------^END Function Load-EMSSnap ^------
+}
+
+#*------^ Load-EMSSnap.ps1 ^------

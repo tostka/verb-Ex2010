@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 11:36 AM 3/5/2021 updated colorcode, subed wv -verbose with just write-verbose, added cred.uname echo
     * 1:15 PM 3/1/2021 added org-level color-coded console
     * 3:28 PM 2/17/2021 updated to support cross-org, leverages new $XXXMeta.ExRevision, ExViewForest
     * 5:16 PM 10/22/2020 switched to no-loop meta lookup; debugged, fixed 
@@ -145,7 +146,7 @@ Function Connect-Ex2010 {
             } ;  
         } ; 
 
-        write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
+        write-host -foregroundcolor darkgray "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
         # splat to open a session - # stock 'PSLanguageMode=Restricted' powershell IIS Webpool
         #$EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = 'Exchange2010' } ;
         $EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = "Exchange$($ExVers)" } ;
@@ -159,7 +160,11 @@ Function Connect-Ex2010 {
           # use variant IIS Webpool
           $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
         }
-        if ($Credential) { $EMSsplat.Add("Credential", $Credential) } ;
+        if ($Credential) {
+             $EMSsplat.Add("Credential", $Credential) 
+             write-verbose "(using cred:$($credential.username))" ; 
+        } ;
+        
         # -Authentication Basic only if specif needed: for Ex configured to connect via IP vs hostname)
         # try catch against and retry into stock if fails
         $error.clear() ;
@@ -179,10 +184,10 @@ Function Connect-Ex2010 {
           } ;
         } ;
 
-        write-verbose -verbose:$true  "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
+        write-verbose "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
 
         if ($CommandPrefix) {
-          write-verbose -verbose:$true  "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
+          write-host -foregroundcolor white "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
           $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -Prefix $CommandPrefix -AllowClobber) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
         } else {
           $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -AllowClobber) -Global -PassThru -DisableNameChecking   ;
@@ -195,13 +200,17 @@ Function Connect-Ex2010 {
         Add-PSTitleBar 'EMS' ;
         # tag E10IsDehydrated 
         $Global:E10IsDehydrated = $true ;
-        write-verbose -verbose:$true "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
+        write-host -foregroundcolor darkgray "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
     } ;  # PROC-E
     END {
+        <# borked by psreadline v1/v2 breaking changes
         if(($PSFgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSFgColor) -AND ($PSBgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSBgColor)){
+            write-verbose "(setting console colors:$($TenOrg)Meta.PSFgColor:$($PSFgColor),PSBgColor:$($PSBgColor))" ; 
             $Host.UI.RawUI.BackgroundColor = $PSBgColor
             $Host.UI.RawUI.ForegroundColor = $PSFgColor ; 
         } ;
+        #>
     }
 }
+
 #*------^ Connect-Ex2010.ps1 ^------
