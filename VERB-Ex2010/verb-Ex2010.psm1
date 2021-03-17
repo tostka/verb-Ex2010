@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.45.0
+Version     : 1.1.46.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1549,19 +1549,19 @@ Function Connect-Ex2010XO {
 #*------^ Connect-Ex2010XO.ps1 ^------
 
 #*------v cx10cmw.ps1 v------
-function cx10tor {
+function cx10cmw {
     <#
     .SYNOPSIS
-    cx10tor - Connect-EX2010 to specified on-prem Exchange
+    cx10cmw - Connect-EX2010 to specified on-prem Exchange
     .DESCRIPTION
     Connect-EX2010 - Connect-EX2010 to specified on-prem Exchange
     .EXAMPLE
-    cx10tor
+    cx10cmw
     #>
     [CmdletBinding()] 
     Param()
     $Verbose = ($VerbosePreference -eq 'Continue') ;
-    $pltGHOpCred=@{TenOrg="TOR" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
+    $pltGHOpCred=@{TenOrg="CMW" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
     if($OPCred=(get-HybridOPCredentials @pltGHOpCred).cred){
         Connect-EX2010 -cred $OPCred -Verbose:($VerbosePreference -eq 'Continue') ; 
     } else {
@@ -4097,14 +4097,14 @@ PARAM() ;
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex2010XO,cx10tor,cx10tol,cx10tor,disable-ForestView,Disconnect-Ex2010,enable-ForestView,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,Reconnect-Ex2010XO,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
+Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex2010XO,cx10cmw,cx10tol,cx10tor,disable-ForestView,Disconnect-Ex2010,enable-ForestView,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,Reconnect-Ex2010XO,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUEGJu9tp7IyXG00m1ZXMDDb9+
-# tQWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUL57QKZltz/oBGUvCtkylVyDs
+# +nigggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4119,9 +4119,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBR22uSJ
-# 5l99nsK2vWKvCgzLfGUwPjANBgkqhkiG9w0BAQEFAASBgLQB2v6UFEcMh6laAkgZ
-# fEt7ASX6nMxtAp/Yf7OKXdbWiEX9RWyrgamiWOW/YMplH9+Vh1ZZzIl4p5QIDZn5
-# 41fXlWZXG2Pc7MnFdoswHCNKWdlKxdKuUPy3hVisZcU4Jc8JEPyBUa1lhQFVO6b/
-# /tBMj+DmS2CGfAvoym7trtcf
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRy/YX3
+# P4qytUXMsJLQurGk7rFr6TANBgkqhkiG9w0BAQEFAASBgKFEjsjfdKlHap+2arcz
+# 41K3dGb1UAB2W8tCy4BEXmi07obAKw3woA+Jtaqv6atOKVGDocdsmmkvOOkh6l5P
+# PRyPdaaAJ5k0lEYHmCu8uhX41Wfr4p/dq4LIQroRK4IjWj2RLccVo0dO6sxIYETC
+# ZuYF7hTsFLn7OfuDkNHzA9Np
 # SIG # End signature block

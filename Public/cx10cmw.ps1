@@ -1,17 +1,17 @@
-#*------v cx10tor.ps1 v------
-function cx10tor {
+#*------v cx10cmw.ps1 v------
+function cx10cmw {
     <#
     .SYNOPSIS
-    cx10tor - Connect-EX2010 to specified on-prem Exchange
+    cx10cmw - Connect-EX2010 to specified on-prem Exchange
     .DESCRIPTION
     Connect-EX2010 - Connect-EX2010 to specified on-prem Exchange
     .EXAMPLE
-    cx10tor
+    cx10cmw
     #>
     [CmdletBinding()] 
     Param()
     $Verbose = ($VerbosePreference -eq 'Continue') ;
-    $pltGHOpCred=@{TenOrg="TOR" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
+    $pltGHOpCred=@{TenOrg="CMW" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
     if($OPCred=(get-HybridOPCredentials @pltGHOpCred).cred){
         Connect-EX2010 -cred $OPCred -Verbose:($VerbosePreference -eq 'Continue') ; 
     } else {
@@ -22,4 +22,4 @@ function cx10tor {
         exit ;
     } ;
 }
-#*------^ cx10tor.ps1 ^------
+#*------^ cx10cmw.ps1 ^------
