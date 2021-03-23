@@ -1,4 +1,4 @@
-# verb-ex2010.psm1
+﻿# verb-ex2010.psm1
 
 
 <#
@@ -1101,7 +1101,6 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
-    * 2:36 PM 3/23/2021 getting away from dyn, random from array in $XXXMeta.Ex10Server, doesn't rely on AD lookups for referrals
     * 10:14 AM 3/23/2021 flipped default $Cred spec, pointed at an OP cred (matching reconnect-ex2010())
     * 11:36 AM 3/5/2021 updated colorcode, subed wv -verbose with just write-verbose, added cred.uname echo
     * 1:15 PM 3/1/2021 added org-level color-coded console
@@ -1212,18 +1211,14 @@ Function Connect-Ex2010 {
     } ;  # BEG-E
     PROCESS{
         $ExchangeServer=$null ; 
-        # flip from dyn lookup to array in Ex10Server, and always use get-random to pick between. Returns a value, even when only a single value
-        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server|get-random ; 
+        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server ; 
         $ExAdmin = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant ; 
         $ExVers = (Get-Variable  -name "$($TenOrg)Meta").value.ExRevision ; 
         $ExVwForest = (Get-Variable  -name "$($TenOrg)Meta").value.ExViewForest ;         
         $ExOPAccessFromToro = (Get-Variable  -name "$($TenOrg)Meta").value.ExOPAccessFromToro
         # force unresolved to dyn 
         if(!$ExchangeServer){
-            #$ExchangeServer = 'dynamic' ; 
-            # getting away from dyn, random from array in Ex10Server
-            throw "Undefined `$ExchangeServer for $($TenOrg) org, and `$$($TenOrg)Meta.Ex10Server property" ; 
-            Exit ; 
+            $ExchangeServer = 'dynamic' ; 
         } ;
         if($ExchangeServer -eq 'dynamic'){
             if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}
@@ -4106,3 +4101,29 @@ PARAM() ;
 
 Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex2010XO,cx10cmw,cx10tol,cx10tor,disable-ForestView,Disconnect-Ex2010,enable-ForestView,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,Reconnect-Ex2010XO,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUhBjFt1envpU8xz6rh2OwBShW
+# JNGgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSkTAZ3
+# 36SukclKk+UYKdHM7bPHOjANBgkqhkiG9w0BAQEFAASBgJQ990ZzD7fQqpf7Lmqk
+# VRsicO4FaoB3noGByB0FtFNo0cRUMOQuenNdIWykAuJDTM6LjXkHTnCvP3aT+VIj
+# dXeRupSu8qR1bd+xvFlKrCCVQg1arL9yzzukPx3YCnyLEujItIeCRw1BfWrZ628S
+# WKe86iSEsJJeXd1XVLcD7DsG
+# SIG # End signature block

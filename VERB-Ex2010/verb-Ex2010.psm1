@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.46.0
+Version     : 1.1.48.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1101,6 +1101,8 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 2:36 PM 3/23/2021 getting away from dyn, random from array in $XXXMeta.Ex10Server, doesn't rely on AD lookups for referrals
+    * 10:14 AM 3/23/2021 flipped default $Cred spec, pointed at an OP cred (matching reconnect-ex2010())
     * 11:36 AM 3/5/2021 updated colorcode, subed wv -verbose with just write-verbose, added cred.uname echo
     * 1:15 PM 3/1/2021 added org-level color-coded console
     * 3:28 PM 2/17/2021 updated to support cross-org, leverages new $XXXMeta.ExRevision, ExViewForest
@@ -1189,7 +1191,7 @@ Function Connect-Ex2010 {
     Param(
         [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
         [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')]$ExAdmin,
-        [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credTORSID
+        [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credOpTORSID
     )  ;
     BEGIN{
         $verbose = ($VerbosePreference -eq "Continue") ; 
@@ -1210,14 +1212,18 @@ Function Connect-Ex2010 {
     } ;  # BEG-E
     PROCESS{
         $ExchangeServer=$null ; 
-        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server ; 
+        # flip from dyn lookup to array in Ex10Server, and always use get-random to pick between. Returns a value, even when only a single value
+        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server|get-random ; 
         $ExAdmin = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant ; 
         $ExVers = (Get-Variable  -name "$($TenOrg)Meta").value.ExRevision ; 
         $ExVwForest = (Get-Variable  -name "$($TenOrg)Meta").value.ExViewForest ;         
         $ExOPAccessFromToro = (Get-Variable  -name "$($TenOrg)Meta").value.ExOPAccessFromToro
         # force unresolved to dyn 
         if(!$ExchangeServer){
-            $ExchangeServer = 'dynamic' ; 
+            #$ExchangeServer = 'dynamic' ; 
+            # getting away from dyn, random from array in Ex10Server
+            throw "Undefined `$ExchangeServer for $($TenOrg) org, and `$$($TenOrg)Meta.Ex10Server property" ; 
+            Exit ; 
         } ;
         if($ExchangeServer -eq 'dynamic'){
             if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}
@@ -3731,6 +3737,7 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 10:14 AM 3/23/2021 fix default $Cred spec, pointed at an OP cred
     * 8:29 AM 11/17/2020 added missing $Credential param 
     * 9:33 AM 5/28/2020 actually added the alias:rx10 
     * 12:20 PM 5/27/2020 updated cbh, moved alias: rx10 win func
@@ -3755,7 +3762,7 @@ Function Reconnect-Ex2010 {
     [Alias('rx10')]
     Param(
         [Parameter(HelpMessage="Credential to use for this connection [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
-        $Credential = $global:credo365TORSID
+        $Credential = $global:credOpTORSID
     )
     if (!$E10Sess) {
       if (!$Credential) {
@@ -4103,8 +4110,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUL57QKZltz/oBGUvCtkylVyDs
-# +nigggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQkwr4FO1eHPgqkcEB4e2YNVf
+# ygmgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4119,9 +4126,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRy/YX3
-# P4qytUXMsJLQurGk7rFr6TANBgkqhkiG9w0BAQEFAASBgKFEjsjfdKlHap+2arcz
-# 41K3dGb1UAB2W8tCy4BEXmi07obAKw3woA+Jtaqv6atOKVGDocdsmmkvOOkh6l5P
-# PRyPdaaAJ5k0lEYHmCu8uhX41Wfr4p/dq4LIQroRK4IjWj2RLccVo0dO6sxIYETC
-# ZuYF7hTsFLn7OfuDkNHzA9Np
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSK3fzh
+# koEL8ksdetLrJn7PZnZILTANBgkqhkiG9w0BAQEFAASBgFA4TbhhisbqiUADLTPN
+# qd8XRU2x0PnzHNz/kiT+2uEEWv6chDu4btN3jxSfcDtXcOjuKnui9WoPtxsIx3Jv
+# Ya+jM85duo0heEH6rNkkfbobSuq6/W019moewTiwvlH3ibiDXvqOU3NKLlZSE4dx
+# wj8dlfSZvLQEjmjTlctlLRRc
 # SIG # End signature block

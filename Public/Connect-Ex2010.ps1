@@ -17,6 +17,8 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 2:36 PM 3/23/2021 getting away from dyn, random from array in $XXXMeta.Ex10Server, doesn't rely on AD lookups for referrals
+    * 10:14 AM 3/23/2021 flipped default $Cred spec, pointed at an OP cred (matching reconnect-ex2010())
     * 11:36 AM 3/5/2021 updated colorcode, subed wv -verbose with just write-verbose, added cred.uname echo
     * 1:15 PM 3/1/2021 added org-level color-coded console
     * 3:28 PM 2/17/2021 updated to support cross-org, leverages new $XXXMeta.ExRevision, ExViewForest
@@ -105,7 +107,7 @@ Function Connect-Ex2010 {
     Param(
         [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
         [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')]$ExAdmin,
-        [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credTORSID
+        [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credOpTORSID
     )  ;
     BEGIN{
         $verbose = ($VerbosePreference -eq "Continue") ; 
@@ -126,14 +128,18 @@ Function Connect-Ex2010 {
     } ;  # BEG-E
     PROCESS{
         $ExchangeServer=$null ; 
-        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server ; 
+        # flip from dyn lookup to array in Ex10Server, and always use get-random to pick between. Returns a value, even when only a single value
+        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server|get-random ; 
         $ExAdmin = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant ; 
         $ExVers = (Get-Variable  -name "$($TenOrg)Meta").value.ExRevision ; 
         $ExVwForest = (Get-Variable  -name "$($TenOrg)Meta").value.ExViewForest ;         
         $ExOPAccessFromToro = (Get-Variable  -name "$($TenOrg)Meta").value.ExOPAccessFromToro
         # force unresolved to dyn 
         if(!$ExchangeServer){
-            $ExchangeServer = 'dynamic' ; 
+            #$ExchangeServer = 'dynamic' ; 
+            # getting away from dyn, random from array in Ex10Server
+            throw "Undefined `$ExchangeServer for $($TenOrg) org, and `$$($TenOrg)Meta.Ex10Server property" ; 
+            Exit ; 
         } ;
         if($ExchangeServer -eq 'dynamic'){
             if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}

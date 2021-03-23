@@ -1,11 +1,11 @@
-# verb-ex2010.psm1
+﻿# verb-ex2010.psm1
 
 
 <#
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.47.0
+Version     : 1.1.46.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1101,8 +1101,6 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
-    * 2:36 PM 3/23/2021 getting away from dyn, random from array in $XXXMeta.Ex10Server, doesn't rely on AD lookups for referrals
-    * 10:14 AM 3/23/2021 flipped default $Cred spec, pointed at an OP cred (matching reconnect-ex2010())
     * 11:36 AM 3/5/2021 updated colorcode, subed wv -verbose with just write-verbose, added cred.uname echo
     * 1:15 PM 3/1/2021 added org-level color-coded console
     * 3:28 PM 2/17/2021 updated to support cross-org, leverages new $XXXMeta.ExRevision, ExViewForest
@@ -1191,7 +1189,7 @@ Function Connect-Ex2010 {
     Param(
         [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
         [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')]$ExAdmin,
-        [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credOpTORSID
+        [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credTORSID
     )  ;
     BEGIN{
         $verbose = ($VerbosePreference -eq "Continue") ; 
@@ -1212,18 +1210,14 @@ Function Connect-Ex2010 {
     } ;  # BEG-E
     PROCESS{
         $ExchangeServer=$null ; 
-        # flip from dyn lookup to array in Ex10Server, and always use get-random to pick between. Returns a value, even when only a single value
-        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server|get-random ; 
+        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server ; 
         $ExAdmin = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant ; 
         $ExVers = (Get-Variable  -name "$($TenOrg)Meta").value.ExRevision ; 
         $ExVwForest = (Get-Variable  -name "$($TenOrg)Meta").value.ExViewForest ;         
         $ExOPAccessFromToro = (Get-Variable  -name "$($TenOrg)Meta").value.ExOPAccessFromToro
         # force unresolved to dyn 
         if(!$ExchangeServer){
-            #$ExchangeServer = 'dynamic' ; 
-            # getting away from dyn, random from array in Ex10Server
-            throw "Undefined `$ExchangeServer for $($TenOrg) org, and `$$($TenOrg)Meta.Ex10Server property" ; 
-            Exit ; 
+            $ExchangeServer = 'dynamic' ; 
         } ;
         if($ExchangeServer -eq 'dynamic'){
             if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}
@@ -3737,7 +3731,6 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
-    * 10:14 AM 3/23/2021 fix default $Cred spec, pointed at an OP cred
     * 8:29 AM 11/17/2020 added missing $Credential param 
     * 9:33 AM 5/28/2020 actually added the alias:rx10 
     * 12:20 PM 5/27/2020 updated cbh, moved alias: rx10 win func
@@ -3762,7 +3755,7 @@ Function Reconnect-Ex2010 {
     [Alias('rx10')]
     Param(
         [Parameter(HelpMessage="Credential to use for this connection [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
-        $Credential = $global:credOpTORSID
+        $Credential = $global:credo365TORSID
     )
     if (!$E10Sess) {
       if (!$Credential) {
@@ -4106,3 +4099,29 @@ PARAM() ;
 
 Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex2010XO,cx10cmw,cx10tol,cx10tor,disable-ForestView,Disconnect-Ex2010,enable-ForestView,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,Reconnect-Ex2010XO,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUL57QKZltz/oBGUvCtkylVyDs
+# +nigggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRy/YX3
+# P4qytUXMsJLQurGk7rFr6TANBgkqhkiG9w0BAQEFAASBgKFEjsjfdKlHap+2arcz
+# 41K3dGb1UAB2W8tCy4BEXmi07obAKw3woA+Jtaqv6atOKVGDocdsmmkvOOkh6l5P
+# PRyPdaaAJ5k0lEYHmCu8uhX41Wfr4p/dq4LIQroRK4IjWj2RLccVo0dO6sxIYETC
+# ZuYF7hTsFLn7OfuDkNHzA9Np
+# SIG # End signature block
