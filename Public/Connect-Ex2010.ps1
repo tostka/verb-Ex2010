@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods ; renamed-standardized splat names (EMSSplat ->pltNSess ; ) ; flipped prefix into splat add ; 
     * 2:36 PM 3/23/2021 getting away from dyn, random from array in $XXXMeta.Ex10Server, doesn't rely on AD lookups for referrals
     * 10:14 AM 3/23/2021 flipped default $Cred spec, pointed at an OP cred (matching reconnect-ex2010())
     * 11:36 AM 3/5/2021 updated colorcode, subed wv -verbose with just write-verbose, added cred.uname echo
@@ -154,20 +155,19 @@ Function Connect-Ex2010 {
 
         write-host -foregroundcolor darkgray "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
         # splat to open a session - # stock 'PSLanguageMode=Restricted' powershell IIS Webpool
-        #$EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = 'Exchange2010' } ;
-        $EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = "Exchange$($ExVers)" } ;
+        $pltNSess = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = "Exchange$($ExVers)" } ;
         if($env:USERDOMAIN -ne (Get-Variable  -name "$($TenOrg)Meta").value.legacyDomain){
             # if not in the $TenOrg legacy domain - running cross-org -  add auth:Kerberos
             <#suppresses: The WinRM client cannot process the request. It cannot determine the content type of the HTTP response f rom the destination computer. The content type is absent or invalid
             #>
-            $EMSsplat.add('Authentication','Kerberos') ;
+            $pltNSess.add('Authentication','Kerberos') ;
         } ; 
         if ($ExAdmin) {
           # use variant IIS Webpool
-          $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
+          $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
         }
         if ($Credential) {
-             $EMSsplat.Add("Credential", $Credential) 
+             $pltNSess.Add("Credential", $Credential) 
              write-verbose "(using cred:$($credential.username))" ; 
         } ;
         
@@ -175,15 +175,15 @@ Function Connect-Ex2010 {
         # try catch against and retry into stock if fails
         $error.clear() ;
         TRY {
-          $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+          $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
         } CATCH {
           $ErrTrapd = $_ ; 
           write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
           if ($ExAdmin) {
             # switch to stock pool and retry
-            $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
-            write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($EMSSplat|out-string).trim())" ;
-            $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+            $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
+            write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
+            $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
           }
           else {
             STOP ;
@@ -191,13 +191,13 @@ Function Connect-Ex2010 {
         } ;
 
         write-verbose "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
-
-        if ($CommandPrefix) {
-          write-host -foregroundcolor white "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
-          $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -Prefix $CommandPrefix -AllowClobber) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
-        } else {
-          $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -AllowClobber) -Global -PassThru -DisableNameChecking   ;
+        $pltIMod=@{Global=$true;PassThru=$true;DisableNameChecking=$true ; verbose=$false} ; # force verbose off, suppress spam in console
+        $pltISess = [ordered]@{Session = $Global:E10Sess ; DisableNameChecking = $true  ; AllowClobber = $true ; ErrorAction = 'Stop' ; Verbose = $false ;} ;
+        if($CommandPrefix){
+            $pltIMod.add('Prefix',$CommandPrefix) ;
+            $pltISess.add('Prefix',$CommandPrefix) ;
         } ;
+        $Global:E10Mod = Import-Module (Import-PSSession @pltISess) @pltIMod   ;
         if($ExVwForest){
             write-host "Setting EMS Session: Set-AdServerSettings -ViewEntireForest `$True" ; 
             Set-AdServerSettings -ViewEntireForest $True ; 

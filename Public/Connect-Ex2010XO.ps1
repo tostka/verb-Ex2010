@@ -21,6 +21,7 @@ Function Connect-Ex2010XO {
     AddedWebsite2:	https://github.com/JeremyTBradshaw
     AddedTwitter2:
     REVISIONS   :
+    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods; flipped import-psess & import-mod to splats (cleaner) ; line-wrapped longer post-filters for legib
     * 8:30 AM 10/22/2020 ren'd $TentantTag -> $TenOrg, swapped looping meta resolve with 1-liner approach ; added AcceptedDom caching to the middle status test (suppress one more get-exoaccepteddomain call if possible), replaced all $Meta.value with the $TenOrg version
     * 12:56 PM 10/15/2020 converted connect-exo to Ex2010, adding onprem validation
     .DESCRIPTION
@@ -137,9 +138,17 @@ Function Connect-Ex2010XO {
         $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
         $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
         # Computername wrong fqdn suffix
-        $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
-        $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
-        $Rems2Closed = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Closed*") } ;
+        #$Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
+        # above is seeing outlook EXO conns as wrong org, exempt them too: .ComputerName -match $rgxExoPsHostName
+        $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+            $_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (
+            ( -not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) ) -AND (
+            -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available') 
+        } ;
+        $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+            $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
+        $Rems2Closed = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+            $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Closed*") } ;
 
         if ($Rems2Broken.count -gt 0){ for ($index = 0 ;$index -lt $Rems2Broken.count ;$index++){Remove-PSSession -session $Rems2Broken[$index]}  };
         if ($Rems2Closed.count -gt 0){for ($index = 0 ;$index -lt $Rems2Closed.count ; $index++){Remove-PSSession -session $Rems2Closed[$index] } } ;
@@ -159,30 +168,30 @@ Function Connect-Ex2010XO {
                 write-host -foregroundcolor darkgray "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($TorMeta.Ex10ServerXO))..." ;
             } ;
 
-            $EMSsplat = @{
+            $pltNSess = @{
                 ConnectionURI = "http://$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10ServerXO)/powershell";
                 ConfigurationName = 'Microsoft.Exchange' ;
                 name = 'Exchange2010' ;
             } ;
             if ((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant) {
               # use variant IIS Webpool
-              $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant)") ;
+              $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/powershell", "/$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant)") ;
             }
-            $EMSsplat.Add("Credential", $Credential); # just use the passed $Credential vari
+            $pltNSess.Add("Credential", $Credential); # just use the passed $Credential vari
             $cMsg = "Connecting to OP Ex20XX ($($credDom))";
             Write-Host $cMsg ;
-            write-verbose "`n$((get-date).ToString('HH:mm:ss')):New-PSSession w`n$(($EMSsplat|out-string).trim())" ;
+            write-verbose "`n$((get-date).ToString('HH:mm:ss')):New-PSSession w`n$(($pltNSess|out-string).trim())" ;
 
             $error.clear() ;
-            TRY { $global:E10Sess = New-PSSession @EMSSplat -ea STOP
+            TRY { $global:E10Sess = New-PSSession @pltNSess -ea STOP
             } CATCH {
                 $ErrTrapd = $_ ;
                 write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
                 if ((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant) {
                   # switch to stock pool and retry
-                  $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant)", "/powershell") ;
-                  write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING VARIANT POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($EMSSplat|out-string).trim())" ;
-                  $global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+                  $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant)", "/powershell") ;
+                  write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING VARIANT POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
+                  $global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
                 } else {
                     STOP ;
                 } ;
@@ -194,21 +203,20 @@ Function Connect-Ex2010XO {
                 Break ;
             } ;
 
-            $pltIMod=@{Global = $true ;PassThru = $true;DisableNameChecking = $true ; } ;
-            if ($CommandPrefix) {
-                write-host -foregroundcolor white "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
-                $pltIMod.add('Prefix',$CommandPrefix) ;
-            } ;
-            $pltPSS = [ordered]@{
+            $pltIMod=@{Global = $true ;PassThru = $true;DisableNameChecking = $true ; verbose=$true ;} ;
+            $pltISess = [ordered]@{
                 Session             = $global:E10Sess ;
                 DisableNameChecking = $true  ;
                 AllowClobber        = $true ;
                 ErrorAction         = 'Stop' ;
+                Verbose             = $false ;
             } ;
-             #-Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
-            # $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -Prefix $CommandPrefix -AllowClobber) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
-
-            write-verbose "`n$((get-date).ToString('HH:mm:ss')):Import-PSSession w`n$(($pltPSS|out-string).trim())`nImport-Module w`n$(($pltIMod|out-string).trim())" ;
+            if ($CommandPrefix) {
+                write-host -foregroundcolor white "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
+                $pltIMod.add('Prefix',$CommandPrefix) ;
+                $pltISess.add('Prefix',$CommandPrefix) ;
+            } ;
+            write-verbose "`n$((get-date).ToString('HH:mm:ss')):Import-PSSession w`n$(($pltISess|out-string).trim())`nImport-Module w`n$(($pltIMod|out-string).trim())" ;
 
             # Verbose:Continue is VERY noisey for module loads. Bracketed suppress:
             if($VerbosePreference = "Continue"){
@@ -217,8 +225,8 @@ Function Connect-Ex2010XO {
                 $verbose = ($VerbosePreference -eq "Continue") ;
             } ;
             Try {
-                $Global:E10Mod = Import-Module (Import-PSSession @pltPSS) @pltIMod  ;
-                #$Global:EOLModule = Import-Module (Import-PSSession @pltPSS) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
+                $Global:E10Mod = Import-Module (Import-PSSession @pltISess) @pltIMod  ;
+                #$Global:EOLModule = Import-Module (Import-PSSession @pltISess) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
             } catch {
                 Write-Warning -Message "Tried but failed to import the EXO PS module.`n`nError message:" ;
                 throw $_ ;

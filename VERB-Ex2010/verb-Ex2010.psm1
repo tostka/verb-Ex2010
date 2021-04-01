@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.48.0
+Version     : 1.1.49.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -73,6 +73,7 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
     # 1:27 PM 4/23/2020 updated loadmod & dynamic logging/exec code
     # 4:28 PM 4/22/2020 updated logging code, to accomodate dynamic locations and $ParentPath
     # 3:37 PM 4/9/2020 works fully on jumpbox, but ignores whatif, renamed $bwhatif -> $whatif (as the b variant was prev set in the same-script, now separate scopes); swapped out CU5 switch, moved settings into infra file, genericized
@@ -322,8 +323,8 @@ function add-MailboxAccessGrant {
                 write-host "GOTCHA!:$($tModName)" ;
             } ;
             $lVers = get-module -name $tModName -ListAvailable -ea 0 ;
-            if($lVers){                 $lVers=($lVers | sort version)[-1];                 try {                     import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking                 }   catch {                      write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking                 } ;
-            } elseif (test-path $tModFile) {                 write-warning "*NO* INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;                 try {import-module -name $tModDFile -force -DisableNameChecking}                 catch {                     write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;                     $tModFile = "$($tModName).ps1" ;                     $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;                     if (Test-Path $sLoad) {                         Write-Verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                         . $sLoad ;                         if ($showdebug) { Write-Verbose "Post $sLoad" };                     } else {                         $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;                         if (Test-Path $sLoad) {                             write-verbose  ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                             . $sLoad ;                             if ($showdebug) { write-verbose  "Post $sLoad" };                         } else {                             Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                             exit;                         } ;                     } ;                 } ;             } ;
+            if($lVers){                 $lVers=($lVers | sort version)[-1];                 try {                     import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking -Verbose:$false                 }   catch {                      write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking -verbose:$false                } ;
+            } elseif (test-path $tModFile) {                 write-warning "*NO* INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;                 try {import-module -name $tModDFile -force -DisableNameChecking -verbose:$false}                 catch {                     write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;                     $tModFile = "$($tModName).ps1" ;                     $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;                     if (Test-Path $sLoad) {                         Write-Verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                         . $sLoad ;                         if ($showdebug) { Write-Verbose "Post $sLoad" };                     } else {                         $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;                         if (Test-Path $sLoad) {                             write-verbose  ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                             . $sLoad ;                             if ($showdebug) { write-verbose  "Post $sLoad" };                         } else {                             Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                             exit;                         } ;                     } ;                 } ;             } ;
             if(!(test-path function:$tModCmdlet)){                 write-warning -verbose:$true  "UNABLE TO VALIDATE PRESENCE OF $tModCmdlet`nfailing through to `$backInclDir .ps1 version" ;                 $sLoad = (join-path -path $backInclDir -childpath "$($tModName).ps1") ;                 if (Test-Path $sLoad) {                     write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                     . $sLoad ;                     if ($showdebug) { Write-Verbose -verbose "Post $sLoad" };                     if(!(test-path function:$tModCmdlet)){                         write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TO CONFIRM `$tModCmdlet:$($tModCmdlet) FOR $($tModName)" ;                     } else {                         write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"                     }                 } else {                     Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                     exit;                 } ;
             } else {                 write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"             } ;
         } ;  # loop-E
@@ -1101,6 +1102,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
     * 2:36 PM 3/23/2021 getting away from dyn, random from array in $XXXMeta.Ex10Server, doesn't rely on AD lookups for referrals
     * 10:14 AM 3/23/2021 flipped default $Cred spec, pointed at an OP cred (matching reconnect-ex2010())
     * 11:36 AM 3/5/2021 updated colorcode, subed wv -verbose with just write-verbose, added cred.uname echo
@@ -1238,20 +1240,19 @@ Function Connect-Ex2010 {
 
         write-host -foregroundcolor darkgray "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
         # splat to open a session - # stock 'PSLanguageMode=Restricted' powershell IIS Webpool
-        #$EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = 'Exchange2010' } ;
-        $EMSsplat = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = "Exchange$($ExVers)" } ;
+        $pltNSess = @{ConnectionURI = "http://$ExchangeServer/powershell"; ConfigurationName = 'Microsoft.Exchange' ; name = "Exchange$($ExVers)" } ;
         if($env:USERDOMAIN -ne (Get-Variable  -name "$($TenOrg)Meta").value.legacyDomain){
             # if not in the $TenOrg legacy domain - running cross-org -  add auth:Kerberos
             <#suppresses: The WinRM client cannot process the request. It cannot determine the content type of the HTTP response f rom the destination computer. The content type is absent or invalid
             #>
-            $EMSsplat.add('Authentication','Kerberos') ;
+            $pltNSess.add('Authentication','Kerberos') ;
         } ; 
         if ($ExAdmin) {
           # use variant IIS Webpool
-          $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
+          $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
         }
         if ($Credential) {
-             $EMSsplat.Add("Credential", $Credential) 
+             $pltNSess.Add("Credential", $Credential) 
              write-verbose "(using cred:$($credential.username))" ; 
         } ;
         
@@ -1259,15 +1260,15 @@ Function Connect-Ex2010 {
         # try catch against and retry into stock if fails
         $error.clear() ;
         TRY {
-          $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+          $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
         } CATCH {
           $ErrTrapd = $_ ; 
           write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
           if ($ExAdmin) {
             # switch to stock pool and retry
-            $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
-            write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($EMSSplat|out-string).trim())" ;
-            $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+            $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
+            write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
+            $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
           }
           else {
             STOP ;
@@ -1275,13 +1276,13 @@ Function Connect-Ex2010 {
         } ;
 
         write-verbose "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
-
-        if ($CommandPrefix) {
-          write-host -foregroundcolor white "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
-          $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -Prefix $CommandPrefix -AllowClobber) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
-        } else {
-          $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -AllowClobber) -Global -PassThru -DisableNameChecking   ;
+        $pltIMod=@{Global=$true;PassThru=$true;DisableNameChecking=$true ; verbose=$false} ; # force verbose off, suppress spam in console
+        $pltISess = [ordered]@{Session = $Global:E10Sess ; DisableNameChecking = $true  ; AllowClobber = $true ; ErrorAction = 'Stop' ; Verbose = $false ;} ;
+        if($CommandPrefix){
+            $pltIMod.add('Prefix',$CommandPrefix) ;
+            $pltISess.add('Prefix',$CommandPrefix) ;
         } ;
+        $Global:E10Mod = Import-Module (Import-PSSession @pltISess) @pltIMod   ;
         if($ExVwForest){
             write-host "Setting EMS Session: Set-AdServerSettings -ViewEntireForest `$True" ; 
             Set-AdServerSettings -ViewEntireForest $True ; 
@@ -1328,6 +1329,7 @@ Function Connect-Ex2010XO {
     AddedWebsite2:	https://github.com/JeremyTBradshaw
     AddedTwitter2:
     REVISIONS   :
+    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods; flipped import-psess & import-mod to splats (cleaner)
     * 8:30 AM 10/22/2020 ren'd $TentantTag -> $TenOrg, swapped looping meta resolve with 1-liner approach ; added AcceptedDom caching to the middle status test (suppress one more get-exoaccepteddomain call if possible), replaced all $Meta.value with the $TenOrg version
     * 12:56 PM 10/15/2020 converted connect-exo to Ex2010, adding onprem validation
     .DESCRIPTION
@@ -1444,9 +1446,17 @@ Function Connect-Ex2010XO {
         $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
         $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
         # Computername wrong fqdn suffix
-        $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
-        $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
-        $Rems2Closed = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Closed*") } ;
+        #$Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
+        # above is seeing outlook EXO conns as wrong org, exempt them too: .ComputerName -match $rgxExoPsHostName
+        $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+            $_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (
+            ( -not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) ) -AND (
+            -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available') 
+        } ;
+        $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+            $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
+        $Rems2Closed = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+            $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Closed*") } ;
 
         if ($Rems2Broken.count -gt 0){ for ($index = 0 ;$index -lt $Rems2Broken.count ;$index++){Remove-PSSession -session $Rems2Broken[$index]}  };
         if ($Rems2Closed.count -gt 0){for ($index = 0 ;$index -lt $Rems2Closed.count ; $index++){Remove-PSSession -session $Rems2Closed[$index] } } ;
@@ -1466,30 +1476,30 @@ Function Connect-Ex2010XO {
                 write-host -foregroundcolor darkgray "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($TorMeta.Ex10ServerXO))..." ;
             } ;
 
-            $EMSsplat = @{
+            $pltNSess = @{
                 ConnectionURI = "http://$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10ServerXO)/powershell";
                 ConfigurationName = 'Microsoft.Exchange' ;
                 name = 'Exchange2010' ;
             } ;
             if ((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant) {
               # use variant IIS Webpool
-              $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/powershell", "/$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant)") ;
+              $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/powershell", "/$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant)") ;
             }
-            $EMSsplat.Add("Credential", $Credential); # just use the passed $Credential vari
+            $pltNSess.Add("Credential", $Credential); # just use the passed $Credential vari
             $cMsg = "Connecting to OP Ex20XX ($($credDom))";
             Write-Host $cMsg ;
-            write-verbose "`n$((get-date).ToString('HH:mm:ss')):New-PSSession w`n$(($EMSsplat|out-string).trim())" ;
+            write-verbose "`n$((get-date).ToString('HH:mm:ss')):New-PSSession w`n$(($pltNSess|out-string).trim())" ;
 
             $error.clear() ;
-            TRY { $global:E10Sess = New-PSSession @EMSSplat -ea STOP
+            TRY { $global:E10Sess = New-PSSession @pltNSess -ea STOP
             } CATCH {
                 $ErrTrapd = $_ ;
                 write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
                 if ((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant) {
                   # switch to stock pool and retry
-                  $EMSsplat.ConnectionURI = $EMSsplat.ConnectionURI.replace("/$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant)", "/powershell") ;
-                  write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING VARIANT POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($EMSSplat|out-string).trim())" ;
-                  $global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
+                  $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant)", "/powershell") ;
+                  write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING VARIANT POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
+                  $global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
                 } else {
                     STOP ;
                 } ;
@@ -1501,21 +1511,20 @@ Function Connect-Ex2010XO {
                 Break ;
             } ;
 
-            $pltIMod=@{Global = $true ;PassThru = $true;DisableNameChecking = $true ; } ;
-            if ($CommandPrefix) {
-                write-host -foregroundcolor white "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
-                $pltIMod.add('Prefix',$CommandPrefix) ;
-            } ;
-            $pltPSS = [ordered]@{
+            $pltIMod=@{Global = $true ;PassThru = $true;DisableNameChecking = $true ; verbose=$true ;} ;
+            $pltISess = [ordered]@{
                 Session             = $global:E10Sess ;
                 DisableNameChecking = $true  ;
                 AllowClobber        = $true ;
                 ErrorAction         = 'Stop' ;
+                Verbose             = $false ;
             } ;
-             #-Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
-            # $Global:E10Mod = Import-Module (Import-PSSession $Global:E10Sess -DisableNameChecking -Prefix $CommandPrefix -AllowClobber) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
-
-            write-verbose "`n$((get-date).ToString('HH:mm:ss')):Import-PSSession w`n$(($pltPSS|out-string).trim())`nImport-Module w`n$(($pltIMod|out-string).trim())" ;
+            if ($CommandPrefix) {
+                write-host -foregroundcolor white "$((get-date).ToString("HH:mm:ss")):Note: Prefixing this Mod's Cmdlets as [verb]-$($CommandPrefix)[noun]" ;
+                $pltIMod.add('Prefix',$CommandPrefix) ;
+                $pltISess.add('Prefix',$CommandPrefix) ;
+            } ;
+            write-verbose "`n$((get-date).ToString('HH:mm:ss')):Import-PSSession w`n$(($pltISess|out-string).trim())`nImport-Module w`n$(($pltIMod|out-string).trim())" ;
 
             # Verbose:Continue is VERY noisey for module loads. Bracketed suppress:
             if($VerbosePreference = "Continue"){
@@ -1524,8 +1533,8 @@ Function Connect-Ex2010XO {
                 $verbose = ($VerbosePreference -eq "Continue") ;
             } ;
             Try {
-                $Global:E10Mod = Import-Module (Import-PSSession @pltPSS) @pltIMod  ;
-                #$Global:EOLModule = Import-Module (Import-PSSession @pltPSS) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
+                $Global:E10Mod = Import-Module (Import-PSSession @pltISess) @pltIMod  ;
+                #$Global:EOLModule = Import-Module (Import-PSSession @pltISess) -Global -Prefix $CommandPrefix -PassThru -DisableNameChecking   ;
             } catch {
                 Write-Warning -Message "Tried but failed to import the EXO PS module.`n`nError message:" ;
                 throw $_ ;
@@ -2331,6 +2340,7 @@ function Load-EMSSnap {
     Twitter:	http://twitter.com/tostka
 
     REVISIONS   :
+    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods/add-Pssnapins
     * 6:59 PM 1/15/2020 cleanup
     vers: 9:39 AM 8/12/2015: retool into generic switched version to support both modules & snappins with same basic code ; building a stock EMS version (vs the fancier load-EMSSnapLatest)
     vers: 10:43 AM 1/14/2015 fixed return & syntax expl to true/false
@@ -2390,10 +2400,10 @@ function Load-EMSSnap {
         #
         switch ($PlugStyle) {
           "Module" {
-            Import-Module $PlugName -ErrorAction Stop ; write-output $TRUE;
+            Import-Module $PlugName -ErrorAction Stop -Verbose:$false; write-output $TRUE ;
           }
           "Snapin" {
-            Add-PSSnapin $PlugName -ErrorAction Stop ; write-output $TRUE
+            Add-PSSnapin $PlugName -ErrorAction Stop -Verbose:$false; write-output $TRUE
           }
         } # switch-E
       }
@@ -2436,6 +2446,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
     # 1:29 PM 4/23/2020 updated dynpath & logging, unwrapped loadmod, 
     # 4:28 PM 4/22/2020 updated logging code, to accomodate dynamic locations and $ParentPath
     # 4:36 PM 4/8/2020 works fully on jumpbox, but ignores whatif, renamed $bwhatif -> $whatif (as the b variant was prev set in the same-script, now separate scopes); swapped out CU5 switch, moved settings into infra file, genericized
@@ -2704,8 +2715,8 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 write-host "GOTCHA!:$($tModName)" ;
             } ;
             $lVers = get-module -name $tModName -ListAvailable -ea 0 ;
-            if($lVers){                 $lVers=($lVers | sort version)[-1];                 try {                     import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking                 }   catch {                      write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking                 } ;
-            } elseif (test-path $tModFile) {                 write-warning "*NO* INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;                 try {import-module -name $tModDFile -force -DisableNameChecking}                 catch {                     write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;                     $tModFile = "$($tModName).ps1" ;                     $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;                     if (Test-Path $sLoad) {                         write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                         . $sLoad ;                         if ($showdebug) { write-verbose "Post $sLoad" };                     } else {                         $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;                         if (Test-Path $sLoad) {                             write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                             . $sLoad ;                             if ($showdebug) { write-verbose "Post $sLoad" };                         } else {                             Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                             exit;                         } ;                     } ;                 } ;             } ;
+            if($lVers){                 $lVers=($lVers | sort version)[-1];                 try {                     import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking -verbose:$false                }   catch {                      write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking -verbose:$false                } ;
+            } elseif (test-path $tModFile) {                 write-warning "*NO* INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;                 try {import-module -name $tModDFile -force -DisableNameChecking -verbose:$false}                 catch {                     write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;                     $tModFile = "$($tModName).ps1" ;                     $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;                     if (Test-Path $sLoad) {                         write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                         . $sLoad ;                         if ($showdebug) { write-verbose "Post $sLoad" };                     } else {                         $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;                         if (Test-Path $sLoad) {                             write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                             . $sLoad ;                             if ($showdebug) { write-verbose "Post $sLoad" };                         } else {                             Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                             exit;                         } ;                     } ;                 } ;             } ;
             if(!(test-path function:$tModCmdlet)){                 write-warning -verbose:$true  "UNABLE TO VALIDATE PRESENCE OF $tModCmdlet`nfailing through to `$backInclDir .ps1 version" ;                 $sLoad = (join-path -path $backInclDir -childpath "$($tModName).ps1") ;                 if (Test-Path $sLoad) {                     write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                     . $sLoad ;                     if ($showdebug) { write-verbose "Post $sLoad" };                     if(!(test-path function:$tModCmdlet)){                         write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TO CONFIRM `$tModCmdlet:$($tModCmdlet) FOR $($tModName)" ;                     } else {                         write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"                     }                 } else {                     Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                     exit;                 } ;
             } else {                 write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"             } ;
         } ;  # loop-E
@@ -3737,6 +3748,7 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 1:56 PM 3/31/2021 rewrote to dyn detect pss, rather than reading out of date vari
     * 10:14 AM 3/23/2021 fix default $Cred spec, pointed at an OP cred
     * 8:29 AM 11/17/2020 added missing $Credential param 
     * 9:33 AM 5/28/2020 actually added the alias:rx10 
@@ -3762,25 +3774,82 @@ Function Reconnect-Ex2010 {
     [Alias('rx10')]
     Param(
         [Parameter(HelpMessage="Credential to use for this connection [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
-        $Credential = $global:credOpTORSID
+        $Credential = $global:credOpTORSID 
     )
-    if (!$E10Sess) {
-      if (!$Credential) {
-        Connect-Ex2010
-      }
-      else {
-        Connect-Ex2010 -Credential:$($Credential) ;
-      } ;
-    }
-  elseif ($E10Sess.state -ne 'Opened' -OR $E10Sess.Availability -ne 'Available' ) {
-    Disconnect-Ex2010 ; Start-Sleep -S 3;
-    if (!$Credential) {
-      Connect-Ex2010
-    }
-    else {
-      Connect-Ex2010 -Credential:$($Credential) ;
+    # checking stat on canned copy of hist sess, says nothing about current, possibly timed out, check them manually
+    $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
+    $TenOrg = get-TenantTag -Credential $Credential ;
+
+    # back the TenOrg out of the Credential
+    $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
+    # Computername wrong fqdn suffix
+    #$Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
+    # above is seeing outlook EXO conns as wrong org, exempt them too: .ComputerName -match $rgxExoPsHostName
+    $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+        $_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (
+        ( -not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) ) -AND (
+        -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available') 
     } ;
-  } ;
+    $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+        $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
+    $Rems2Closed = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+        $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Closed*") } ;
+    if ($Rems2Broken.count -gt 0){ for ($index = 0 ;$index -lt $Rems2Broken.count ;$index++){Remove-PSSession -session $Rems2Broken[$index]}  };
+    if ($Rems2Closed.count -gt 0){for ($index = 0 ;$index -lt $Rems2Closed.count ; $index++){Remove-PSSession -session $Rems2Closed[$index] } } ;
+    if ($Rems2WrongOrg.count -gt 0){for ($index = 0 ;$index -lt $Rems2WrongOrg.count ; $index++){Remove-PSSession -session $Rems2WrongOrg[$index] } } ;
+    if(!$E10Sess){
+        if (!$Credential) {
+            Connect-Ex2010
+        } else {
+            Connect-Ex2010 -Credential:$($Credential) ;
+        } ;
+    } elseif($tSess = get-pssession -id $e10sess.id -ea 0 |?{$_.computername -eq $e10sess.computername -ANd $_.name -eq $e10sess.name}){
+        # matches historical session
+        if( $tSess | where-object { ($_.State -eq "Opened") -AND ($_.Availability -eq 'Available') } ){
+            $bExistingREms= $true ;
+        } else {
+            $bExistingREms= $false ;
+        } ;
+    } else { 
+        # doesn't match histo
+        $bExistingREms= $false ;
+    } ; 
+    $propsPss =  'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ; 
+    if($bExistingREms){
+        $smsg = "existing connection Open/Available:`n$(($tSess| ft -auto $propsPss |out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    } else { 
+        $smsg = "(resetting any existing EX10 connection and re-establishing)" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        Disconnect-Ex2010 ; Start-Sleep -S 3;
+        if (!$Credential) {
+            Connect-Ex2010 ;
+        } else {
+            Connect-Ex2010 -Credential:$($Credential) ;
+        } ;
+    } ; 
+
+    <#if (!$E10Sess) {
+        if (!$Credential) {
+        Connect-Ex2010
+        }
+        else {
+        Connect-Ex2010 -Credential:$($Credential) ;
+        } ;
+    }
+    elseif ($E10Sess.state -ne 'Opened' -OR $E10Sess.Availability -ne 'Available' ) {
+        Disconnect-Ex2010 ; Start-Sleep -S 3;
+        if (!$Credential) {
+          Connect-Ex2010
+        }
+        else {
+          Connect-Ex2010 -Credential:$($Credential) ;
+        } ;
+    } ;
+    #>
+
 }
 
 #*------^ Reconnect-Ex2010.ps1 ^------
@@ -3797,6 +3866,7 @@ Function Reconnect-Ex2010XO {
     Based on original function Author: ExactMike Perficient, Global Knowl... (Partner)
     Website:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
     REVISIONS   :
+    * 1:57 PM 3/31/2021 wrapped long lines for vis
     * 8:30 AM 10/22/2020 ren'd $TentantTag -> $TenOrg, swapped looping meta resolve with 1-liner approach ; added AcceptedDom caching to the middle status test (suppress one more get-exoaccepteddomain call if possible), replaced all $Meta.value with the $TenOrg version
     * 1:19 PM 10/15/2020 converted connect-exo to Ex2010, adding onprem validation
     .DESCRIPTION
@@ -3917,9 +3987,17 @@ Function Reconnect-Ex2010XO {
         $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
         $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
         # Computername wrong fqdn suffix
-        $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
-        $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
-        $Rems2Closed = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Closed*") } ;
+        #$Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
+        # above is seeing outlook EXO conns as wrong org, exempt them too: .ComputerName -match $rgxExoPsHostName
+        $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+            $_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (
+            ( -not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) ) -AND (
+            -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available') 
+        } ;
+        $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+                $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
+        $Rems2Closed = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+                $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Closed*") } ;
 
         write-verbose "(Removing $($Rems2Broken.count) Broken sessions)" ;
         if ($Rems2Broken.count -gt 0){ for ($index = 0 ;$index -lt $Rems2Broken.count ;$index++){Remove-PSSession -session $Rems2Broken[$index]}  };
@@ -4110,8 +4188,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQkwr4FO1eHPgqkcEB4e2YNVf
-# ygmgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUXQNsXCeiw7C87WUSmZ/XnSea
+# nXagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4126,9 +4204,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSK3fzh
-# koEL8ksdetLrJn7PZnZILTANBgkqhkiG9w0BAQEFAASBgFA4TbhhisbqiUADLTPN
-# qd8XRU2x0PnzHNz/kiT+2uEEWv6chDu4btN3jxSfcDtXcOjuKnui9WoPtxsIx3Jv
-# Ya+jM85duo0heEH6rNkkfbobSuq6/W019moewTiwvlH3ibiDXvqOU3NKLlZSE4dx
-# wj8dlfSZvLQEjmjTlctlLRRc
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQKIsbr
+# JUQd36Sd2mEwAO03BveVcTANBgkqhkiG9w0BAQEFAASBgKk41MKzkAG4IAPB0h4G
+# K9D5/RBRQNtDAkfbanQZQcFpE+C4CzBSBqLTgj+sSTAVS6MbHYCPgpZDoECobYsF
+# VjYPQDUoUZ27BJT7VO/x8Rqf+hMOzGCoO0Clc7pTBCUMOYVqiftPqn6ie3kfHR+y
+# yBeY+sZPJbrotKgdh9VNTSFZ
 # SIG # End signature block

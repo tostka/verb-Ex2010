@@ -17,6 +17,7 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 1:56 PM 3/31/2021 rewrote to dyn detect pss, rather than reading out of date vari
     * 10:14 AM 3/23/2021 fix default $Cred spec, pointed at an OP cred
     * 8:29 AM 11/17/2020 added missing $Credential param 
     * 9:33 AM 5/28/2020 actually added the alias:rx10 
@@ -42,25 +43,82 @@ Function Reconnect-Ex2010 {
     [Alias('rx10')]
     Param(
         [Parameter(HelpMessage="Credential to use for this connection [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
-        $Credential = $global:credOpTORSID
+        $Credential = $global:credOpTORSID 
     )
-    if (!$E10Sess) {
-      if (!$Credential) {
-        Connect-Ex2010
-      }
-      else {
-        Connect-Ex2010 -Credential:$($Credential) ;
-      } ;
-    }
-  elseif ($E10Sess.state -ne 'Opened' -OR $E10Sess.Availability -ne 'Available' ) {
-    Disconnect-Ex2010 ; Start-Sleep -S 3;
-    if (!$Credential) {
-      Connect-Ex2010
-    }
-    else {
-      Connect-Ex2010 -Credential:$($Credential) ;
+    # checking stat on canned copy of hist sess, says nothing about current, possibly timed out, check them manually
+    $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
+    $TenOrg = get-TenantTag -Credential $Credential ;
+
+    # back the TenOrg out of the Credential
+    $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
+    # Computername wrong fqdn suffix
+    #$Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
+    # above is seeing outlook EXO conns as wrong org, exempt them too: .ComputerName -match $rgxExoPsHostName
+    $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+        $_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (
+        ( -not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) ) -AND (
+        -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available') 
     } ;
-  } ;
+    $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+        $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
+    $Rems2Closed = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
+        $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Closed*") } ;
+    if ($Rems2Broken.count -gt 0){ for ($index = 0 ;$index -lt $Rems2Broken.count ;$index++){Remove-PSSession -session $Rems2Broken[$index]}  };
+    if ($Rems2Closed.count -gt 0){for ($index = 0 ;$index -lt $Rems2Closed.count ; $index++){Remove-PSSession -session $Rems2Closed[$index] } } ;
+    if ($Rems2WrongOrg.count -gt 0){for ($index = 0 ;$index -lt $Rems2WrongOrg.count ; $index++){Remove-PSSession -session $Rems2WrongOrg[$index] } } ;
+    if(!$E10Sess){
+        if (!$Credential) {
+            Connect-Ex2010
+        } else {
+            Connect-Ex2010 -Credential:$($Credential) ;
+        } ;
+    } elseif($tSess = get-pssession -id $e10sess.id -ea 0 |?{$_.computername -eq $e10sess.computername -ANd $_.name -eq $e10sess.name}){
+        # matches historical session
+        if( $tSess | where-object { ($_.State -eq "Opened") -AND ($_.Availability -eq 'Available') } ){
+            $bExistingREms= $true ;
+        } else {
+            $bExistingREms= $false ;
+        } ;
+    } else { 
+        # doesn't match histo
+        $bExistingREms= $false ;
+    } ; 
+    $propsPss =  'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ; 
+    if($bExistingREms){
+        $smsg = "existing connection Open/Available:`n$(($tSess| ft -auto $propsPss |out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    } else { 
+        $smsg = "(resetting any existing EX10 connection and re-establishing)" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        Disconnect-Ex2010 ; Start-Sleep -S 3;
+        if (!$Credential) {
+            Connect-Ex2010 ;
+        } else {
+            Connect-Ex2010 -Credential:$($Credential) ;
+        } ;
+    } ; 
+
+    <#if (!$E10Sess) {
+        if (!$Credential) {
+        Connect-Ex2010
+        }
+        else {
+        Connect-Ex2010 -Credential:$($Credential) ;
+        } ;
+    }
+    elseif ($E10Sess.state -ne 'Opened' -OR $E10Sess.Availability -ne 'Available' ) {
+        Disconnect-Ex2010 ; Start-Sleep -S 3;
+        if (!$Credential) {
+          Connect-Ex2010
+        }
+        else {
+          Connect-Ex2010 -Credential:$($Credential) ;
+        } ;
+    } ;
+    #>
+
 }
 
 #*------^ Reconnect-Ex2010.ps1 ^------
