@@ -9,6 +9,7 @@ function rx10tor {
     rx10tor
     #>
     [CmdletBinding()] 
+    [Alias('rxOPtor')]
     Param()
     $Verbose = ($VerbosePreference -eq 'Continue') ;
     $pltGHOpCred=@{TenOrg="TOR" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;

@@ -15,6 +15,7 @@ Copyright   : (c) 2020 Todd Kadrie
 Github      : https://github.com/tostka/verb-XXX
 Tags        : Powershell
 REVISIONS
+* 10:53 AM 4/2/2021 typo fix
 * 10:07 AM 10/26/2020 added CBH
 .DESCRIPTION
 toggle-ForestView.ps1 - Toggle Exchange onprem AD ViewEntireForest setting (permits org-wide object access, wo use of proper explicit -domaincontroller sub.domain.com)
@@ -37,7 +38,7 @@ PARAM() ;
               write-host "`a"
               if (get-command -name set-AdServerSettings -ea 0) { set-AdServerSettings -ViewEntireForest $TRUE } ;
         } else {
-          write-warning "Disableing WholeForest"
+          write-warning "Disabling WholeForest"
           write-host "`a"
           set-AdServerSettings -ViewEntireForest $FALSE ;
         } ;

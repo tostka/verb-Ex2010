@@ -17,6 +17,7 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 10:52 AM 4/2/2021 updated cbh
     * 1:56 PM 3/31/2021 rewrote to dyn detect pss, rather than reading out of date vari
     * 10:14 AM 3/23/2021 fix default $Cred spec, pointed at an OP cred
     * 8:29 AM 11/17/2020 added missing $Credential param 
@@ -47,13 +48,10 @@ Function Reconnect-Ex2010 {
     )
     # checking stat on canned copy of hist sess, says nothing about current, possibly timed out, check them manually
     $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
+    # back the TenOrg out of the Credential
     $TenOrg = get-TenantTag -Credential $Credential ;
 
-    # back the TenOrg out of the Credential
     $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
-    # Computername wrong fqdn suffix
-    #$Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
-    # above is seeing outlook EXO conns as wrong org, exempt them too: .ComputerName -match $rgxExoPsHostName
     $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
         $_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (
         ( -not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) ) -AND (
@@ -99,26 +97,6 @@ Function Reconnect-Ex2010 {
             Connect-Ex2010 -Credential:$($Credential) ;
         } ;
     } ; 
-
-    <#if (!$E10Sess) {
-        if (!$Credential) {
-        Connect-Ex2010
-        }
-        else {
-        Connect-Ex2010 -Credential:$($Credential) ;
-        } ;
-    }
-    elseif ($E10Sess.state -ne 'Opened' -OR $E10Sess.Availability -ne 'Available' ) {
-        Disconnect-Ex2010 ; Start-Sleep -S 3;
-        if (!$Credential) {
-          Connect-Ex2010
-        }
-        else {
-          Connect-Ex2010 -Credential:$($Credential) ;
-        } ;
-    } ;
-    #>
-
 }
 
 #*------^ Reconnect-Ex2010.ps1 ^------

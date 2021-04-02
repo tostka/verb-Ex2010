@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.49.0
+Version     : 1.1.51.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1102,7 +1102,8 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
-    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
+    * 12:06 PM 4/2/2021 added alias cxOP ; added explicit echo on import-session|module, removed redundant catch block; added trycatch around import-sess|mod ; added recStatus support
+    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods ; renamed-standardized splat names (EMSSplat ->pltNSess ; ) ; flipped prefix into splat add ; 
     * 2:36 PM 3/23/2021 getting away from dyn, random from array in $XXXMeta.Ex10Server, doesn't rely on AD lookups for referrals
     * 10:14 AM 3/23/2021 flipped default $Cred spec, pointed at an OP cred (matching reconnect-ex2010())
     * 11:36 AM 3/5/2021 updated colorcode, subed wv -verbose with just write-verbose, added cred.uname echo
@@ -1189,7 +1190,7 @@ Function Connect-Ex2010 {
     https://github.com/tostka/verb-Ex2010/
     #>
     [CmdletBinding()]
-    [Alias('Add-EMSRemote','cx10')]
+    [Alias('Add-EMSRemote','cx10','cxOP')]
     Param(
         [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
         [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')]$ExAdmin,
@@ -1260,19 +1261,23 @@ Function Connect-Ex2010 {
         # try catch against and retry into stock if fails
         $error.clear() ;
         TRY {
-          $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
-        } CATCH {
-          $ErrTrapd = $_ ; 
-          write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
-          if ($ExAdmin) {
-            # switch to stock pool and retry
-            $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
-            write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
             $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
-          }
-          else {
-            STOP ;
-          } ;
+        } CATCH {
+            $ErrTrapd = $_ ; 
+            write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+            #-=-record a STATUSWARN=-=-=-=-=-=-=
+            $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+            if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+            #-=-=-=-=-=-=-=-=
+            if ($ExAdmin) {
+              # switch to stock pool and retry
+              $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
+              write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
+              $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
+            } else {
+                BREAK ;
+            } ;
         } ;
 
         write-verbose "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
@@ -1282,11 +1287,25 @@ Function Connect-Ex2010 {
             $pltIMod.add('Prefix',$CommandPrefix) ;
             $pltISess.add('Prefix',$CommandPrefix) ;
         } ;
-        $Global:E10Mod = Import-Module (Import-PSSession @pltISess) @pltIMod   ;
-        if($ExVwForest){
-            write-host "Setting EMS Session: Set-AdServerSettings -ViewEntireForest `$True" ; 
-            Set-AdServerSettings -ViewEntireForest $True ; 
-        } ; 
+        $smsg = "$((get-date).ToString('HH:mm:ss')):Import-PSSession  w`n$(($pltISess|out-string).trim())`nImport-Module w`n$(($pltIMod|out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $error.clear() ;
+        TRY {
+            $Global:E10Mod = Import-Module (Import-PSSession @pltISess) @pltIMod   ;
+            if($ExVwForest){
+                write-host "Setting EMS Session: Set-AdServerSettings -ViewEntireForest `$True" ; 
+                Set-AdServerSettings -ViewEntireForest $True ; 
+            } ; 
+        } CATCH {
+            $ErrTrapd = $_ ; 
+            write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+            #-=-record a STATUSERROR=-=-=-=-=-=-=
+            $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+            if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+            #-=-=-=-=-=-=-=-=
+        } ;
         # 7:54 AM 11/1/2017 add titlebar tag
         Add-PSTitleBar 'EMS' ;
         # tag E10IsDehydrated 
@@ -1329,7 +1348,7 @@ Function Connect-Ex2010XO {
     AddedWebsite2:	https://github.com/JeremyTBradshaw
     AddedTwitter2:
     REVISIONS   :
-    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods; flipped import-psess & import-mod to splats (cleaner)
+    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods; flipped import-psess & import-mod to splats (cleaner) ; line-wrapped longer post-filters for legib
     * 8:30 AM 10/22/2020 ren'd $TentantTag -> $TenOrg, swapped looping meta resolve with 1-liner approach ; added AcceptedDom caching to the middle status test (suppress one more get-exoaccepteddomain call if possible), replaced all $Meta.value with the $TenOrg version
     * 12:56 PM 10/15/2020 converted connect-exo to Ex2010, adding onprem validation
     .DESCRIPTION
@@ -1574,6 +1593,7 @@ function cx10cmw {
     cx10cmw
     #>
     [CmdletBinding()] 
+    [Alias('cxOPcmw')]
     Param()
     $Verbose = ($VerbosePreference -eq 'Continue') ;
     $pltGHOpCred=@{TenOrg="CMW" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
@@ -1601,6 +1621,7 @@ function cx10tol {
     cx10tol
     #>
     [CmdletBinding()] 
+    [Alias('cxOPtol')]
     Param()
     $Verbose = ($VerbosePreference -eq 'Continue') ;
     $pltGHOpCred=@{TenOrg="TOL" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
@@ -1627,7 +1648,22 @@ function cx10tor {
     .EXAMPLE
     cx10tor
     #>
-    Connect-EX2010 -cred $credTorSID -Verbose:($VerbosePreference -eq 'Continue') ; 
+    [CmdletBinding()] 
+    [Alias('cxOPtor')]
+    Param([Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credTorSID)
+    $Verbose = ($VerbosePreference -eq 'Continue') ;
+    if(!$Credential){
+        $pltGHOpCred=@{TenOrg="TOR" ;userrole=@('SID','ESVC','LSVC') ;verbose=$($verbose)} ;
+        if($Credential=(get-HybridOPCredentials @pltGHOpCred).cred){
+            #Connect-EX2010 -cred $credTorSID -Verbose:($VerbosePreference -eq 'Continue') ; 
+        } else {
+            $smsg = "Unable to resolve get-HybridOPCredentials -TenOrg $($TenOrg) -userrole $($UserRole -join '|') value!"
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            Break ;
+        } ;
+    } ; 
+    Connect-EX2010 -cred $Credential -Verbose:($VerbosePreference -eq 'Continue') ; 
 }
 
 #*------^ cx10tor.ps1 ^------
@@ -1649,6 +1685,7 @@ Copyright   : (c) 2020 Todd Kadrie
 Github      : https://github.com/tostka/verb-XXX
 Tags        : Powershell
 REVISIONS
+* 10:56 AM 4/2/2021 cleaned up; added recstat & wlt
 * 11:44 AM 3/5/2021 variant of toggle-fv
 .DESCRIPTION
 disable-ForestView.ps1 - Disable Exchange onprem AD ViewEntireForest setting (permits org-wide object access, wo use of proper explicit -domaincontroller sub.domain.com)
@@ -1667,12 +1704,19 @@ PARAM() ;
     # toggle forest view
     if (get-command -name set-AdServerSettings){ 
         if ((get-AdServerSettings).ViewEntireForest ) {
-              write-warning "Disabling WholeForest"
-              write-host "`a"
-              if (get-command -name set-AdServerSettings -ea 0) { set-AdServerSettings -ViewEntireForest $False } ;
+              write-verbose "(set-AdServerSettings -ViewEntireForest `$False)"
+              set-AdServerSettings -ViewEntireForest $False 
         } ;
     } else {
-        THROW "MISSING:set-AdServerSettings`nOPEN an Exchange OnPrem connection FIRST!"
+        #-=-record a STATUSERROR=-=-=-=-=-=-=
+        $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+        if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+        if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+        #-=-=-=-=-=-=-=-=
+        $smsg = "MISSING:set-AdServerSettings`nOPEN an Exchange OnPrem connection FIRST!"
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        BREAK ; 
     } ; 
 }
 
@@ -1721,15 +1765,15 @@ Function Disconnect-Ex2010 {
     [CmdletBinding()]
     [Alias('Disconnect-EMSR','dx10')]
     Param()
-    if($Global:E10Mod){$Global:E10Mod | Remove-Module -Force } ; 
-    if($Global:E10Sess){$Global:E10Sess | Remove-PSSession } ;
+    if($Global:E10Mod){$Global:E10Mod | Remove-Module -Force -verbose:$false } ; 
+    if($Global:E10Sess){$Global:E10Sess | Remove-PSSession -verbose:$false} ;
     # 7:56 AM 11/1/2017 remove titlebar tag
     Remove-PSTitlebar 'EMS' ;
     # kill any other sessions using distinctive name; add verbose, to ensure they're echo'd that they were missed
-    Get-PSSession | ? { $_.name -eq 'Exchange2010' } | Remove-PSSession -verbose ;
+    Get-PSSession | ? { $_.name -eq 'Exchange2010' } | Remove-PSSession -verbose:$false;
     # kill any broken PSS, self regen's even for L13 leave the original borked and create a new 'Session for implicit remoting module at C:\Users\', toast them, they don't reopen. Same for Ex2010 REMS, identical new PSS, indistinguishable from the L13 regen, except the random tmp_xxxx.psm1 module name. Toast them, it's just a growing stack of broken's
     Disconnect-PssBroken ;
-    [console]::ResetColor()  # reset console colorscheme
+    #[console]::ResetColor()  # reset console colorscheme
 }
 
 #*------^ Disconnect-Ex2010.ps1 ^------
@@ -1751,6 +1795,7 @@ Copyright   : (c) 2020 Todd Kadrie
 Github      : https://github.com/tostka/verb-XXX
 Tags        : Powershell
 REVISIONS
+* 10:56 AM 4/2/2021 cleaned up; added recstat & wlt
 * 11:43 AM 3/5/2021 variant of toggle-fv
 .DESCRIPTION
 enable-ForestView.ps1 - Enable Exchange onprem AD ViewEntireForest setting (permits org-wide object access, wo use of proper explicit -domaincontroller sub.domain.com)
@@ -1769,12 +1814,19 @@ PARAM() ;
     # toggle forest view
     if (get-command -name set-AdServerSettings){ 
         if (!(get-AdServerSettings).ViewEntireForest ) {
-              write-warning "Enabling WholeForest"
-              write-host "`a"
-              if (get-command -name set-AdServerSettings -ea 0) { set-AdServerSettings -ViewEntireForest $TRUE } ;
+              write-verbose "(set-AdServerSettings -ViewEntireForest `$False)" ; 
+              set-AdServerSettings -ViewEntireForest $TRUE  ;
         } ;
     } else {
-        THROW "MISSING:set-AdServerSettings`nOPEN an Exchange OnPrem connection FIRST!"
+        #-=-record a STATUSERROR=-=-=-=-=-=-=
+        $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+        if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+        if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+        #-=-=-=-=-=-=-=-=
+        $smsg = "MISSING:set-AdServerSettings`nOPEN an Exchange OnPrem connection FIRST!"
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        BREAK ; 
     } ; 
 }
 
@@ -3748,6 +3800,7 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 10:52 AM 4/2/2021 updated cbh
     * 1:56 PM 3/31/2021 rewrote to dyn detect pss, rather than reading out of date vari
     * 10:14 AM 3/23/2021 fix default $Cred spec, pointed at an OP cred
     * 8:29 AM 11/17/2020 added missing $Credential param 
@@ -3778,13 +3831,10 @@ Function Reconnect-Ex2010 {
     )
     # checking stat on canned copy of hist sess, says nothing about current, possibly timed out, check them manually
     $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
+    # back the TenOrg out of the Credential
     $TenOrg = get-TenantTag -Credential $Credential ;
 
-    # back the TenOrg out of the Credential
     $Rems2Good = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) -AND ($_.Availability -eq 'Available') } ;
-    # Computername wrong fqdn suffix
-    #$Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (-not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName)) -AND ($_.Availability -eq 'Available') } ;
-    # above is seeing outlook EXO conns as wrong org, exempt them too: .ComputerName -match $rgxExoPsHostName
     $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
         $_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (
         ( -not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) ) -AND (
@@ -3830,26 +3880,6 @@ Function Reconnect-Ex2010 {
             Connect-Ex2010 -Credential:$($Credential) ;
         } ;
     } ; 
-
-    <#if (!$E10Sess) {
-        if (!$Credential) {
-        Connect-Ex2010
-        }
-        else {
-        Connect-Ex2010 -Credential:$($Credential) ;
-        } ;
-    }
-    elseif ($E10Sess.state -ne 'Opened' -OR $E10Sess.Availability -ne 'Available' ) {
-        Disconnect-Ex2010 ; Start-Sleep -S 3;
-        if (!$Credential) {
-          Connect-Ex2010
-        }
-        else {
-          Connect-Ex2010 -Credential:$($Credential) ;
-        } ;
-    } ;
-    #>
-
 }
 
 #*------^ Reconnect-Ex2010.ps1 ^------
@@ -4060,6 +4090,7 @@ function rx10cmw {
     rx10cmw
     #>
     [CmdletBinding()] 
+        [Alias('rxOPcmw')]
     Param()
     $Verbose = ($VerbosePreference -eq 'Continue') ;
     $pltGHOpCred=@{TenOrg="CMW" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
@@ -4087,6 +4118,7 @@ function rx10tol {
     rx10tol
     #>
     [CmdletBinding()] 
+    [Alias('rxOPtol')]
     Param()
     $Verbose = ($VerbosePreference -eq 'Continue') ;
     $pltGHOpCred=@{TenOrg="TOL" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
@@ -4114,6 +4146,7 @@ function rx10tor {
     rx10tor
     #>
     [CmdletBinding()] 
+    [Alias('rxOPtor')]
     Param()
     $Verbose = ($VerbosePreference -eq 'Continue') ;
     $pltGHOpCred=@{TenOrg="TOR" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
@@ -4147,6 +4180,7 @@ Copyright   : (c) 2020 Todd Kadrie
 Github      : https://github.com/tostka/verb-XXX
 Tags        : Powershell
 REVISIONS
+* 10:53 AM 4/2/2021 typo fix
 * 10:07 AM 10/26/2020 added CBH
 .DESCRIPTION
 toggle-ForestView.ps1 - Toggle Exchange onprem AD ViewEntireForest setting (permits org-wide object access, wo use of proper explicit -domaincontroller sub.domain.com)
@@ -4169,7 +4203,7 @@ PARAM() ;
               write-host "`a"
               if (get-command -name set-AdServerSettings -ea 0) { set-AdServerSettings -ViewEntireForest $TRUE } ;
         } else {
-          write-warning "Disableing WholeForest"
+          write-warning "Disabling WholeForest"
           write-host "`a"
           set-AdServerSettings -ViewEntireForest $FALSE ;
         } ;
@@ -4188,8 +4222,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUXQNsXCeiw7C87WUSmZ/XnSea
-# nXagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUsyxtne7ngyafo32uT5zGCYjm
+# 7QCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4204,9 +4238,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQKIsbr
-# JUQd36Sd2mEwAO03BveVcTANBgkqhkiG9w0BAQEFAASBgKk41MKzkAG4IAPB0h4G
-# K9D5/RBRQNtDAkfbanQZQcFpE+C4CzBSBqLTgj+sSTAVS6MbHYCPgpZDoECobYsF
-# VjYPQDUoUZ27BJT7VO/x8Rqf+hMOzGCoO0Clc7pTBCUMOYVqiftPqn6ie3kfHR+y
-# yBeY+sZPJbrotKgdh9VNTSFZ
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTPVTWI
+# wqxTU4HqdAB7PatmXMF/AjANBgkqhkiG9w0BAQEFAASBgD2wtGHty80gTkbwIQL4
+# veNPY4ogru8MQMIESk2ZSL2pF0z3kP6hg0B3GiyRgr8jPa0ZoJqKStvOYMnZitoE
+# o3j6REyQMK6ozBp9o05sEfsPR5A+v65D3qIDObFl+pwIj4i83dvPTVVTdiwEIcaf
+# 6bjJdhySfI96JQvTlqcV0NLa
 # SIG # End signature block

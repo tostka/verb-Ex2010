@@ -9,6 +9,7 @@ function cx10cmw {
     cx10cmw
     #>
     [CmdletBinding()] 
+    [Alias('cxOPcmw')]
     Param()
     $Verbose = ($VerbosePreference -eq 'Continue') ;
     $pltGHOpCred=@{TenOrg="CMW" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;

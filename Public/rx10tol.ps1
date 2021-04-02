@@ -9,6 +9,7 @@ function rx10tol {
     rx10tol
     #>
     [CmdletBinding()] 
+    [Alias('rxOPtol')]
     Param()
     $Verbose = ($VerbosePreference -eq 'Continue') ;
     $pltGHOpCred=@{TenOrg="TOL" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;

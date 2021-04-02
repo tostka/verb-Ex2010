@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 12:06 PM 4/2/2021 added alias cxOP ; added explicit echo on import-session|module, removed redundant catch block; added trycatch around import-sess|mod ; added recStatus support
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods ; renamed-standardized splat names (EMSSplat ->pltNSess ; ) ; flipped prefix into splat add ; 
     * 2:36 PM 3/23/2021 getting away from dyn, random from array in $XXXMeta.Ex10Server, doesn't rely on AD lookups for referrals
     * 10:14 AM 3/23/2021 flipped default $Cred spec, pointed at an OP cred (matching reconnect-ex2010())
@@ -104,7 +105,7 @@ Function Connect-Ex2010 {
     https://github.com/tostka/verb-Ex2010/
     #>
     [CmdletBinding()]
-    [Alias('Add-EMSRemote','cx10')]
+    [Alias('Add-EMSRemote','cx10','cxOP')]
     Param(
         [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
         [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')]$ExAdmin,
@@ -175,19 +176,23 @@ Function Connect-Ex2010 {
         # try catch against and retry into stock if fails
         $error.clear() ;
         TRY {
-          $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
-        } CATCH {
-          $ErrTrapd = $_ ; 
-          write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
-          if ($ExAdmin) {
-            # switch to stock pool and retry
-            $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
-            write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
             $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
-          }
-          else {
-            STOP ;
-          } ;
+        } CATCH {
+            $ErrTrapd = $_ ; 
+            write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+            #-=-record a STATUSWARN=-=-=-=-=-=-=
+            $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+            if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+            #-=-=-=-=-=-=-=-=
+            if ($ExAdmin) {
+              # switch to stock pool and retry
+              $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
+              write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
+              $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
+            } else {
+                BREAK ;
+            } ;
         } ;
 
         write-verbose "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
@@ -197,11 +202,25 @@ Function Connect-Ex2010 {
             $pltIMod.add('Prefix',$CommandPrefix) ;
             $pltISess.add('Prefix',$CommandPrefix) ;
         } ;
-        $Global:E10Mod = Import-Module (Import-PSSession @pltISess) @pltIMod   ;
-        if($ExVwForest){
-            write-host "Setting EMS Session: Set-AdServerSettings -ViewEntireForest `$True" ; 
-            Set-AdServerSettings -ViewEntireForest $True ; 
-        } ; 
+        $smsg = "$((get-date).ToString('HH:mm:ss')):Import-PSSession  w`n$(($pltISess|out-string).trim())`nImport-Module w`n$(($pltIMod|out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $error.clear() ;
+        TRY {
+            $Global:E10Mod = Import-Module (Import-PSSession @pltISess) @pltIMod   ;
+            if($ExVwForest){
+                write-host "Setting EMS Session: Set-AdServerSettings -ViewEntireForest `$True" ; 
+                Set-AdServerSettings -ViewEntireForest $True ; 
+            } ; 
+        } CATCH {
+            $ErrTrapd = $_ ; 
+            write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+            #-=-record a STATUSERROR=-=-=-=-=-=-=
+            $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+            if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+            #-=-=-=-=-=-=-=-=
+        } ;
         # 7:54 AM 11/1/2017 add titlebar tag
         Add-PSTitleBar 'EMS' ;
         # tag E10IsDehydrated 
