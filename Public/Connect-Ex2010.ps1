@@ -2,7 +2,7 @@
 Function Connect-Ex2010 {
   <#
     .SYNOPSIS
-    Connect-Ex2010 - Setup Remote Exch2010 Mgmt Shell connection
+    Connect-Ex2010 - Setup Remote ExchOnPrem Mgmt Shell connection (validated functional Exch2010 - Exch2016)
     .NOTES
     Author: Todd Kadrie
     Website:	http://toddomation.com
@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 10:02 AM 4/12/2021 add alias connect-ExOP (eventually rename verb-ex2010 to verb-exOnPrem)
     * 12:06 PM 4/2/2021 added alias cxOP ; added explicit echo on import-session|module, removed redundant catch block; added trycatch around import-sess|mod ; added recStatus support
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods ; renamed-standardized splat names (EMSSplat ->pltNSess ; ) ; flipped prefix into splat add ; 
     * 2:36 PM 3/23/2021 getting away from dyn, random from array in $XXXMeta.Ex10Server, doesn't rely on AD lookups for referrals
@@ -105,7 +106,7 @@ Function Connect-Ex2010 {
     https://github.com/tostka/verb-Ex2010/
     #>
     [CmdletBinding()]
-    [Alias('Add-EMSRemote','cx10','cxOP')]
+    [Alias('Add-EMSRemote','cx10','cxOP','connect-ExOP')]
     Param(
         [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
         [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')]$ExAdmin,

@@ -2,7 +2,7 @@
 Function Reconnect-Ex2010 {
   <#
     .SYNOPSIS
-    Reconnect-Ex2010 - Reconnect Remote Exch2010 Mgmt Shell connection
+    Reconnect-Ex2010 - Reconnect Remote ExchOnPrem Mgmt Shell connection (validated functional Exch2010 - Exch2016)
     .NOTES
     Author: Todd Kadrie
     Website:	http://toddomation.com
@@ -41,7 +41,7 @@ Function Reconnect-Ex2010 {
     .LINK
     #>
     [CmdletBinding()]
-    [Alias('rx10')]
+    [Alias('rx10','rxOP','reconnect-ExOP')]
     Param(
         [Parameter(HelpMessage="Credential to use for this connection [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
         $Credential = $global:credOpTORSID 
