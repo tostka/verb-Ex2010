@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.52.0
+Version     : 1.1.53.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1986,6 +1986,95 @@ Function Get-ExchServerFromExServersGroup {
 
 #*------^ Get-ExchServerFromExServersGroup.ps1 ^------
 
+#*------v import-EMSLocalModule.ps1 v------
+Function import-EMSLocalModule {
+  <#
+    .SYNOPSIS
+    import-EMSLocalModule - Setup local server bin-module-based ExchOnPrem Mgmt Shell connection (contrasts with Ex2007/10 snapin use ; validated Exch2016)
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    Version     : 1.0.0
+    CreatedDate : 2021-04-15
+    FileName    : import-EMSLocalModule()
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Exchange,Exchange-2013,Exchange-2016
+    REVISIONS   :
+    * 9:21 AM 4/16/2021 renamed load-emsmodule -> import-EMSLocalModule, added pretest and post verify
+    * 10:14 AM 4/12/2021 init vers
+    .DESCRIPTION
+    import-EMSLocalModule - Setup local server bin-module-based ExchOnPrem Mgmt Shell connection (contrasts with Ex2007/10 snapin use ; validated Exch2016)
+    Wraps the native ex server desktop EMS, .lnk commands:
+    . 'C:\Program Files\Microsoft\Exchange Server\V15\bin\RemoteExchange.ps1'; 
+    Connect-ExchangeServer -auto -ClientApplication:ManagementShell
+    Handy for loading local non-dehydrated support in ISE, regular PS etc, where existing code relies on non-dehydrated objects.
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output.
+    .EXAMPLE
+    import-EMSLocalModule ; 
+    .LINK
+    https://github.com/tostka/verb-Ex2010/
+    #>
+    [CmdletBinding()]
+    #[Alias()]
+    Param()  ;
+    BEGIN{
+        $verbose = ($VerbosePreference -eq "Continue") ; 
+    } ;  # BEG-E
+    PROCESS{
+        $error.clear() ;
+        TRY {
+            if($tMod = get-module ([System.Net.Dns]::gethostentry($(hostname))).hostname -ea 0){
+                write-verbose "(local EMS module already loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ; 
+            } else { 
+                write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(importing local Exchange Mgmt Shell binary module)" ; 
+                if($env:ExchangeInstallPath){
+                    $rExps1 = "$($env:ExchangeInstallPath)bin\RemoteExchange.ps1"
+                    if(test-path $rExps1){
+                        . $rExps1 ; 
+                        if(gcm Connect-ExchangeServer){
+                            Connect-ExchangeServer -auto -ClientApplication:ManagementShell ; 
+                        } else { 
+                            throw "Unable to gcm Connect-ExchangeServer!" ; 
+                        } ; 
+                    } else { 
+                        throw "Unable to locate: `$(`$env:ExchangeInstallPath)bin\RemoteExchange.ps1" ; 
+                    } ; 
+                } else { 
+                    throw "Unable to locate: `$env:ExchangeInstallPath Environment Variable (Exchange does not appear to be locally installed)" ; 
+                } ; 
+            } ; 
+        } CATCH {
+            $ErrTrapd = $_ ; 
+            write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+            #-=-record a STATUSERROR=-=-=-=-=-=-=
+            $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+            if(gv passstatus -scope Script -ea 0 ){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script  -ea 0 ){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+            #-=-=-=-=-=-=-=-=
+        } ;
+        # 7:54 AM 11/1/2017 add titlebar tag
+        if(gcm Add-PSTitleBar -ea 0 ){Add-PSTitleBar 'EMSL' ;} ; 
+        # tag E10IsDehydrated 
+        $Global:ExOPIsDehydrated = $false ;        
+    } ;  # PROC-E
+    END {
+        $tMod = $null ; 
+        if($tMod = GET-MODULE ([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME){
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(local EMS module loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ; 
+        } else { 
+            throw "Unable to resolve target local EMS module:GET-MODULE $([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME)" ; 
+        } ; 
+    }
+}
+
+#*------^ import-EMSLocalModule.ps1 ^------
+
 #*------v Invoke-ExchangeCommand.ps1 v------
 function Invoke-ExchangeCommand{
     <#
@@ -2381,77 +2470,6 @@ function load-EMSLatest {
 }
 
 #*------^ load-EMSLatest.ps1 ^------
-
-#*------v Load-EMSModule.ps1 v------
-Function load-EMSModule {
-  <#
-    .SYNOPSIS
-    load-EMSModule - Setup local server bin-module-based ExchOnPrem Mgmt Shell connection (contrasts with Ex2007/10 snapin use ; validated Exch2016)
-    .NOTES
-    Author: Todd Kadrie
-    Website:	http://toddomation.com
-    Twitter     :	@tostka / http://twitter.com/tostka
-    Version     : 1.0.0
-    CreatedDate : 2021-04-15
-    FileName    : load-EMSModule()
-    License     : MIT License
-    Copyright   : (c) 2020 Todd Kadrie
-    Github      : https://github.com/tostka
-    Tags        : Powershell,Exchange,Exchange-2013,Exchange-2016
-    REVISIONS   :
-    * 10:14 AM 4/12/2021 init vers
-    .DESCRIPTION
-    load-EMSModule - Setup local server bin-module-based ExchOnPrem Mgmt Shell connection (contrasts with Ex2007/10 snapin use ; validated Exch2016)
-    .INPUTS
-    None. Does not accepted piped input.
-    .OUTPUTS
-    None. Returns no objects or output.
-    .EXAMPLE
-    load-EMSModule ; 
-    .LINK
-    https://github.com/tostka/verb-Ex2010/
-    #>
-    [CmdletBinding()]
-    #[Alias()]
-    Param()  ;
-    BEGIN{
-        $verbose = ($VerbosePreference -eq "Continue") ; 
-        <# wraps the native ex server desktop EMS, .lnk config
-        . 'C:\Program Files\Microsoft\Exchange Server\V15\bin\RemoteExchange.ps1'; Connect-ExchangeServer -auto -ClientApplication:ManagementShell
-        #>
-    } ;  # BEG-E
-    PROCESS{
-        $error.clear() ;
-        TRY {
-            $rExps1 = "$($env:ExchangeInstallPath)bin\RemoteExchange.ps1"
-            if(test-path $rExps1){
-                . $rExps1 ; 
-                if(gcm Connect-ExchangeServer){
-                    Connect-ExchangeServer -auto -ClientApplication:ManagementShell ; 
-                } else { 
-                    throw "Unable to gcm Connect-ExchangeServer!" ; 
-                } ; 
-            } else { 
-                throw "Unable to locate: `$(`$env:ExchangeInstallPath)bin\RemoteExchange.ps1" ; 
-            } ; 
-        } CATCH {
-            $ErrTrapd = $_ ; 
-            write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
-            #-=-record a STATUSERROR=-=-=-=-=-=-=
-            $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
-            if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-            if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
-            #-=-=-=-=-=-=-=-=
-        } ;
-        # 7:54 AM 11/1/2017 add titlebar tag
-        Add-PSTitleBar 'EMSL' ;
-        # tag E10IsDehydrated 
-        $Global:E10IsDehydrated = $false ;        
-    } ;  # PROC-E
-    END {}
-}
-
-#*------^ Load-EMSModule.ps1 ^------
 
 #*------v Load-EMSSnap.ps1 v------
 function Load-EMSSnap {
@@ -4151,6 +4169,78 @@ Function Reconnect-Ex2010XO {
 
 #*------^ Reconnect-Ex2010XO.ps1 ^------
 
+#*------v remove-EMSLocalModule.ps1 v------
+Function remove-EMSLocalModule {
+  <#
+    .SYNOPSIS
+    remove-EMSLocalModule - remove/unload local server bin-module-based ExchOnPrem Mgmt Shell connection ; validated Exch2016)
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    Version     : 1.0.0
+    CreatedDate : 2021-04-15
+    FileName    : remove-EMSLocalModule()
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Exchange,Exchange-2013,Exchange-2016
+    REVISIONS   :
+    * 10:03 AM 4/16/2021 init vers
+    .DESCRIPTION
+    remove-EMSLocalModule - remove/unload local server bin-module-based ExchOnPrem Mgmt Shell connection ; validated Exch2016)
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output.
+    .EXAMPLE
+    remove-EMSLocalModule ; 
+    .LINK
+    https://github.com/tostka/verb-Ex2010/
+    #>
+    [CmdletBinding()]
+    #[Alias()]
+    Param()  ;
+    BEGIN{
+        $verbose = ($VerbosePreference -eq "Continue") ; 
+    } ;  # BEG-E
+    PROCESS{
+        $error.clear() ;
+        TRY {
+            if($tMod = get-module ([System.Net.Dns]::gethostentry($(hostname))).hostname -ea 0){
+                write-verbose "(Removing matched EMS module already loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ; 
+                $tMod | Remove-Module ; 
+            } else { 
+                write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(No matching loaded local Exchange Mgmt Shell binary module found)" ; 
+            } ; 
+        } CATCH {
+            $ErrTrapd = $_ ; 
+            write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+            #-=-record a STATUSERROR=-=-=-=-=-=-=
+            $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+            if(gv passstatus -scope Script -ea 0 ){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script  -ea 0 ){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+            #-=-=-=-=-=-=-=-=
+        } ;
+        # 7:54 AM 11/1/2017 add titlebar tag
+        if(gcm Remove-PSTitleBar-PSTitleBar -ea 0 ){Remove-PSTitleBar-PSTitleBar 'EMSL' ;} ; 
+        # tag E10IsDehydrated 
+        $Global:ExOPIsDehydrated = $null ;        
+    } ;  # PROC-E
+    END {
+        <#
+        $tMod = $null ; 
+        if($tMod = GET-MODULE ([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME){
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(local EMS module loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ; 
+        } else { 
+            throw "Unable to resolve target local EMS module:GET-MODULE $([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME)" ; 
+        } ; 
+        #>
+    }
+}
+
+#*------^ remove-EMSLocalModule.ps1 ^------
+
 #*------v rx10cmw.ps1 v------
 function rx10cmw {
     <#
@@ -4288,14 +4378,14 @@ PARAM() ;
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex2010XO,cx10cmw,cx10tol,cx10tor,disable-ForestView,Disconnect-Ex2010,enable-ForestView,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,Invoke-ExchangeCommand,load-EMSLatest,load-EMSModule,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,Reconnect-Ex2010XO,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
+Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex2010XO,cx10cmw,cx10tol,cx10tor,disable-ForestView,Disconnect-Ex2010,enable-ForestView,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,import-EMSLocalModule,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU3orqyDUsK0Ob2fpfyjg8POqj
-# rf6gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUqjHm/20pcrre5pD5bNIa0j/t
+# NSegggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4310,9 +4400,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTgWSrJ
-# nZLkFvGP9qxSrhkq7xNDDDANBgkqhkiG9w0BAQEFAASBgIdPiDb0PNBv1gjKi99I
-# gbHsNH3h/5Gvc8pqhA1ug0GBY8290EJpG+P6RkKcuiORQUNhlNCRAz/qi9ZQZHGU
-# NO4FTy9EH4EqMht7CPvNN3Jymz6jJxOLH6H/O51SXAVQLzdsxj8/AtiAd4bTCOvy
-# VvSelDG5GmVhTyWfEqxEwZ1f
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRAjXx1
+# YtUjbew0nACFTcJLYrNfITANBgkqhkiG9w0BAQEFAASBgAdbKj1aduGDxjIV8zIq
+# JO28Q29cMWOL7mVB+ftpz3s1NuSXHEAESzckoKhnk1IR4Ke1EcBvUutRRhm8mtLZ
+# QqmxpQQjbOSU/2ygWHG/+HwTa0Uj/nC/5vlt7+l+hk6e7sP29eRoQfhBILG5u8iX
+# +WkuL8METN4uaFWQmnImerCO
 # SIG # End signature block
