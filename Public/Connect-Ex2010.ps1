@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 11:22 AM 4/21/2021 coded around recent 'verbose the heck out of everything', yanked 99% of the verbose support - this seldom fails in a way that you need verbose, and when it's on, every cmdlet in the modules get echo'd, spams the heck out of console & logging. One key change (not sure if source) was to switch from inline import-pss & import-mod, into 2 steps with varis.
     * 10:02 AM 4/12/2021 add alias connect-ExOP (eventually rename verb-ex2010 to verb-exOnPrem)
     * 12:06 PM 4/2/2021 added alias cxOP ; added explicit echo on import-session|module, removed redundant catch block; added trycatch around import-sess|mod ; added recStatus support
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods ; renamed-standardized splat names (EMSSplat ->pltNSess ; ) ; flipped prefix into splat add ; 
@@ -105,7 +106,7 @@ Function Connect-Ex2010 {
     .LINK
     https://github.com/tostka/verb-Ex2010/
     #>
-    [CmdletBinding()]
+    #[CmdletBinding()] # 10:03 AM 4/21/2021 disable, see if it kills verbose
     [Alias('Add-EMSRemote','cx10','cxOP','connect-ExOP')]
     Param(
         [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
@@ -113,7 +114,7 @@ Function Connect-Ex2010 {
         [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credOpTORSID
     )  ;
     BEGIN{
-        $verbose = ($VerbosePreference -eq "Continue") ; 
+        #$verbose = ($VerbosePreference -eq "Continue") ; 
         $sWebPoolVariant = "exadmin" ;
         $CommandPrefix = $null ;
         # use credential domain to determine target org
@@ -189,7 +190,7 @@ Function Connect-Ex2010 {
             if ($ExAdmin) {
               # switch to stock pool and retry
               $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
-              write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
+              write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
               $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
             } else {
                 BREAK ;
@@ -197,8 +198,11 @@ Function Connect-Ex2010 {
         } ;
 
         write-verbose "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
-        $pltIMod=@{Global=$true;PassThru=$true;DisableNameChecking=$true ; verbose=$false} ; # force verbose off, suppress spam in console
-        $pltISess = [ordered]@{Session = $Global:E10Sess ; DisableNameChecking = $true  ; AllowClobber = $true ; ErrorAction = 'Stop' ; Verbose = $false ;} ;
+        #$pltIMod=@{Global=$true;PassThru=$true;DisableNameChecking=$true ; verbose=$false} ; # force verbose off, suppress spam in console
+        # tear verbose out
+        $pltIMod=@{Global=$true;PassThru=$true;DisableNameChecking=$true ;} ; 
+        #$pltISess = [ordered]@{Session = $Global:E10Sess ; DisableNameChecking = $true  ; AllowClobber = $true ; ErrorAction = 'Stop' ; Verbose = $false ;} ;
+        $pltISess = [ordered]@{Session = $Global:E10Sess ; DisableNameChecking = $true  ; AllowClobber = $true ; ErrorAction = 'Stop' ; } ;
         if($CommandPrefix){
             $pltIMod.add('Prefix',$CommandPrefix) ;
             $pltISess.add('Prefix',$CommandPrefix) ;
@@ -208,10 +212,24 @@ Function Connect-Ex2010 {
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         $error.clear() ;
         TRY {
-            $Global:E10Mod = Import-Module (Import-PSSession @pltISess) @pltIMod   ;
+            # 9:57 AM 4/21/2021 coming through full verbose, suppress the pref
+            if($VerbosePreference -eq "Continue"){
+                $VerbosePrefPrior = $VerbosePreference ;
+                $VerbosePreference = "SilentlyContinue" ;
+                $verbose = ($VerbosePreference -eq "Continue") ;
+            } ; 
+            #$Global:E10Mod = Import-Module (Import-PSSession @pltISess) @pltIMod   ;
+            # try 2-stopping (suppress verbose)
+            $xIPS = Import-PSSession @pltISess ; 
+            $Global:E10Mod = Import-Module $xIPS @pltIMod ;
             if($ExVwForest){
                 write-host "Setting EMS Session: Set-AdServerSettings -ViewEntireForest `$True" ; 
                 Set-AdServerSettings -ViewEntireForest $True ; 
+            } ; 
+            # reenable VerbosePreference:Continue, if set, during mod loads 
+            if($VerbosePrefPrior -eq "Continue"){
+                $VerbosePreference = $VerbosePrefPrior ;
+                $verbose = ($VerbosePreference -eq "Continue") ;
             } ; 
         } CATCH {
             $ErrTrapd = $_ ; 
@@ -238,5 +256,4 @@ Function Connect-Ex2010 {
         #>
     }
 }
-
 #*------^ Connect-Ex2010.ps1 ^------
