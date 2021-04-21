@@ -1,4 +1,4 @@
-﻿#*------v Function disable-ForestView v------
+﻿#*------v disable-ForestView.ps1 v------
 Function disable-ForestView {
 <#
 .SYNOPSIS
@@ -48,4 +48,6 @@ PARAM() ;
         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         BREAK ; 
     } ; 
-} #*------^ END Function disable-ForestView ^------
+}
+
+#*------^ disable-ForestView.ps1 ^------

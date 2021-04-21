@@ -5,6 +5,9 @@ function cx10tor {
     cx10tor - Connect-EX2010 to specified on-prem Exchange
     .DESCRIPTION
     Connect-EX2010 - Connect-EX2010 to specified on-prem Exchange
+    .NOTES
+    REVISIONS   :
+    # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     .EXAMPLE
     cx10tor
     #>
@@ -15,7 +18,7 @@ function cx10tor {
     if(!$Credential){
         $pltGHOpCred=@{TenOrg="TOR" ;userrole=@('SID','ESVC','LSVC') ;verbose=$($verbose)} ;
         if($Credential=(get-HybridOPCredentials @pltGHOpCred).cred){
-            #Connect-EX2010 -cred $credTorSID -Verbose:($VerbosePreference -eq 'Continue') ; 
+            #Connect-EX2010 -cred $credTorSID #-Verbose:($VerbosePreference -eq 'Continue') ; 
         } else {
             $smsg = "Unable to resolve get-HybridOPCredentials -TenOrg $($TenOrg) -userrole $($UserRole -join '|') value!"
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
@@ -23,6 +26,6 @@ function cx10tor {
             Break ;
         } ;
     } ; 
-    Connect-EX2010 -cred $Credential -Verbose:($VerbosePreference -eq 'Continue') ; 
+    Connect-EX2010 -cred $Credential #-Verbose:($VerbosePreference -eq 'Continue') ; 
 }
 #*------^ cx10tor.ps1 ^------

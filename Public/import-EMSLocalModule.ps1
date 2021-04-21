@@ -1,4 +1,4 @@
-﻿#*------v import-EMSLocalModule v------
+﻿#*------v import-EMSLocalModule.ps1 v------
 Function import-EMSLocalModule {
   <#
     .SYNOPSIS
@@ -83,5 +83,5 @@ Function import-EMSLocalModule {
             throw "Unable to resolve target local EMS module:GET-MODULE $([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME)" ; 
         } ; 
     }
-} ; 
-#*------^ import-EMSLocalModule ^------
+}
+#*------^ import-EMSLocalModule.ps1 ^------

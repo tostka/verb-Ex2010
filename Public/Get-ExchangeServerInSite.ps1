@@ -7,6 +7,7 @@ Function Get-ExchangeServerInSite {
     Author: Mike Pfeiffer
     Website:	http://mikepfeiffer.net/2010/04/find-exchange-servers-in-the-local-active-directory-site-using-powershell/
     REVISIONS   :
+    # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     * 12:08 PM 5/15/2020 fixed vpn issue: Try/Catch'd around recently failing $ADSite::GetComputerSite().GetDirectoryEntry().distinguishedName qry
     * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
     * 6:59 PM 1/15/2020 cleanup
@@ -101,7 +102,7 @@ Function Get-ExchangeServerInSite {
             $false | write-output ;
         } ;
     }else {
-        write-warning -verbose:$true  "$((get-date).ToString('HH:mm:ss')):`$ADSite blank, not authenticated to a domain! ABORTING!" ;
+        write-warning "$((get-date).ToString('HH:mm:ss')):`$ADSite blank, not authenticated to a domain! ABORTING!" ;
         $false | write-output ;
     } ;
 }

@@ -5,6 +5,9 @@ function cx10tol {
     cx10tol - Connect-EX2010 to specified on-prem Exchange
     .DESCRIPTION
     Connect-EX2010 - Connect-EX2010 to specified on-prem Exchange
+    .NOTES
+    REVISIONS   :
+    # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     .EXAMPLE
     cx10tol
     #>
@@ -14,7 +17,7 @@ function cx10tol {
     $Verbose = ($VerbosePreference -eq 'Continue') ;
     $pltGHOpCred=@{TenOrg="TOL" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
     if($OPCred=(get-HybridOPCredentials @pltGHOpCred).cred){
-        Connect-EX2010 -cred $OPCred -Verbose:($VerbosePreference -eq 'Continue') ; 
+        Connect-EX2010 -cred $OPCred #-Verbose:($VerbosePreference -eq 'Continue') ; 
     } else {
         $smsg = "Unable to resolve get-HybridOPCredentials -TenOrg $($TenOrg) -userrole $($UserRole -join '|') value!"
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
@@ -23,4 +26,5 @@ function cx10tol {
         exit ;
     } ;
 }
+
 #*------^ cx10tol.ps1 ^------
