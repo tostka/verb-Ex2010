@@ -190,5 +190,4 @@ Function Reconnect-Ex2010XO {
         } ;
     } ; # END-E
 }
-
 #*------^ Reconnect-Ex2010XO.ps1 ^------

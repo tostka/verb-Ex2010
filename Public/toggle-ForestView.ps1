@@ -1,4 +1,4 @@
-﻿#*------v Function toggle-ForestView v------
+﻿#*------v toggle-ForestView.ps1 v------
 Function toggle-ForestView {
 <#
 .SYNOPSIS
@@ -45,4 +45,5 @@ PARAM() ;
     } else {
         THROW "MISSING:set-AdServerSettings`nOPEN an Exchange OnPrem connection FIRST!"
     } ; 
-} #*------^ END Function toggle-ForestView ^------
+}
+#*------^ toggle-ForestView.ps1 ^------

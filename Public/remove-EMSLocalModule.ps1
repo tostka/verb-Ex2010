@@ -1,4 +1,4 @@
-﻿#*------v remove-EMSLocalModule v------
+﻿#*------v remove-EMSLocalModule.ps1 v------
 Function remove-EMSLocalModule {
   <#
     .SYNOPSIS
@@ -66,5 +66,6 @@ Function remove-EMSLocalModule {
         } ; 
         #>
     }
-} ; 
-#*------^ remove-EMSLocalModule ^------
+}
+
+#*------^ remove-EMSLocalModule.ps1 ^------

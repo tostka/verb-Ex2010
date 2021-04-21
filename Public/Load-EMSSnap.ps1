@@ -9,6 +9,7 @@ function Load-EMSSnap {
     Twitter:	http://twitter.com/tostka
 
     REVISIONS   :
+    # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods/add-Pssnapins
     * 6:59 PM 1/15/2020 cleanup
     vers: 9:39 AM 8/12/2015: retool into generic switched version to support both modules & snappins with same basic code ; building a stock EMS version (vs the fancier load-EMSSnapLatest)
@@ -69,10 +70,10 @@ function Load-EMSSnap {
         #
         switch ($PlugStyle) {
           "Module" {
-            Import-Module $PlugName -ErrorAction Stop -Verbose:$false; write-output $TRUE ;
+            Import-Module $PlugName -ErrorAction Stop -verbose:$($false); write-output $TRUE ;
           }
           "Snapin" {
-            Add-PSSnapin $PlugName -ErrorAction Stop -Verbose:$false; write-output $TRUE
+            Add-PSSnapin $PlugName -ErrorAction Stop -verbose:$($false); write-output $TRUE
           }
         } # switch-E
       }
