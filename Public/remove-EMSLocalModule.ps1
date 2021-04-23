@@ -23,7 +23,7 @@ Function remove-EMSLocalModule {
     .OUTPUTS
     None. Returns no objects or output.
     .EXAMPLE
-    remove-EMSLocalModule ; 
+    remove-EMSLocalModule ;
     .LINK
     https://github.com/tostka/verb-Ex2010/
     #>
@@ -31,39 +31,39 @@ Function remove-EMSLocalModule {
     #[Alias()]
     Param()  ;
     BEGIN{
-        $verbose = ($VerbosePreference -eq "Continue") ; 
+        $verbose = ($VerbosePreference -eq "Continue") ;
     } ;  # BEG-E
     PROCESS{
         $error.clear() ;
         TRY {
             if($tMod = get-module ([System.Net.Dns]::gethostentry($(hostname))).hostname -ea 0){
-                write-verbose "(Removing matched EMS module already loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ; 
-                $tMod | Remove-Module ; 
-            } else { 
-                write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(No matching loaded local Exchange Mgmt Shell binary module found)" ; 
-            } ; 
+                write-verbose "(Removing matched EMS module already loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ;
+                $tMod | Remove-Module ;
+            } else {
+                write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(No matching loaded local Exchange Mgmt Shell binary module found)" ;
+            } ;
         } CATCH {
-            $ErrTrapd = $_ ; 
+            $ErrTrapd = $_ ;
             write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
             #-=-record a STATUSERROR=-=-=-=-=-=-=
             $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
             if(gv passstatus -scope Script -ea 0 ){$script:PassStatus += $statusdelta } ;
-            if(gv -Name PassStatus_$($tenorg) -scope Script  -ea 0 ){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+            if(gv -Name PassStatus_$($tenorg) -scope Script  -ea 0 ){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
             #-=-=-=-=-=-=-=-=
         } ;
         # 7:54 AM 11/1/2017 add titlebar tag
-        if(gcm Remove-PSTitleBar-PSTitleBar -ea 0 ){Remove-PSTitleBar-PSTitleBar 'EMSL' ;} ; 
-        # tag E10IsDehydrated 
-        $Global:ExOPIsDehydrated = $null ;        
+        if(gcm Remove-PSTitleBar-PSTitleBar -ea 0 ){Remove-PSTitleBar-PSTitleBar 'EMSL' ;} ;
+        # tag E10IsDehydrated
+        $Global:ExOPIsDehydrated = $null ;
     } ;  # PROC-E
     END {
         <#
-        $tMod = $null ; 
+        $tMod = $null ;
         if($tMod = GET-MODULE ([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME){
-            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(local EMS module loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ; 
-        } else { 
-            throw "Unable to resolve target local EMS module:GET-MODULE $([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME)" ; 
-        } ; 
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(local EMS module loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ;
+        } else {
+            throw "Unable to resolve target local EMS module:GET-MODULE $([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME)" ;
+        } ;
         #>
     }
 }

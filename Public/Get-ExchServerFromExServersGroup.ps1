@@ -23,7 +23,7 @@ Function Get-ExchServerFromExServersGroup {
     .\Get-ExchServerFromExServersGroup
     Draw random matching ex server with defaulted settings
     .EXAMPLE
-    .\Get-ExchServerFromExServersGroup -ServerRegex '^CN=SITEPREFIX.*$' 
+    .\Get-ExchServerFromExServersGroup -ServerRegex '^CN=SITEPREFIX.*$'
     Draw random matching ex server with explicit ServerRegex match
     .LINK
     #>
@@ -34,8 +34,8 @@ Function Get-ExchServerFromExServersGroup {
         [Parameter(HelpMessage="AD ParentDomain fqdn [-ADParentDomain 'ROOTDOMAIN.DOMAIN.com']")]
         $ADParentDomain=$DomTORParentfqdn
     ) ;
-    (Get-ADGroupMember -Identity 'Exchange Servers' -server $DomTORParentfqdn | 
-        ? { $_.distinguishedname -match $ServerRegex }).name | 
+    (Get-ADGroupMember -Identity 'Exchange Servers' -server $DomTORParentfqdn |
+        Where-Object { $_.distinguishedname -match $ServerRegex }).name |
             get-random | write-output ;
 }
 

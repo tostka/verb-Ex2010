@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.58.0
+Version     : 1.1.53.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -73,7 +73,6 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
-    # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
     # 1:27 PM 4/23/2020 updated loadmod & dynamic logging/exec code
     # 4:28 PM 4/22/2020 updated logging code, to accomodate dynamic locations and $ParentPath
@@ -324,18 +323,18 @@ function add-MailboxAccessGrant {
                 write-host "GOTCHA!:$($tModName)" ;
             } ;
             $lVers = get-module -name $tModName -ListAvailable -ea 0 ;
-            if($lVers){                 $lVers=($lVers | Sort-Object version)[-1];                 try {                     import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking -verbose:$($false)                 }   catch {                      write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking -verbose:$($false)                } ;
-            } elseif (test-path $tModFile) {                 write-warning "*NO* INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;                 try {import-module -name $tModDFile -force -DisableNameChecking -verbose:$($false)}                 catch {                     write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;                     $tModFile = "$($tModName).ps1" ;                     $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;                     if (Test-Path $sLoad) {                         Write-Verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                         . $sLoad ;                         if ($showdebug) { Write-Verbose "Post $sLoad" };                     } else {                         $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;                         if (Test-Path $sLoad) {                             write-verbose  ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                             . $sLoad ;                             if ($showdebug) { write-verbose  "Post $sLoad" };                         } else {                             Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                             exit;                         } ;                     } ;                 } ;             } ;
-            if(!(test-path function:$tModCmdlet)){                 write-warning "UNABLE TO VALIDATE PRESENCE OF $tModCmdlet`nfailing through to `$backInclDir .ps1 version" ;                 $sLoad = (join-path -path $backInclDir -childpath "$($tModName).ps1") ;                 if (Test-Path $sLoad) {                     write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                     . $sLoad ;                     if ($showdebug) { Write-Verbose "Post $sLoad" };                     if(!(test-path function:$tModCmdlet)){                         write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TO CONFIRM `$tModCmdlet:$($tModCmdlet) FOR $($tModName)" ;                     } else {                         write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"                     }                 } else {                     Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                     exit;                 } ;
+            if($lVers){                 $lVers=($lVers | sort version)[-1];                 try {                     import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking -Verbose:$false                 }   catch {                      write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking -verbose:$false                } ;
+            } elseif (test-path $tModFile) {                 write-warning "*NO* INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;                 try {import-module -name $tModDFile -force -DisableNameChecking -verbose:$false}                 catch {                     write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;                     $tModFile = "$($tModName).ps1" ;                     $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;                     if (Test-Path $sLoad) {                         Write-Verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                         . $sLoad ;                         if ($showdebug) { Write-Verbose "Post $sLoad" };                     } else {                         $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;                         if (Test-Path $sLoad) {                             write-verbose  ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                             . $sLoad ;                             if ($showdebug) { write-verbose  "Post $sLoad" };                         } else {                             Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                             exit;                         } ;                     } ;                 } ;             } ;
+            if(!(test-path function:$tModCmdlet)){                 write-warning -verbose:$true  "UNABLE TO VALIDATE PRESENCE OF $tModCmdlet`nfailing through to `$backInclDir .ps1 version" ;                 $sLoad = (join-path -path $backInclDir -childpath "$($tModName).ps1") ;                 if (Test-Path $sLoad) {                     write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                     . $sLoad ;                     if ($showdebug) { Write-Verbose -verbose "Post $sLoad" };                     if(!(test-path function:$tModCmdlet)){                         write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TO CONFIRM `$tModCmdlet:$($tModCmdlet) FOR $($tModName)" ;                     } else {                         write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"                     }                 } else {                     Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                     exit;                 } ;
             } else {                 write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"             } ;
         } ;  # loop-E
         #*------^ END MOD LOADS ^------
 
         if($ParentPath){
-            $rgxProfilePaths='(\\Documents\\WindowsPowerShell\\scripts|\\Program\sFiles\\windowspowershell\\scripts)' ;
+            $rgxProfilePaths='(\\Documents\\WindowsPowerShell\\scripts|\\Program\sFiles\\windowspowershell\\scripts)' ; 
             if($ParentPath -match $rgxProfilePaths){
-                $ParentPath = "$(join-path -path 'c:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ;
-            } ;
+                $ParentPath = "$(join-path -path 'c:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ; 
+            } ; 
             $logspec = start-Log -Path ($ParentPath) -showdebug:$($showdebug) -whatif:$($whatif) ;
             if($logspec){
                 $logging=$logspec.logging ;
@@ -376,7 +375,7 @@ function add-MailboxAccessGrant {
         #$reqMods+="Reconnect-SOL;Connect-SOL;Disconnect-SOL".split(";") ;
         $reqMods += "Test-TranscriptionSupported;Test-Transcribing;Stop-TranscriptLog;Start-IseTranscript;Start-TranscriptLog;get-ArchivePath;Archive-Log;Start-TranscriptLog".split(";") ;
         # 12:15 PM 9/12/2018 remove dupes
-        $reqMods = $reqMods | Select-Object -Unique ;
+        $reqMods = $reqMods | select -Unique ;
 
         #region SPLATDEFS ; # ------
 
@@ -496,11 +495,11 @@ function add-MailboxAccessGrant {
 
         #
         #LEMS detect: IdleTimeout -ne -1
-        if(get-pssession |Where-Object{($_.configurationname -eq 'Microsoft.Exchange') -AND ($_.ComputerName -match $rgxEx10HostName) -AND ($_.IdleTimeout -ne -1)} ){
+        if(get-pssession |?{($_.configurationname -eq 'Microsoft.Exchange') -AND ($_.ComputerName -match $rgxEx10HostName) -AND ($_.IdleTimeout -ne -1)} ){
             write-verbose  "$((get-date).ToString('HH:mm:ss')):LOCAL EMS detected" ;
             $Global:E10IsDehydrated=$false ;
         # REMS detect dleTimeout -eq -1
-        } elseif(get-pssession |Where-Object{$_.configurationname -eq 'Microsoft.Exchange' -AND $_.ComputerName -match $rgxEx10HostName -AND ($_.IdleTimeout -eq -1)} ){
+        } elseif(get-pssession |?{$_.configurationname -eq 'Microsoft.Exchange' -AND $_.ComputerName -match $rgxEx10HostName -AND ($_.IdleTimeout -eq -1)} ){
             write-verbose  "$((get-date).ToString('HH:mm:ss')):REMOTE EMS detected" ;
             $reqMods+="get-GCFast;Get-ExchangeServerInSite;connect-Ex2010;Reconnect-Ex2010;Disconnect-Ex2010;Disconnect-PssBroken".split(";") ;
             if( !(check-ReqMods $reqMods) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; exit ;}  ;
@@ -510,7 +509,7 @@ function add-MailboxAccessGrant {
             write-verbose  "$((get-date).ToString('HH:mm:ss')):No existing Ex2010 Connection detected" ;
             # Server snapin defer
             if(($host.version.major -lt 3) -AND (get-service MSExchangeADTopology -ea SilentlyContinue)){
-                write-verbose "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Loading Local Server EMS10 Snapin" ;
+                write-verbose -verbose:$bshowVerbose  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Loading Local Server EMS10 Snapin" ;
                 $reqMods+="Load-EMSSnap;load-EMSLatest".split(";") ;
                 if( !(check-ReqMods $reqMods) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; exit ;}  ;
                 Load-EMSSnap ;
@@ -635,7 +634,7 @@ function add-MailboxAccessGrant {
         $SGSplat.DisplayName = "$($SiteCode)-SEC-Email-$($Tmbx.DisplayName)-G";
 
         TRY {
-            $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+            $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | ? { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | select distinguishedname).distinguishedname.tostring() ;
         } CATCH {
             $ErrTrpd = $_ ;
             $smsg = "UNABLE TO LOCATE $($FindOU) BELOW SITECODE $($SiteCode)!. EXITING!" ; $smsg = "MESSAGE" ;
@@ -658,7 +657,7 @@ function add-MailboxAccessGrant {
         $SGSplat.Path = $OU ;
         $smsg = "Checking specified SecGrp Members..." ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-        $SGMembers = ($InputSplat.members.split(",") | ForEach-Object { get-recipient $_ -ea stop })
+        $SGMembers = ($InputSplat.members.split(",") | foreach { get-recipient $_ -ea stop })
         $smsg = "Checking for existing $($SGSplat.DisplayName)..." ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
 
@@ -882,14 +881,14 @@ function add-MailboxAccessGrant {
                     } #  # loop-E;
                 } ;
             } # if-E whatif ;
-            $mbxp = $Tmbx | get-mailboxpermission -user ($oSG).Name -domaincontroller $InputSplat.domaincontroller -ea silentlycontinue | Where-Object { $_.user -match ".*-(SEC|Data)-Email-.*$" }
+            $mbxp = $Tmbx | get-mailboxpermission -user ($oSG).Name -domaincontroller $InputSplat.domaincontroller -ea silentlycontinue | ? { $_.user -match ".*-(SEC|Data)-Email-.*$" }
             $smsg = "`nChecking Mailbox Permission on $($Tmbx.samaccountname) mailbox to accessing user:`n $($oSG.Name)...`n(blank if none)`n---`n$(($mbxp | select user,AccessRights,IsInhertied,Deny | format-list|out-string).trim())" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
 
 
             # AD SendAs too
 
-            $mbxadp = $Tmbx | Get-ADPermission -domaincontroller $($InputSplat.domaincontroller) -ea Silentlycontinue | Where-Object { ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and ($_.user -match ".*-(SEC|Data)-Email-.*$") };
+            $mbxadp = $Tmbx | Get-ADPermission -domaincontroller $($InputSplat.domaincontroller) -ea Silentlycontinue | where { ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and ($_.user -match ".*-(SEC|Data)-Email-.*$") };
 
             $smsg = "`nChecking AD SendAs Permission on $($Tmbx.samaccountname) mailbox to accessing user:`n $($oSG.Name)...`n(blank if none)" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
@@ -1061,7 +1060,7 @@ function add-MailboxAccessGrant {
                 $smsg = "`nUpdated $($oSG.Name) Membership...`n" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                 write-host -foregroundcolor green "$((get-date).ToString("HH:mm:ss")):---";
-                if ($mbrs = Get-ADGroupMember -identity $oSG.samaccountname -server $($DomainController) | Select-Object distinguishedName ) {
+                if ($mbrs = Get-ADGroupMember -identity $oSG.samaccountname -server $($DomainController) | select distinguishedName ) {
                     $smsg = "$(($mbrs | out-string).trim() | out-default)`n-----------------------" ;
                 } else {
                     $smsg = "(NO MEMBERS RETURNED)`n-----------------------" ;
@@ -1103,16 +1102,15 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
-    * 11:22 AM 4/21/2021 coded around recent 'verbose the heck out of everything', yanked 99% of the verbose support - this seldom fails in a way that you need verbose, and when it's on, every cmdlet in the modules get echo'd, spams the heck out of console & logging. One key change (not sure if source) was to switch from inline import-pss & import-mod, into 2 steps with varis.
     * 10:02 AM 4/12/2021 add alias connect-ExOP (eventually rename verb-ex2010 to verb-exOnPrem)
     * 12:06 PM 4/2/2021 added alias cxOP ; added explicit echo on import-session|module, removed redundant catch block; added trycatch around import-sess|mod ; added recStatus support
-    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods ; renamed-standardized splat names (EMSSplat ->pltNSess ; ) ; flipped prefix into splat add ;
+    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods ; renamed-standardized splat names (EMSSplat ->pltNSess ; ) ; flipped prefix into splat add ; 
     * 2:36 PM 3/23/2021 getting away from dyn, random from array in $XXXMeta.Ex10Server, doesn't rely on AD lookups for referrals
     * 10:14 AM 3/23/2021 flipped default $Cred spec, pointed at an OP cred (matching reconnect-ex2010())
     * 11:36 AM 3/5/2021 updated colorcode, subed wv -verbose with just write-verbose, added cred.uname echo
     * 1:15 PM 3/1/2021 added org-level color-coded console
     * 3:28 PM 2/17/2021 updated to support cross-org, leverages new $XXXMeta.ExRevision, ExViewForest
-    * 5:16 PM 10/22/2020 switched to no-loop meta lookup; debugged, fixed
+    * 5:16 PM 10/22/2020 switched to no-loop meta lookup; debugged, fixed 
     * 7:13 AM 7/22/2020 replaced codeblock w get-TenantTag(), flipped ExAdmin fr switch to un-typed
     * 5:11 PM 7/21/2020 added VEN support
     * 12:20 PM 5/27/2020 moved aliases: Add-EMSRemote,cx10 win func
@@ -1192,7 +1190,7 @@ Function Connect-Ex2010 {
     .LINK
     https://github.com/tostka/verb-Ex2010/
     #>
-    #[CmdletBinding()] # 10:03 AM 4/21/2021 disable, see if it kills verbose
+    [CmdletBinding()]
     [Alias('Add-EMSRemote','cx10','cxOP','connect-ExOP')]
     Param(
         [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
@@ -1200,15 +1198,15 @@ Function Connect-Ex2010 {
         [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credOpTORSID
     )  ;
     BEGIN{
-        #$verbose = ($VerbosePreference -eq "Continue") ;
+        $verbose = ($VerbosePreference -eq "Continue") ; 
         $sWebPoolVariant = "exadmin" ;
         $CommandPrefix = $null ;
         # use credential domain to determine target org
-        $rgxLegacyLogon = '\w*\\\w*' ;
+        $rgxLegacyLogon = '\w*\\\w*' ; 
         $TenOrg = get-TenantTag -Credential $Credential ;
         <#
         if($Credential.username -match $rgxLegacyLogon){
-            $credDom =$Credential.username.split('\')[0] ;
+            $credDom =$Credential.username.split('\')[0] ; 
         } elseif ($Credential.username.contains('@')){
             $credDom = ($Credential.username.split("@"))[1] ;
         } else {
@@ -1217,30 +1215,30 @@ Function Connect-Ex2010 {
         #>
     } ;  # BEG-E
     PROCESS{
-        $ExchangeServer=$null ;
+        $ExchangeServer=$null ; 
         # flip from dyn lookup to array in Ex10Server, and always use get-random to pick between. Returns a value, even when only a single value
-        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server|get-random ;
-        $ExAdmin = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant ;
-        $ExVers = (Get-Variable  -name "$($TenOrg)Meta").value.ExRevision ;
-        $ExVwForest = (Get-Variable  -name "$($TenOrg)Meta").value.ExViewForest ;
+        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server|get-random ; 
+        $ExAdmin = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant ; 
+        $ExVers = (Get-Variable  -name "$($TenOrg)Meta").value.ExRevision ; 
+        $ExVwForest = (Get-Variable  -name "$($TenOrg)Meta").value.ExViewForest ;         
         $ExOPAccessFromToro = (Get-Variable  -name "$($TenOrg)Meta").value.ExOPAccessFromToro
-        # force unresolved to dyn
+        # force unresolved to dyn 
         if(!$ExchangeServer){
-            #$ExchangeServer = 'dynamic' ;
+            #$ExchangeServer = 'dynamic' ; 
             # getting away from dyn, random from array in Ex10Server
-            throw "Undefined `$ExchangeServer for $($TenOrg) org, and `$$($TenOrg)Meta.Ex10Server property" ;
-            Exit ;
+            throw "Undefined `$ExchangeServer for $($TenOrg) org, and `$$($TenOrg)Meta.Ex10Server property" ; 
+            Exit ; 
         } ;
         if($ExchangeServer -eq 'dynamic'){
-            if( $ExchangeServer = (Get-ExchangeServerInSite | Where-Object { ($_.roles -eq 36) } | Get-Random ).FQDN){}
+            if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}
             else {
                 write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchangeServerInSite *FAILED*,`ndeferring to Get-ExchServerFromExServersGroup" ;
                 if(!($ExchangeServer = Get-ExchServerFromExServersGroup)){
-                    write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchServerFromExServersGroup *FAILED*,`n deferring to profile `$smtpserver:$($smtpserver))"  ;
+                    write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchServerFromExServersGroup *FAILED*,`n deferring to profile `$smtpserver:$($smtpserver))"  ; 
                     $ExchangeServer = $smtpserver ;
-                };
-            } ;
-        } ;
+                }; 
+            } ;  
+        } ; 
 
         write-host -foregroundcolor darkgray "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
         # splat to open a session - # stock 'PSLanguageMode=Restricted' powershell IIS Webpool
@@ -1250,33 +1248,33 @@ Function Connect-Ex2010 {
             <#suppresses: The WinRM client cannot process the request. It cannot determine the content type of the HTTP response f rom the destination computer. The content type is absent or invalid
             #>
             $pltNSess.add('Authentication','Kerberos') ;
-        } ;
+        } ; 
         if ($ExAdmin) {
           # use variant IIS Webpool
           $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
         }
         if ($Credential) {
-             $pltNSess.Add("Credential", $Credential)
-             write-verbose "(using cred:$($credential.username))" ;
+             $pltNSess.Add("Credential", $Credential) 
+             write-verbose "(using cred:$($credential.username))" ; 
         } ;
-
+        
         # -Authentication Basic only if specif needed: for Ex configured to connect via IP vs hostname)
         # try catch against and retry into stock if fails
         $error.clear() ;
         TRY {
             $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
         } CATCH {
-            $ErrTrapd = $_ ;
+            $ErrTrapd = $_ ; 
             write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
             #-=-record a STATUSWARN=-=-=-=-=-=-=
             $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
-            if(Get-Variable passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-            if(Get-Variable -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+            if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
             #-=-=-=-=-=-=-=-=
             if ($ExAdmin) {
               # switch to stock pool and retry
               $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/$($sWebPoolVariant)", "/powershell") ;
-              write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
+              write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING EXADMIN POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
               $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
             } else {
                 BREAK ;
@@ -1284,60 +1282,43 @@ Function Connect-Ex2010 {
         } ;
 
         write-verbose "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
-        #$pltIMod=@{Global=$true;PassThru=$true;DisableNameChecking=$true ; verbose=$false} ; # force verbose off, suppress spam in console
-        # tear verbose out
-        $pltIMod=@{Global=$true;PassThru=$true;DisableNameChecking=$true ;} ;
-        #$pltISess = [ordered]@{Session = $Global:E10Sess ; DisableNameChecking = $true  ; AllowClobber = $true ; ErrorAction = 'Stop' ; Verbose = $false ;} ;
-        $pltISess = [ordered]@{Session = $Global:E10Sess ; DisableNameChecking = $true  ; AllowClobber = $true ; ErrorAction = 'Stop' ; } ;
+        $pltIMod=@{Global=$true;PassThru=$true;DisableNameChecking=$true ; verbose=$false} ; # force verbose off, suppress spam in console
+        $pltISess = [ordered]@{Session = $Global:E10Sess ; DisableNameChecking = $true  ; AllowClobber = $true ; ErrorAction = 'Stop' ; Verbose = $false ;} ;
         if($CommandPrefix){
             $pltIMod.add('Prefix',$CommandPrefix) ;
             $pltISess.add('Prefix',$CommandPrefix) ;
         } ;
-        $smsg = "$((get-date).ToString('HH:mm:ss')):Import-PSSession  w`n$(($pltISess|out-string).trim())`nImport-Module w`n$(($pltIMod|out-string).trim())" ;
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        $smsg = "$((get-date).ToString('HH:mm:ss')):Import-PSSession  w`n$(($pltISess|out-string).trim())`nImport-Module w`n$(($pltIMod|out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         $error.clear() ;
         TRY {
-            # 9:57 AM 4/21/2021 coming through full verbose, suppress the pref
-            if($VerbosePreference -eq "Continue"){
-                $VerbosePrefPrior = $VerbosePreference ;
-                $VerbosePreference = "SilentlyContinue" ;
-                $verbose = ($VerbosePreference -eq "Continue") ;
-            } ;
-            #$Global:E10Mod = Import-Module (Import-PSSession @pltISess) @pltIMod   ;
-            # try 2-stopping (suppress verbose)
-            $xIPS = Import-PSSession @pltISess ;
-            $Global:E10Mod = Import-Module $xIPS @pltIMod ;
+            $Global:E10Mod = Import-Module (Import-PSSession @pltISess) @pltIMod   ;
             if($ExVwForest){
-                write-host "Setting EMS Session: Set-AdServerSettings -ViewEntireForest `$True" ;
-                Set-AdServerSettings -ViewEntireForest $True ;
-            } ;
-            # reenable VerbosePreference:Continue, if set, during mod loads
-            if($VerbosePrefPrior -eq "Continue"){
-                $VerbosePreference = $VerbosePrefPrior ;
-                $verbose = ($VerbosePreference -eq "Continue") ;
-            } ;
+                write-host "Setting EMS Session: Set-AdServerSettings -ViewEntireForest `$True" ; 
+                Set-AdServerSettings -ViewEntireForest $True ; 
+            } ; 
         } CATCH {
-            $ErrTrapd = $_ ;
+            $ErrTrapd = $_ ; 
             write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
             #-=-record a STATUSERROR=-=-=-=-=-=-=
             $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
-            if(Get-Variable passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-            if(Get-Variable -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+            if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
             #-=-=-=-=-=-=-=-=
         } ;
         # 7:54 AM 11/1/2017 add titlebar tag
         Add-PSTitleBar 'EMS' ;
-        # tag E10IsDehydrated
+        # tag E10IsDehydrated 
         $Global:E10IsDehydrated = $true ;
         write-host -foregroundcolor darkgray "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
     } ;  # PROC-E
     END {
         <# borked by psreadline v1/v2 breaking changes
         if(($PSFgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSFgColor) -AND ($PSBgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSBgColor)){
-            write-verbose "(setting console colors:$($TenOrg)Meta.PSFgColor:$($PSFgColor),PSBgColor:$($PSBgColor))" ;
+            write-verbose "(setting console colors:$($TenOrg)Meta.PSFgColor:$($PSFgColor),PSBgColor:$($PSBgColor))" ; 
             $Host.UI.RawUI.BackgroundColor = $PSBgColor
-            $Host.UI.RawUI.ForegroundColor = $PSFgColor ;
+            $Host.UI.RawUI.ForegroundColor = $PSFgColor ; 
         } ;
         #>
     }
@@ -1368,7 +1349,6 @@ Function Connect-Ex2010XO {
     AddedWebsite2:	https://github.com/JeremyTBradshaw
     AddedTwitter2:
     REVISIONS   :
-    # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods; flipped import-psess & import-mod to splats (cleaner) ; line-wrapped longer post-filters for legib
     * 8:30 AM 10/22/2020 ren'd $TentantTag -> $TenOrg, swapped looping meta resolve with 1-liner approach ; added AcceptedDom caching to the middle status test (suppress one more get-exoaccepteddomain call if possible), replaced all $Meta.value with the $TenOrg version
     * 12:56 PM 10/15/2020 converted connect-exo to Ex2010, adding onprem validation
@@ -1468,17 +1448,17 @@ Function Connect-Ex2010XO {
         #.OP_ExADRoot
         if( (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName ){
 
-        } else {
+        } else { 
             #.OP_rgxEMSComputerName
             if((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot){
                 set-Variable  -name "$($TenOrg)Meta" -value ( (Get-Variable  -name "$($TenOrg)Meta").value += @{'OP_rgxEMSComputerName' = "^\w*\.$([Regex]::Escape((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot))$"} )
             } else {
                 $smsg = "Missing `$$((Get-Variable  -name "$($TenOrg)Meta").value.o365_Prefix).OP_ExADRoot value.`nProfile hasn't loaded proper tor-incl-infrastrings file)!"
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } #Error|Warn|Debug
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } #Error|Warn|Debug 
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             } ;
         } ;
-
+    
     } ;  # BEG-E
     PROCESS{
         # if we're using ems-style BasicAuth, clear incompatible existing Rems PSS's
@@ -1491,7 +1471,7 @@ Function Connect-Ex2010XO {
         $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
             $_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (
             ( -not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) ) -AND (
-            -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available')
+            -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available') 
         } ;
         $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
             $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
@@ -1538,7 +1518,7 @@ Function Connect-Ex2010XO {
                 if ((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant) {
                   # switch to stock pool and retry
                   $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/$((Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant)", "/powershell") ;
-                  write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING VARIANT POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
+                  write-warning -verbose:$true "$((get-date).ToString('HH:mm:ss')):FAILED TARGETING VARIANT POOL`nRETRY W STOCK POOL: New-PSSession w`n$(($pltNSess|out-string).trim())" ;
                   $global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
                 } else {
                     STOP ;
@@ -1638,9 +1618,6 @@ function cx10tol {
     cx10tol - Connect-EX2010 to specified on-prem Exchange
     .DESCRIPTION
     Connect-EX2010 - Connect-EX2010 to specified on-prem Exchange
-    .NOTES
-    REVISIONS   :
-    # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     .EXAMPLE
     cx10tol
     #>
@@ -1650,7 +1627,7 @@ function cx10tol {
     $Verbose = ($VerbosePreference -eq 'Continue') ;
     $pltGHOpCred=@{TenOrg="TOL" ;userrole=@('ESVC','LSVC','SID') ;verbose=$($verbose)} ;
     if($OPCred=(get-HybridOPCredentials @pltGHOpCred).cred){
-        Connect-EX2010 -cred $OPCred #-Verbose:($VerbosePreference -eq 'Continue') ; 
+        Connect-EX2010 -cred $OPCred -Verbose:($VerbosePreference -eq 'Continue') ; 
     } else {
         $smsg = "Unable to resolve get-HybridOPCredentials -TenOrg $($TenOrg) -userrole $($UserRole -join '|') value!"
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
@@ -1669,9 +1646,6 @@ function cx10tor {
     cx10tor - Connect-EX2010 to specified on-prem Exchange
     .DESCRIPTION
     Connect-EX2010 - Connect-EX2010 to specified on-prem Exchange
-    .NOTES
-    REVISIONS   :
-    # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     .EXAMPLE
     cx10tor
     #>
@@ -1682,7 +1656,7 @@ function cx10tor {
     if(!$Credential){
         $pltGHOpCred=@{TenOrg="TOR" ;userrole=@('SID','ESVC','LSVC') ;verbose=$($verbose)} ;
         if($Credential=(get-HybridOPCredentials @pltGHOpCred).cred){
-            #Connect-EX2010 -cred $credTorSID #-Verbose:($VerbosePreference -eq 'Continue') ; 
+            #Connect-EX2010 -cred $credTorSID -Verbose:($VerbosePreference -eq 'Continue') ; 
         } else {
             $smsg = "Unable to resolve get-HybridOPCredentials -TenOrg $($TenOrg) -userrole $($UserRole -join '|') value!"
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
@@ -1690,7 +1664,7 @@ function cx10tor {
             Break ;
         } ;
     } ; 
-    Connect-EX2010 -cred $Credential #-Verbose:($VerbosePreference -eq 'Continue') ; 
+    Connect-EX2010 -cred $Credential -Verbose:($VerbosePreference -eq 'Continue') ; 
 }
 
 #*------^ cx10tor.ps1 ^------
@@ -1706,7 +1680,7 @@ Author      : Todd Kadrie
 Website     : http://www.toddomation.com
 Twitter     : @tostka / http://twitter.com/tostka
 CreatedDate : 2020-10-26
-FileName    :
+FileName    : 
 License     : MIT License
 Copyright   : (c) 2020 Todd Kadrie
 Github      : https://github.com/tostka/verb-XXX
@@ -1729,22 +1703,22 @@ https://github.com/tostka/verb-ex2010
 [CmdletBinding()]
 PARAM() ;
     # toggle forest view
-    if (get-command -name set-AdServerSettings){
+    if (get-command -name set-AdServerSettings){ 
         if ((get-AdServerSettings).ViewEntireForest ) {
               write-verbose "(set-AdServerSettings -ViewEntireForest `$False)"
-              set-AdServerSettings -ViewEntireForest $False
+              set-AdServerSettings -ViewEntireForest $False 
         } ;
     } else {
         #-=-record a STATUSERROR=-=-=-=-=-=-=
         $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
-        if(Get-Variable passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-        if(Get-Variable -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+        if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+        if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
         #-=-=-=-=-=-=-=-=
         $smsg = "MISSING:set-AdServerSettings`nOPEN an Exchange OnPrem connection FIRST!"
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        BREAK ;
-    } ;
+        BREAK ; 
+    } ; 
 }
 
 #*------^ disable-ForestView.ps1 ^------
@@ -1768,11 +1742,10 @@ Function Disconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,ExchangeOnline
     REVISIONS   :
-    # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     * 1:14 PM 3/1/2021 added color reset
     * 4:13 PM 10/22/2020 added pretest of $Global:*'s before running at remove-module (suppresses errors)
     * 12:23 PM 5/27/2020 updated cbh, moved aliases:Disconnect-EMSR','dx10' win func
-    * 10:51 AM 2/24/2020 updated attrib
+    * 10:51 AM 2/24/2020 updated attrib   
     * 6:59 PM 1/15/2020 cleanup
     * 8:01 AM 11/1/2017 added Remove-PSTitlebar 'EMS', and Disconnect-PssBroken to the bottom - to halt growth of unrepaired broken connections. Updated example to pretest for reqMods
     * 12:54 PM 12/9/2016 cleaned up, add pshelp, implented and debugged as part of verb-Ex2010 set
@@ -1793,12 +1766,12 @@ Function Disconnect-Ex2010 {
     [CmdletBinding()]
     [Alias('Disconnect-EMSR','dx10')]
     Param()
-    if($Global:E10Mod){$Global:E10Mod | Remove-Module -Force -verbose:$($false) } ;
-    if($Global:E10Sess){$Global:E10Sess | Remove-PSSession -verbose:$($false)} ;
+    if($Global:E10Mod){$Global:E10Mod | Remove-Module -Force -verbose:$false } ; 
+    if($Global:E10Sess){$Global:E10Sess | Remove-PSSession -verbose:$false} ;
     # 7:56 AM 11/1/2017 remove titlebar tag
     Remove-PSTitlebar 'EMS' ;
     # kill any other sessions using distinctive name; add verbose, to ensure they're echo'd that they were missed
-    Get-PSSession | Where-Object { $_.name -eq 'Exchange2010' } | Remove-PSSession -verbose:$($false);
+    Get-PSSession | ? { $_.name -eq 'Exchange2010' } | Remove-PSSession -verbose:$false;
     # kill any broken PSS, self regen's even for L13 leave the original borked and create a new 'Session for implicit remoting module at C:\Users\', toast them, they don't reopen. Same for Ex2010 REMS, identical new PSS, indistinguishable from the L13 regen, except the random tmp_xxxx.psm1 module name. Toast them, it's just a growing stack of broken's
     Disconnect-PssBroken ;
     #[console]::ResetColor()  # reset console colorscheme
@@ -1840,22 +1813,22 @@ Function enable-ForestView {
     [CmdletBinding()]
     PARAM() ;
     # toggle forest view
-    if (get-command -name set-AdServerSettings){
+    if (get-command -name set-AdServerSettings){ 
         if (!(get-AdServerSettings).ViewEntireForest ) {
-              write-verbose "(set-AdServerSettings -ViewEntireForest `$False)" ;
+              write-verbose "(set-AdServerSettings -ViewEntireForest `$False)" ; 
               set-AdServerSettings -ViewEntireForest $TRUE  ;
         } ;
     } else {
         #-=-record a STATUSERROR=-=-=-=-=-=-=
         $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
-        if(Get-Variable passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-        if(Get-Variable -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+        if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+        if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
         #-=-=-=-=-=-=-=-=
         $smsg = "MISSING:set-AdServerSettings`nOPEN an Exchange OnPrem connection FIRST!"
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        BREAK ;
-    } ;
+        BREAK ; 
+    } ; 
 }
 
 #*------^ enable-ForestView.ps1 ^------
@@ -1869,7 +1842,6 @@ Function Get-ExchangeServerInSite {
     Author: Mike Pfeiffer
     Website:	http://mikepfeiffer.net/2010/04/find-exchange-servers-in-the-local-active-directory-site-using-powershell/
     REVISIONS   :
-    # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     * 12:08 PM 5/15/2020 fixed vpn issue: Try/Catch'd around recently failing $ADSite::GetComputerSite().GetDirectoryEntry().distinguishedName qry
     * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
     * 6:59 PM 1/15/2020 cleanup
@@ -1921,7 +1893,7 @@ Function Get-ExchangeServerInSite {
         [Parameter(HelpMessage="Switch to suppress default 'pingable' test (e.g. returns all matches, no testing)[-NoPing]")]
         [switch] $NoPing
     ) ;
-    $Verbose = ($VerbosePreference -eq 'Continue') ;
+    $Verbose = ($VerbosePreference -eq 'Continue') ; 
     # 9:53 AM 11/16/2018 from vpn/home, $ADSite doesn't populate prior to domain logon (via vpn)
     # 9:41 AM 5/15/2020 issue: vpn/home, $siteDN suddenly doesn't populate, no longer dyn locs an Ex box, implemented try/catch workaround
     if ($ADSite = [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]) {
@@ -1929,12 +1901,12 @@ Function Get-ExchangeServerInSite {
         CATCH {
             $siteDN =$Ex10siteDN # [infra] returns DN to : cn=[SITENAME],cn=sites,cn=configuration,dc=ad,dc=[DOMAIN],dc=com
             write-warning "$((get-date).ToString('HH:mm:ss')):`$siteDN lookup FAILED, deferring to hardcoded `$Ex10siteDN string in infra file!" ;
-        } ;
+        } ; 
         TRY {$configNC = ([ADSI]"LDAP://RootDse").configurationNamingContext}
         CATCH {
             $configNC =$Ex10configNC #  [infra] returns: "CN=Configuration,DC=ad,DC=[DOMAIN],DC=com"
             write-warning "$((get-date).ToString('HH:mm:ss')):`$configNC lookup FAILED, deferring to hardcoded `$Ex10configNC string in infra file!" ;
-        } ;
+        } ; 
         if($siteDN -AND $configNC){
             $search = new-object DirectoryServices.DirectorySearcher([ADSI]"LDAP://$configNC") ;
             $objectClass = "objectClass=msExchExchangeServer" ;
@@ -1945,26 +1917,26 @@ Function Get-ExchangeServerInSite {
             [void] $search.PropertiesToLoad.Add("name") ;
             [void] $search.PropertiesToLoad.Add("msexchcurrentserverroles") ;
             [void] $search.PropertiesToLoad.Add("networkaddress") ;
-            $search.FindAll() | ForEach-Object {
+            $search.FindAll() | % {
                 $matched = New-Object PSObject -Property @{
                     Name  = $_.Properties.name[0] ;
                     FQDN  = $_.Properties.networkaddress |
-                        ForEach-Object { if ($_ -match "ncacn_ip_tcp") { $_.split(":")[1] } } ;
+                        % { if ($_ -match "ncacn_ip_tcp") { $_.split(":")[1] } } ;
                     Roles = $_.Properties.msexchcurrentserverroles[0] ;
                 } ;
                 if($NoPing){
-                    $matched | write-output ;
-                } else {
-                    $matched | ForEach-Object{If(test-connection $_.FQDN -count 1 -ea 0) {$_} else {} } |
-                        write-output ;
-                } ;
+                    $matched | write-output ; 
+                } else { 
+                    $matched | %{If(test-connection $_.FQDN -count 1 -ea 0) {$_} else {} } | 
+                        write-output ; 
+                } ; 
             } ;
         }else {
             write-warning  "$((get-date).ToString('HH:mm:ss')):MISSING `$siteDN:($($siteDN)) `nOR `$configNC:($($configNC)) values`nABORTING!" ;
             $false | write-output ;
         } ;
     }else {
-        write-warning "$((get-date).ToString('HH:mm:ss')):`$ADSite blank, not authenticated to a domain! ABORTING!" ;
+        write-warning -verbose:$true  "$((get-date).ToString('HH:mm:ss')):`$ADSite blank, not authenticated to a domain! ABORTING!" ;
         $false | write-output ;
     } ;
 }
@@ -1996,7 +1968,7 @@ Function Get-ExchServerFromExServersGroup {
     .\Get-ExchServerFromExServersGroup
     Draw random matching ex server with defaulted settings
     .EXAMPLE
-    .\Get-ExchServerFromExServersGroup -ServerRegex '^CN=SITEPREFIX.*$'
+    .\Get-ExchServerFromExServersGroup -ServerRegex '^CN=SITEPREFIX.*$' 
     Draw random matching ex server with explicit ServerRegex match
     .LINK
     #>
@@ -2007,8 +1979,8 @@ Function Get-ExchServerFromExServersGroup {
         [Parameter(HelpMessage="AD ParentDomain fqdn [-ADParentDomain 'ROOTDOMAIN.DOMAIN.com']")]
         $ADParentDomain=$DomTORParentfqdn
     ) ;
-    (Get-ADGroupMember -Identity 'Exchange Servers' -server $DomTORParentfqdn |
-        Where-Object { $_.distinguishedname -match $ServerRegex }).name |
+    (Get-ADGroupMember -Identity 'Exchange Servers' -server $DomTORParentfqdn | 
+        ? { $_.distinguishedname -match $ServerRegex }).name | 
             get-random | write-output ;
 }
 
@@ -2036,7 +2008,7 @@ Function import-EMSLocalModule {
     .DESCRIPTION
     import-EMSLocalModule - Setup local server bin-module-based ExchOnPrem Mgmt Shell connection (contrasts with Ex2007/10 snapin use ; validated Exch2016)
     Wraps the native ex server desktop EMS, .lnk commands:
-    . 'C:\Program Files\Microsoft\Exchange Server\V15\bin\RemoteExchange.ps1';
+    . 'C:\Program Files\Microsoft\Exchange Server\V15\bin\RemoteExchange.ps1'; 
     Connect-ExchangeServer -auto -ClientApplication:ManagementShell
     Handy for loading local non-dehydrated support in ISE, regular PS etc, where existing code relies on non-dehydrated objects.
     .INPUTS
@@ -2044,7 +2016,7 @@ Function import-EMSLocalModule {
     .OUTPUTS
     None. Returns no objects or output.
     .EXAMPLE
-    import-EMSLocalModule ;
+    import-EMSLocalModule ; 
     .LINK
     https://github.com/tostka/verb-Ex2010/
     #>
@@ -2052,52 +2024,52 @@ Function import-EMSLocalModule {
     #[Alias()]
     Param()  ;
     BEGIN{
-        $verbose = ($VerbosePreference -eq "Continue") ;
+        $verbose = ($VerbosePreference -eq "Continue") ; 
     } ;  # BEG-E
     PROCESS{
         $error.clear() ;
         TRY {
             if($tMod = get-module ([System.Net.Dns]::gethostentry($(hostname))).hostname -ea 0){
-                write-verbose "(local EMS module already loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ;
-            } else {
-                write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(importing local Exchange Mgmt Shell binary module)" ;
+                write-verbose "(local EMS module already loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ; 
+            } else { 
+                write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(importing local Exchange Mgmt Shell binary module)" ; 
                 if($env:ExchangeInstallPath){
                     $rExps1 = "$($env:ExchangeInstallPath)bin\RemoteExchange.ps1"
                     if(test-path $rExps1){
-                        . $rExps1 ;
-                        if(Get-Command Connect-ExchangeServer){
-                            Connect-ExchangeServer -auto -ClientApplication:ManagementShell ;
-                        } else {
-                            throw "Unable to gcm Connect-ExchangeServer!" ;
-                        } ;
-                    } else {
-                        throw "Unable to locate: `$(`$env:ExchangeInstallPath)bin\RemoteExchange.ps1" ;
-                    } ;
-                } else {
-                    throw "Unable to locate: `$env:ExchangeInstallPath Environment Variable (Exchange does not appear to be locally installed)" ;
-                } ;
-            } ;
+                        . $rExps1 ; 
+                        if(gcm Connect-ExchangeServer){
+                            Connect-ExchangeServer -auto -ClientApplication:ManagementShell ; 
+                        } else { 
+                            throw "Unable to gcm Connect-ExchangeServer!" ; 
+                        } ; 
+                    } else { 
+                        throw "Unable to locate: `$(`$env:ExchangeInstallPath)bin\RemoteExchange.ps1" ; 
+                    } ; 
+                } else { 
+                    throw "Unable to locate: `$env:ExchangeInstallPath Environment Variable (Exchange does not appear to be locally installed)" ; 
+                } ; 
+            } ; 
         } CATCH {
-            $ErrTrapd = $_ ;
+            $ErrTrapd = $_ ; 
             write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
             #-=-record a STATUSERROR=-=-=-=-=-=-=
             $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
-            if(Get-Variable passstatus -scope Script -ea 0 ){$script:PassStatus += $statusdelta } ;
-            if(Get-Variable -Name PassStatus_$($tenorg) -scope Script  -ea 0 ){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+            if(gv passstatus -scope Script -ea 0 ){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script  -ea 0 ){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
             #-=-=-=-=-=-=-=-=
         } ;
         # 7:54 AM 11/1/2017 add titlebar tag
-        if(Get-Command Add-PSTitleBar -ea 0 ){Add-PSTitleBar 'EMSL' ;} ;
-        # tag E10IsDehydrated
-        $Global:ExOPIsDehydrated = $false ;
+        if(gcm Add-PSTitleBar -ea 0 ){Add-PSTitleBar 'EMSL' ;} ; 
+        # tag E10IsDehydrated 
+        $Global:ExOPIsDehydrated = $false ;        
     } ;  # PROC-E
     END {
-        $tMod = $null ;
+        $tMod = $null ; 
         if($tMod = GET-MODULE ([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME){
-            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(local EMS module loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ;
-        } else {
-            throw "Unable to resolve target local EMS module:GET-MODULE $([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME)" ;
-        } ;
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(local EMS module loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ; 
+        } else { 
+            throw "Unable to resolve target local EMS module:GET-MODULE $([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME)" ; 
+        } ; 
     }
 }
 
@@ -2510,7 +2482,6 @@ function Load-EMSSnap {
     Twitter:	http://twitter.com/tostka
 
     REVISIONS   :
-    # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods/add-Pssnapins
     * 6:59 PM 1/15/2020 cleanup
     vers: 9:39 AM 8/12/2015: retool into generic switched version to support both modules & snappins with same basic code ; building a stock EMS version (vs the fancier load-EMSSnapLatest)
@@ -2571,10 +2542,10 @@ function Load-EMSSnap {
         #
         switch ($PlugStyle) {
           "Module" {
-            Import-Module $PlugName -ErrorAction Stop -verbose:$($false); write-output $TRUE ;
+            Import-Module $PlugName -ErrorAction Stop -Verbose:$false; write-output $TRUE ;
           }
           "Snapin" {
-            Add-PSSnapin $PlugName -ErrorAction Stop -verbose:$($false); write-output $TRUE
+            Add-PSSnapin $PlugName -ErrorAction Stop -Verbose:$false; write-output $TRUE
           }
         } # switch-E
       }
@@ -2608,7 +2579,7 @@ function new-MailboxShared {
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
     CreatedDate : 2020-
-    FileName    :
+    FileName    : 
     License     : MIT License
     Copyright   : (c) 2020 Todd Kadrie
     Github      : https://github.com/tostka
@@ -2618,12 +2589,12 @@ function new-MailboxShared {
     AddedTwitter:	URL
     REVISIONS
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
-    # 1:29 PM 4/23/2020 updated dynpath & logging, unwrapped loadmod,
+    # 1:29 PM 4/23/2020 updated dynpath & logging, unwrapped loadmod, 
     # 4:28 PM 4/22/2020 updated logging code, to accomodate dynamic locations and $ParentPath
     # 4:36 PM 4/8/2020 works fully on jumpbox, but ignores whatif, renamed $bwhatif -> $whatif (as the b variant was prev set in the same-script, now separate scopes); swapped out CU5 switch, moved settings into infra file, genericized
     # 2:15 PM 4/7/2020 updated to reflect debugging on jumpbox
     # 2:35 PM 4/3/2020 new-MailboxShared: genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules ; added -ParentPath to pass through a usable path for start-log, within new-mailboxshared()
-    # 8:48 AM 11/26/2019 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office
+    # 8:48 AM 11/26/2019 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office 
     # 12:14 PM 10/4/2019 splice in Room/Equip code from new-mailboxConfRm.ps1's variant (not functionalized yet), added new -Room & -Equipement flags to trigger ConfRm code
     # 2:22 PM 10/1/2019 2076 & 1549 added: $FallBackBaseUserOU, OU that's used when can't find any baseuser for the owner's OU, default to a random shared from SITECODE (avoid crapping out):
     # 9:48 AM 9/27/2019 new-MailboxShared:added `a 'beep' to YYY prompt
@@ -2839,7 +2810,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
     ) ;
 
     BEGIN {
-        $verbose = ($VerbosePreference -eq "Continue") ;
+        $verbose = ($VerbosePreference -eq "Continue") ; 
         # Get the name of this function
         ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
         # Get parameters this function was invoked with
@@ -2886,18 +2857,18 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 write-host "GOTCHA!:$($tModName)" ;
             } ;
             $lVers = get-module -name $tModName -ListAvailable -ea 0 ;
-            if($lVers){                 $lVers=($lVers | Sort-Object version)[-1];                 try {                     import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking -verbose:$($false)                }   catch {                      write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking -verbose:$($false)                } ;
-            } elseif (test-path $tModFile) {                 write-warning "*NO* INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;                 try {import-module -name $tModDFile -force -DisableNameChecking -verbose:$($false)}                 catch {                     write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;                     $tModFile = "$($tModName).ps1" ;                     $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;                     if (Test-Path $sLoad) {                         write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                         . $sLoad ;                         if ($showdebug) { write-verbose "Post $sLoad" };                     } else {                         $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;                         if (Test-Path $sLoad) {                             write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                             . $sLoad ;                             if ($showdebug) { write-verbose "Post $sLoad" };                         } else {                             Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                             exit;                         } ;                     } ;                 } ;             } ;
-            if(!(test-path function:$tModCmdlet)){                 write-warning "UNABLE TO VALIDATE PRESENCE OF $tModCmdlet`nfailing through to `$backInclDir .ps1 version" ;                 $sLoad = (join-path -path $backInclDir -childpath "$($tModName).ps1") ;                 if (Test-Path $sLoad) {                     write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                     . $sLoad ;                     if ($showdebug) { write-verbose "Post $sLoad" };                     if(!(test-path function:$tModCmdlet)){                         write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TO CONFIRM `$tModCmdlet:$($tModCmdlet) FOR $($tModName)" ;                     } else {                         write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"                     }                 } else {                     Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                     exit;                 } ;
+            if($lVers){                 $lVers=($lVers | sort version)[-1];                 try {                     import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking -verbose:$false                }   catch {                      write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking -verbose:$false                } ;
+            } elseif (test-path $tModFile) {                 write-warning "*NO* INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;                 try {import-module -name $tModDFile -force -DisableNameChecking -verbose:$false}                 catch {                     write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;                     $tModFile = "$($tModName).ps1" ;                     $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;                     if (Test-Path $sLoad) {                         write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                         . $sLoad ;                         if ($showdebug) { write-verbose "Post $sLoad" };                     } else {                         $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;                         if (Test-Path $sLoad) {                             write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                             . $sLoad ;                             if ($showdebug) { write-verbose "Post $sLoad" };                         } else {                             Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                             exit;                         } ;                     } ;                 } ;             } ;
+            if(!(test-path function:$tModCmdlet)){                 write-warning -verbose:$true  "UNABLE TO VALIDATE PRESENCE OF $tModCmdlet`nfailing through to `$backInclDir .ps1 version" ;                 $sLoad = (join-path -path $backInclDir -childpath "$($tModName).ps1") ;                 if (Test-Path $sLoad) {                     write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                     . $sLoad ;                     if ($showdebug) { write-verbose "Post $sLoad" };                     if(!(test-path function:$tModCmdlet)){                         write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TO CONFIRM `$tModCmdlet:$($tModCmdlet) FOR $($tModName)" ;                     } else {                         write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"                     }                 } else {                     Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                     exit;                 } ;
             } else {                 write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"             } ;
         } ;  # loop-E
         #*------^ END MOD LOADS ^------
 
         if($ParentPath){
-            $rgxProfilePaths='(\\Documents\\WindowsPowerShell\\scripts|\\Program\sFiles\\windowspowershell\\scripts)' ;
+            $rgxProfilePaths='(\\Documents\\WindowsPowerShell\\scripts|\\Program\sFiles\\windowspowershell\\scripts)' ; 
             if($ParentPath -match $rgxProfilePaths){
-                $ParentPath = "$(join-path -path 'c:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ;
-            } ;
+                $ParentPath = "$(join-path -path 'c:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ; 
+            } ; 
             $logspec = start-Log -Path ($ParentPath) -showdebug:$($showdebug) -whatif:$($whatif) ;
             if($logspec){
                 $logging=$logspec.logging ;
@@ -2926,7 +2897,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
         $reqMods+="Add-PSTitleBar;Remove-PSTitleBar".split(";") ;
         $reqMods+="Test-TranscriptionSupported;Test-Transcribing;Stop-TranscriptLog;Start-IseTranscript;Start-TranscriptLog;get-ArchivePath;Archive-Log;Start-TranscriptLog".split(";") ;
-        $reqMods=$reqMods| Select-Object -Unique ;
+        $reqMods=$reqMods| select -Unique ;
 
         #region SPLATDEFS ; # ------
         # dummy hashes
@@ -3072,7 +3043,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 $Vscan = $null ;
                 $InputSplat.Vscan="YES";
             }  ;
-        };
+        }; 
 
         # 3:07 PM 10/4/2017 Cu5 override support (normally inherits from assigned owner/manager)
         if ($Cu5){
@@ -3099,11 +3070,11 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
         #
         #LEMS detect: IdleTimeout -ne -1
-        if(get-pssession |Where-Object{($_.configurationname -eq 'Microsoft.Exchange') -AND ($_.ComputerName -match $rgxEx10HostName) -AND ($_.IdleTimeout -ne -1)} ){
+        if(get-pssession |?{($_.configurationname -eq 'Microsoft.Exchange') -AND ($_.ComputerName -match $rgxEx10HostName) -AND ($_.IdleTimeout -ne -1)} ){
             write-verbose  "$((get-date).ToString('HH:mm:ss')):LOCAL EMS detected" ;
             $Global:E10IsDehydrated=$false ;
         # REMS detect dleTimeout -eq -1
-        } elseif(get-pssession |Where-Object{$_.configurationname -eq 'Microsoft.Exchange' -AND $_.ComputerName -match $rgxEx10HostName -AND ($_.IdleTimeout -eq -1)} ){
+        } elseif(get-pssession |?{$_.configurationname -eq 'Microsoft.Exchange' -AND $_.ComputerName -match $rgxEx10HostName -AND ($_.IdleTimeout -eq -1)} ){
             write-verbose  "$((get-date).ToString('HH:mm:ss')):REMOTE EMS detected" ;
             $reqMods+="get-GCFast;Get-ExchangeServerInSite;connect-Ex2010;Reconnect-Ex2010;Disconnect-Ex2010;Disconnect-PssBroken".split(";") ;
             if( !(check-ReqMods $reqMods) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; exit ;}  ;
@@ -3113,7 +3084,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             write-verbose  "$((get-date).ToString('HH:mm:ss')):No existing Ex2010 Connection detected" ;
             # Server snapin defer
             if(($host.version.major -lt 3) -AND (get-service MSExchangeADTopology -ea SilentlyContinue)){
-                write-verbose "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Loading Local Server EMS10 Snapin" ;
+                write-verbose -verbose:$bshowVerbose  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Loading Local Server EMS10 Snapin" ;
                 $reqMods+="Load-EMSSnap;load-EMSLatest".split(";") ;
                 if( !(check-ReqMods $reqMods) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; exit ;}  ;
                 Load-EMSSnap ;
@@ -3132,7 +3103,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $reqMods+="load-ADMS;get-AdminInitials".split(";") ;
         if( !(check-ReqMods $reqMods) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; exit ;}  ;
         write-host -foregroundcolor darkgray "$((get-date).ToString('HH:mm:ss')):(loading ADMS...)" ;
-        load-ADMS -cmdlet get-aduser,Set-ADUser,Get-ADGroupMember,Get-ADDomainController,Get-ADObject,get-adforest | out-null ;
+        load-ADMS -cmdlet get-aduser,Set-ADUser,Get-ADGroupMember,Get-ADDomainController,Get-ADObject,get-adforest | out-null ; 
 
         $AdminInits=get-AdminInitials ;
 
@@ -3155,7 +3126,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
         $domain=$InputSplat.Domain ;
         if(!$domaincontroller){
-            $domaincontroller =(get-gcfast -domain $domain) ;
+            $domaincontroller =(get-gcfast -domain $domain) ; 
         } else {
             $smsg= "Using hard-coded domaincontroller:$($domaincontroller)" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
         } ;
@@ -3188,7 +3159,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
         # add forced office designation, to match $SiteCode/OU
         # New-Mailbox doesn't support both -Shared & -Office in the same syntax set, move it to $MbxSetSplat
-        $MbxSetSplat.Office = $SiteCode ;
+        $MbxSetSplat.Office = $SiteCode ; 
         $smsg= "Site Located:`$SiteCode:$SiteCode`n`$OrganizationalUnit:$($MbxSplat.OrganizationalUnit)" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
 
 
@@ -3304,9 +3275,9 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 if(!($InputSplat.BaseUser)){
                     # draw a random from the $($MbxSplat.OrganizationalUnit)
                     if($InputSplat.SiteCode -eq "($ADSiteCodeUS)"){
-                        if ( $InputSplat.BaseUser=get-mailbox -OrganizationalUnit $($MbxSplat.OrganizationalUnit) -resultsize 50 | Where-Object{($_.distinguishedname -notlike '*demo*') -AND (!$_.CustomAttribute5)} | get-random ) {
+                        if ( $InputSplat.BaseUser=get-mailbox -OrganizationalUnit $($MbxSplat.OrganizationalUnit) -resultsize 50 | ?{($_.distinguishedname -notlike '*demo*') -AND (!$_.CustomAttribute5)} | get-random ) {
 
-                        } elseif ( $InputSplat.BaseUser=get-remotemailbox -OnPremisesOrganizationalUnit  $($MbxSplat.OrganizationalUnit) -resultsize 50 | Where-Object{($_.distinguishedname -notlike '*demo*') -AND (!$_.CustomAttribute5)} | get-random ) {
+                        } elseif ( $InputSplat.BaseUser=get-remotemailbox -OnPremisesOrganizationalUnit  $($MbxSplat.OrganizationalUnit) -resultsize 50 | ?{($_.distinguishedname -notlike '*demo*') -AND (!$_.CustomAttribute5)} | get-random ) {
 
                         } else {
                             $smsg= "UNABLE TO FIND A BASEUSER - USE -BASEUSER TO SPECIFY A SUITABLE ACCT *SOMEWHERE*" ;
@@ -3314,11 +3285,11 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                             Cleanup ; Exit ;
                         } ;
                     } else {
-                        if ( $InputSplat.BaseUser = get-remotemailbox -OnPremisesOrganizationalUnit $($MbxSplat.OrganizationalUnit) -resultsize 50 | Where-Object { $_.distinguishedname -notlike '*demo*' } | get-random   ) {
+                        if ( $InputSplat.BaseUser = get-remotemailbox -OnPremisesOrganizationalUnit $($MbxSplat.OrganizationalUnit) -resultsize 50 | ? { $_.distinguishedname -notlike '*demo*' } | get-random   ) {
 
-                        }elseif ( $InputSplat.BaseUser=get-mailbox -OrganizationalUnit $($MbxSplat.OrganizationalUnit) -resultsize 50 | Where-Object{$_.distinguishedname -notlike '*demo*'} | get-random
+                        }elseif ( $InputSplat.BaseUser=get-mailbox -OrganizationalUnit $($MbxSplat.OrganizationalUnit) -resultsize 50 | ?{$_.distinguishedname -notlike '*demo*'} | get-random
                           ) {
-                        } elseif ( $InputSplat.BaseUser=get-remotemailbox -OnPremisesOrganizationalUnit  $FallBackBaseUserOU -resultsize 50 | Where-Object{($_.distinguishedname -notlike '*demo*') -AND (!$_.CustomAttribute5)} | get-random ) {
+                        } elseif ( $InputSplat.BaseUser=get-remotemailbox -OnPremisesOrganizationalUnit  $FallBackBaseUserOU -resultsize 50 | ?{($_.distinguishedname -notlike '*demo*') -AND (!$_.CustomAttribute5)} | get-random ) {
                             # if all else fails, pull a random remotemailbox from ($ADSiteCodeUS) - we're losing comps moving ahead
                         } else {
                             $smsg= "UNABLE TO FIND A BASEUSER - USE -BASEUSER TO SPECIFY A SUITABLE ACCT *SOMEWHERE*" ;
@@ -3660,7 +3631,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                     if($MbxSetSplat.CustomAttribute5){
                         # force trigger EAP toggle
                         $smsg= "$((get-date).ToString("HH:mm:ss")):(toggling EAP to force variant email...)";if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
-                        set-mailbox $($InputSplat.samaccountname) -domaincontroller $($InputSplat.domaincontroller) -EmailAddressPolicyEnabled $false  ;Start-Sleep 1; set-mailbox $($InputSplat.samaccountname) -domaincontroller $($InputSplat.domaincontroller) -EmailAddressPolicyEnabled $true;
+                        set-mailbox $($InputSplat.samaccountname) -domaincontroller $($InputSplat.domaincontroller) -EmailAddressPolicyEnabled $false  ;sleep 1; set-mailbox $($InputSplat.samaccountname) -domaincontroller $($InputSplat.domaincontroller) -EmailAddressPolicyEnabled $true;
                     } ;
 
                     #=========== V NOTES PARSER
@@ -3791,13 +3762,13 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                         $smsg= "Whatif skipping UPN Update...";if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                     } else {
                         # dynm pull the forestdom from the forest, match @DOMAIN.COM
-                        $forestdom=get-adforest -ea stop | Select-Object -expand upnsuffixes |Where-Object{$_ -match $rgxTTCDomainsLegacy}
+                        $forestdom=get-adforest -ea stop | select -expand upnsuffixes |?{$_ -match $rgxTTCDomainsLegacy}
                         if($forestdom -is [string]){
                             # pull primary SMTP:, verify -is [string]/non-array
                             Do {
                                 $smsg= "Waiting for ADUser to return email addresses" ;if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                                 write-host "." -NoNewLine;Start-Sleep -m (1000 * 5)
-                                $dirname=(Get-ADUser -identity $oMbx.samaccountname -server $InputSplat.domaincontroller -Properties proxyAddresses -ea 0 | Select-Object -Expand proxyAddresses | Where-Object {$_ -clike "SMTP:*"});
+                                $dirname=(Get-ADUser -identity $oMbx.samaccountname -server $InputSplat.domaincontroller -Properties proxyAddresses -ea 0 | Select -Expand proxyAddresses | Where {$_ -clike "SMTP:*"});
                             } Until (($dirname)) ;
 
                             if($dirname -is [string]){
@@ -3855,7 +3826,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                         $mbxo = get-mailbox -Identity $($InputSplat.samaccountname) -domaincontroller $($InputSplat.domaincontroller) ;
                         $cmbxo= Get-CASMailbox -Identity $($MbxSplat.samaccountname) -domaincontroller $($InputSplat.domaincontroller) ;
                         $aduprops="GivenName,Surname,Manager,Company,Office,Title,StreetAddress,City,StateOrProvince,c,co,countryCode,PostalCode,Phone,Fax,Description" ;
-                        $ADu = get-ADuser -Identity $($InputSplat.samaccountname) -properties * -server $($InputSplat.domaincontroller)| Select-Object *;
+                        $ADu = get-ADuser -Identity $($InputSplat.samaccountname) -properties * -server $($InputSplat.domaincontroller)| select *;
                         $smsg= "User Email:`t$(($mbxo.WindowsEmailAddress.tostring()).trim())" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                         $smsg= "Owner Email:`t$(($InputSplat.OwnerMbx.WindowsEmailAddress.tostring()).trim())" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                         $smsg= "Mailbox Information:" ;if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
@@ -3922,8 +3893,8 @@ Function Reconnect-Ex2010 {
     * 10:52 AM 4/2/2021 updated cbh
     * 1:56 PM 3/31/2021 rewrote to dyn detect pss, rather than reading out of date vari
     * 10:14 AM 3/23/2021 fix default $Cred spec, pointed at an OP cred
-    * 8:29 AM 11/17/2020 added missing $Credential param
-    * 9:33 AM 5/28/2020 actually added the alias:rx10
+    * 8:29 AM 11/17/2020 added missing $Credential param 
+    * 9:33 AM 5/28/2020 actually added the alias:rx10 
     * 12:20 PM 5/27/2020 updated cbh, moved alias: rx10 win func
     * 6:59 PM 1/15/2020 cleanup
     * 8:09 AM 11/1/2017 updated example to pretest for reqMods
@@ -3946,7 +3917,7 @@ Function Reconnect-Ex2010 {
     [Alias('rx10','rxOP','reconnect-ExOP')]
     Param(
         [Parameter(HelpMessage="Credential to use for this connection [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
-        $Credential = $global:credOpTORSID
+        $Credential = $global:credOpTORSID 
     )
     # checking stat on canned copy of hist sess, says nothing about current, possibly timed out, check them manually
     $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
@@ -3957,7 +3928,7 @@ Function Reconnect-Ex2010 {
     $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
         $_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (
         ( -not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) ) -AND (
-        -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available')
+        -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available') 
     } ;
     $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
         $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
@@ -3979,18 +3950,18 @@ Function Reconnect-Ex2010 {
         } else {
             $bExistingREms= $false ;
         } ;
-    } else {
+    } else { 
         # doesn't match histo
         $bExistingREms= $false ;
-    } ;
-    $propsPss =  'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ;
+    } ; 
+    $propsPss =  'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ; 
     if($bExistingREms){
-        $smsg = "existing connection Open/Available:`n$(($tSess| ft -auto $propsPss |out-string).trim())" ;
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        $smsg = "existing connection Open/Available:`n$(($tSess| ft -auto $propsPss |out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-    } else {
-        $smsg = "(resetting any existing EX10 connection and re-establishing)" ;
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+    } else { 
+        $smsg = "(resetting any existing EX10 connection and re-establishing)" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         Disconnect-Ex2010 ; Start-Sleep -S 3;
         if (!$Credential) {
@@ -3998,7 +3969,7 @@ Function Reconnect-Ex2010 {
         } else {
             Connect-Ex2010 -Credential:$($Credential) ;
         } ;
-    } ;
+    } ; 
 }
 
 #*------^ Reconnect-Ex2010.ps1 ^------
@@ -4117,13 +4088,13 @@ Function Reconnect-Ex2010XO {
         #.OP_ExADRoot
         if( (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName ){
 
-        } else {
+        } else { 
             #.OP_rgxEMSComputerName
             if((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot){
                 set-Variable  -name "$($TenOrg)Meta" -value ( (Get-Variable  -name "$($TenOrg)Meta").value += @{'OP_rgxEMSComputerName' = "^\w*\.$([Regex]::Escape((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot))$"} )
             } else {
                 $smsg = "Missing `$$((Get-Variable  -name "$($TenOrg)Meta").value.o365_Prefix).OP_ExADRoot value.`nProfile hasn't loaded proper tor-incl-infrastrings file)!"
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } #Error|Warn|Debug
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } #Error|Warn|Debug 
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             } ;
         } ;
@@ -4141,7 +4112,7 @@ Function Reconnect-Ex2010XO {
         $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
             $_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (
             ( -not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) ) -AND (
-            -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available')
+            -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available') 
         } ;
         $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
                 $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
@@ -4223,7 +4194,7 @@ Function remove-EMSLocalModule {
     .OUTPUTS
     None. Returns no objects or output.
     .EXAMPLE
-    remove-EMSLocalModule ;
+    remove-EMSLocalModule ; 
     .LINK
     https://github.com/tostka/verb-Ex2010/
     #>
@@ -4231,39 +4202,39 @@ Function remove-EMSLocalModule {
     #[Alias()]
     Param()  ;
     BEGIN{
-        $verbose = ($VerbosePreference -eq "Continue") ;
+        $verbose = ($VerbosePreference -eq "Continue") ; 
     } ;  # BEG-E
     PROCESS{
         $error.clear() ;
         TRY {
             if($tMod = get-module ([System.Net.Dns]::gethostentry($(hostname))).hostname -ea 0){
-                write-verbose "(Removing matched EMS module already loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ;
-                $tMod | Remove-Module ;
-            } else {
-                write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(No matching loaded local Exchange Mgmt Shell binary module found)" ;
-            } ;
+                write-verbose "(Removing matched EMS module already loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ; 
+                $tMod | Remove-Module ; 
+            } else { 
+                write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(No matching loaded local Exchange Mgmt Shell binary module found)" ; 
+            } ; 
         } CATCH {
-            $ErrTrapd = $_ ;
+            $ErrTrapd = $_ ; 
             write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
             #-=-record a STATUSERROR=-=-=-=-=-=-=
             $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
             if(gv passstatus -scope Script -ea 0 ){$script:PassStatus += $statusdelta } ;
-            if(gv -Name PassStatus_$($tenorg) -scope Script  -ea 0 ){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script  -ea 0 ){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
             #-=-=-=-=-=-=-=-=
         } ;
         # 7:54 AM 11/1/2017 add titlebar tag
-        if(gcm Remove-PSTitleBar-PSTitleBar -ea 0 ){Remove-PSTitleBar-PSTitleBar 'EMSL' ;} ;
-        # tag E10IsDehydrated
-        $Global:ExOPIsDehydrated = $null ;
+        if(gcm Remove-PSTitleBar-PSTitleBar -ea 0 ){Remove-PSTitleBar-PSTitleBar 'EMSL' ;} ; 
+        # tag E10IsDehydrated 
+        $Global:ExOPIsDehydrated = $null ;        
     } ;  # PROC-E
     END {
         <#
-        $tMod = $null ;
+        $tMod = $null ; 
         if($tMod = GET-MODULE ([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME){
-            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(local EMS module loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ;
-        } else {
-            throw "Unable to resolve target local EMS module:GET-MODULE $([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME)" ;
-        } ;
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(local EMS module loaded:)`n$(($tMod | ft -auto ModuleType,Version,Name,ExportedCommands|out-string).trim())" ; 
+        } else { 
+            throw "Unable to resolve target local EMS module:GET-MODULE $([System.Net.Dns]::gethostentry($(hostname))).HOSTNAME)" ; 
+        } ; 
         #>
     }
 }
@@ -4413,8 +4384,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUYPr5Km39cAfAR+s3MsHg4yYn
-# 7JOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUqjHm/20pcrre5pD5bNIa0j/t
+# NSegggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4429,9 +4400,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQht2UJ
-# oJBfe1UzT7OdpKddNyc0/DANBgkqhkiG9w0BAQEFAASBgFb204Y0KHak4l5u5MXD
-# TTlz/nDrw5mvPsMddKJIBv4rGHOG+nRAdSaDIWKku1TB4DkiMerk21lIBtQdrE7v
-# NTLrQN2nQk0cf1DS3zSQBRrKWrHbd9Lt48HA57dtYN47VCSWZoIu2OcM7DPxFNY8
-# OkKd0pS6T9iGbVm8O08QxWXy
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRAjXx1
+# YtUjbew0nACFTcJLYrNfITANBgkqhkiG9w0BAQEFAASBgAdbKj1aduGDxjIV8zIq
+# JO28Q29cMWOL7mVB+ftpz3s1NuSXHEAESzckoKhnk1IR4Ke1EcBvUutRRhm8mtLZ
+# QqmxpQQjbOSU/2ygWHG/+HwTa0Uj/nC/5vlt7+l+hk6e7sP29eRoQfhBILG5u8iX
+# +WkuL8METN4uaFWQmnImerCO
 # SIG # End signature block

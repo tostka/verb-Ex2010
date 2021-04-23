@@ -59,7 +59,7 @@ Function Get-ExchangeServerInSite {
         [Parameter(HelpMessage="Switch to suppress default 'pingable' test (e.g. returns all matches, no testing)[-NoPing]")]
         [switch] $NoPing
     ) ;
-    $Verbose = ($VerbosePreference -eq 'Continue') ; 
+    $Verbose = ($VerbosePreference -eq 'Continue') ;
     # 9:53 AM 11/16/2018 from vpn/home, $ADSite doesn't populate prior to domain logon (via vpn)
     # 9:41 AM 5/15/2020 issue: vpn/home, $siteDN suddenly doesn't populate, no longer dyn locs an Ex box, implemented try/catch workaround
     if ($ADSite = [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]) {
@@ -67,12 +67,12 @@ Function Get-ExchangeServerInSite {
         CATCH {
             $siteDN =$Ex10siteDN # [infra] returns DN to : cn=[SITENAME],cn=sites,cn=configuration,dc=ad,dc=[DOMAIN],dc=com
             write-warning "$((get-date).ToString('HH:mm:ss')):`$siteDN lookup FAILED, deferring to hardcoded `$Ex10siteDN string in infra file!" ;
-        } ; 
+        } ;
         TRY {$configNC = ([ADSI]"LDAP://RootDse").configurationNamingContext}
         CATCH {
             $configNC =$Ex10configNC #  [infra] returns: "CN=Configuration,DC=ad,DC=[DOMAIN],DC=com"
             write-warning "$((get-date).ToString('HH:mm:ss')):`$configNC lookup FAILED, deferring to hardcoded `$Ex10configNC string in infra file!" ;
-        } ; 
+        } ;
         if($siteDN -AND $configNC){
             $search = new-object DirectoryServices.DirectorySearcher([ADSI]"LDAP://$configNC") ;
             $objectClass = "objectClass=msExchExchangeServer" ;
@@ -83,19 +83,19 @@ Function Get-ExchangeServerInSite {
             [void] $search.PropertiesToLoad.Add("name") ;
             [void] $search.PropertiesToLoad.Add("msexchcurrentserverroles") ;
             [void] $search.PropertiesToLoad.Add("networkaddress") ;
-            $search.FindAll() | % {
+            $search.FindAll() | ForEach-Object {
                 $matched = New-Object PSObject -Property @{
                     Name  = $_.Properties.name[0] ;
                     FQDN  = $_.Properties.networkaddress |
-                        % { if ($_ -match "ncacn_ip_tcp") { $_.split(":")[1] } } ;
+                        ForEach-Object { if ($_ -match "ncacn_ip_tcp") { $_.split(":")[1] } } ;
                     Roles = $_.Properties.msexchcurrentserverroles[0] ;
                 } ;
                 if($NoPing){
-                    $matched | write-output ; 
-                } else { 
-                    $matched | %{If(test-connection $_.FQDN -count 1 -ea 0) {$_} else {} } | 
-                        write-output ; 
-                } ; 
+                    $matched | write-output ;
+                } else {
+                    $matched | ForEach-Object{If(test-connection $_.FQDN -count 1 -ea 0) {$_} else {} } |
+                        write-output ;
+                } ;
             } ;
         }else {
             write-warning  "$((get-date).ToString('HH:mm:ss')):MISSING `$siteDN:($($siteDN)) `nOR `$configNC:($($configNC)) values`nABORTING!" ;

@@ -9,7 +9,7 @@ function new-MailboxShared {
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
     CreatedDate : 2020-
-    FileName    : 
+    FileName    :
     License     : MIT License
     Copyright   : (c) 2020 Todd Kadrie
     Github      : https://github.com/tostka
@@ -19,12 +19,12 @@ function new-MailboxShared {
     AddedTwitter:	URL
     REVISIONS
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
-    # 1:29 PM 4/23/2020 updated dynpath & logging, unwrapped loadmod, 
+    # 1:29 PM 4/23/2020 updated dynpath & logging, unwrapped loadmod,
     # 4:28 PM 4/22/2020 updated logging code, to accomodate dynamic locations and $ParentPath
     # 4:36 PM 4/8/2020 works fully on jumpbox, but ignores whatif, renamed $bwhatif -> $whatif (as the b variant was prev set in the same-script, now separate scopes); swapped out CU5 switch, moved settings into infra file, genericized
     # 2:15 PM 4/7/2020 updated to reflect debugging on jumpbox
     # 2:35 PM 4/3/2020 new-MailboxShared: genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules ; added -ParentPath to pass through a usable path for start-log, within new-mailboxshared()
-    # 8:48 AM 11/26/2019 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office 
+    # 8:48 AM 11/26/2019 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office
     # 12:14 PM 10/4/2019 splice in Room/Equip code from new-mailboxConfRm.ps1's variant (not functionalized yet), added new -Room & -Equipement flags to trigger ConfRm code
     # 2:22 PM 10/1/2019 2076 & 1549 added: $FallBackBaseUserOU, OU that's used when can't find any baseuser for the owner's OU, default to a random shared from SITECODE (avoid crapping out):
     # 9:48 AM 9/27/2019 new-MailboxShared:added `a 'beep' to YYY prompt
@@ -240,7 +240,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
     ) ;
 
     BEGIN {
-        $verbose = ($VerbosePreference -eq "Continue") ; 
+        $verbose = ($VerbosePreference -eq "Continue") ;
         # Get the name of this function
         ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
         # Get parameters this function was invoked with
@@ -287,7 +287,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 write-host "GOTCHA!:$($tModName)" ;
             } ;
             $lVers = get-module -name $tModName -ListAvailable -ea 0 ;
-            if($lVers){                 $lVers=($lVers | sort version)[-1];                 try {                     import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking -verbose:$($false)                }   catch {                      write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking -verbose:$($false)                } ;
+            if($lVers){                 $lVers=($lVers | Sort-Object version)[-1];                 try {                     import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking -verbose:$($false)                }   catch {                      write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking -verbose:$($false)                } ;
             } elseif (test-path $tModFile) {                 write-warning "*NO* INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;                 try {import-module -name $tModDFile -force -DisableNameChecking -verbose:$($false)}                 catch {                     write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;                     $tModFile = "$($tModName).ps1" ;                     $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;                     if (Test-Path $sLoad) {                         write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                         . $sLoad ;                         if ($showdebug) { write-verbose "Post $sLoad" };                     } else {                         $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;                         if (Test-Path $sLoad) {                             write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                             . $sLoad ;                             if ($showdebug) { write-verbose "Post $sLoad" };                         } else {                             Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                             exit;                         } ;                     } ;                 } ;             } ;
             if(!(test-path function:$tModCmdlet)){                 write-warning "UNABLE TO VALIDATE PRESENCE OF $tModCmdlet`nfailing through to `$backInclDir .ps1 version" ;                 $sLoad = (join-path -path $backInclDir -childpath "$($tModName).ps1") ;                 if (Test-Path $sLoad) {                     write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                     . $sLoad ;                     if ($showdebug) { write-verbose "Post $sLoad" };                     if(!(test-path function:$tModCmdlet)){                         write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TO CONFIRM `$tModCmdlet:$($tModCmdlet) FOR $($tModName)" ;                     } else {                         write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"                     }                 } else {                     Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                     exit;                 } ;
             } else {                 write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"             } ;
@@ -295,10 +295,10 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         #*------^ END MOD LOADS ^------
 
         if($ParentPath){
-            $rgxProfilePaths='(\\Documents\\WindowsPowerShell\\scripts|\\Program\sFiles\\windowspowershell\\scripts)' ; 
+            $rgxProfilePaths='(\\Documents\\WindowsPowerShell\\scripts|\\Program\sFiles\\windowspowershell\\scripts)' ;
             if($ParentPath -match $rgxProfilePaths){
-                $ParentPath = "$(join-path -path 'c:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ; 
-            } ; 
+                $ParentPath = "$(join-path -path 'c:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ;
+            } ;
             $logspec = start-Log -Path ($ParentPath) -showdebug:$($showdebug) -whatif:$($whatif) ;
             if($logspec){
                 $logging=$logspec.logging ;
@@ -327,7 +327,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
         $reqMods+="Add-PSTitleBar;Remove-PSTitleBar".split(";") ;
         $reqMods+="Test-TranscriptionSupported;Test-Transcribing;Stop-TranscriptLog;Start-IseTranscript;Start-TranscriptLog;get-ArchivePath;Archive-Log;Start-TranscriptLog".split(";") ;
-        $reqMods=$reqMods| select -Unique ;
+        $reqMods=$reqMods| Select-Object -Unique ;
 
         #region SPLATDEFS ; # ------
         # dummy hashes
@@ -473,7 +473,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 $Vscan = $null ;
                 $InputSplat.Vscan="YES";
             }  ;
-        }; 
+        };
 
         # 3:07 PM 10/4/2017 Cu5 override support (normally inherits from assigned owner/manager)
         if ($Cu5){
@@ -500,11 +500,11 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
         #
         #LEMS detect: IdleTimeout -ne -1
-        if(get-pssession |?{($_.configurationname -eq 'Microsoft.Exchange') -AND ($_.ComputerName -match $rgxEx10HostName) -AND ($_.IdleTimeout -ne -1)} ){
+        if(get-pssession |Where-Object{($_.configurationname -eq 'Microsoft.Exchange') -AND ($_.ComputerName -match $rgxEx10HostName) -AND ($_.IdleTimeout -ne -1)} ){
             write-verbose  "$((get-date).ToString('HH:mm:ss')):LOCAL EMS detected" ;
             $Global:E10IsDehydrated=$false ;
         # REMS detect dleTimeout -eq -1
-        } elseif(get-pssession |?{$_.configurationname -eq 'Microsoft.Exchange' -AND $_.ComputerName -match $rgxEx10HostName -AND ($_.IdleTimeout -eq -1)} ){
+        } elseif(get-pssession |Where-Object{$_.configurationname -eq 'Microsoft.Exchange' -AND $_.ComputerName -match $rgxEx10HostName -AND ($_.IdleTimeout -eq -1)} ){
             write-verbose  "$((get-date).ToString('HH:mm:ss')):REMOTE EMS detected" ;
             $reqMods+="get-GCFast;Get-ExchangeServerInSite;connect-Ex2010;Reconnect-Ex2010;Disconnect-Ex2010;Disconnect-PssBroken".split(";") ;
             if( !(check-ReqMods $reqMods) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; exit ;}  ;
@@ -533,7 +533,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $reqMods+="load-ADMS;get-AdminInitials".split(";") ;
         if( !(check-ReqMods $reqMods) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; exit ;}  ;
         write-host -foregroundcolor darkgray "$((get-date).ToString('HH:mm:ss')):(loading ADMS...)" ;
-        load-ADMS -cmdlet get-aduser,Set-ADUser,Get-ADGroupMember,Get-ADDomainController,Get-ADObject,get-adforest | out-null ; 
+        load-ADMS -cmdlet get-aduser,Set-ADUser,Get-ADGroupMember,Get-ADDomainController,Get-ADObject,get-adforest | out-null ;
 
         $AdminInits=get-AdminInitials ;
 
@@ -556,7 +556,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
         $domain=$InputSplat.Domain ;
         if(!$domaincontroller){
-            $domaincontroller =(get-gcfast -domain $domain) ; 
+            $domaincontroller =(get-gcfast -domain $domain) ;
         } else {
             $smsg= "Using hard-coded domaincontroller:$($domaincontroller)" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
         } ;
@@ -589,7 +589,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
         # add forced office designation, to match $SiteCode/OU
         # New-Mailbox doesn't support both -Shared & -Office in the same syntax set, move it to $MbxSetSplat
-        $MbxSetSplat.Office = $SiteCode ; 
+        $MbxSetSplat.Office = $SiteCode ;
         $smsg= "Site Located:`$SiteCode:$SiteCode`n`$OrganizationalUnit:$($MbxSplat.OrganizationalUnit)" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
 
 
@@ -705,9 +705,9 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 if(!($InputSplat.BaseUser)){
                     # draw a random from the $($MbxSplat.OrganizationalUnit)
                     if($InputSplat.SiteCode -eq "($ADSiteCodeUS)"){
-                        if ( $InputSplat.BaseUser=get-mailbox -OrganizationalUnit $($MbxSplat.OrganizationalUnit) -resultsize 50 | ?{($_.distinguishedname -notlike '*demo*') -AND (!$_.CustomAttribute5)} | get-random ) {
+                        if ( $InputSplat.BaseUser=get-mailbox -OrganizationalUnit $($MbxSplat.OrganizationalUnit) -resultsize 50 | Where-Object{($_.distinguishedname -notlike '*demo*') -AND (!$_.CustomAttribute5)} | get-random ) {
 
-                        } elseif ( $InputSplat.BaseUser=get-remotemailbox -OnPremisesOrganizationalUnit  $($MbxSplat.OrganizationalUnit) -resultsize 50 | ?{($_.distinguishedname -notlike '*demo*') -AND (!$_.CustomAttribute5)} | get-random ) {
+                        } elseif ( $InputSplat.BaseUser=get-remotemailbox -OnPremisesOrganizationalUnit  $($MbxSplat.OrganizationalUnit) -resultsize 50 | Where-Object{($_.distinguishedname -notlike '*demo*') -AND (!$_.CustomAttribute5)} | get-random ) {
 
                         } else {
                             $smsg= "UNABLE TO FIND A BASEUSER - USE -BASEUSER TO SPECIFY A SUITABLE ACCT *SOMEWHERE*" ;
@@ -715,11 +715,11 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                             Cleanup ; Exit ;
                         } ;
                     } else {
-                        if ( $InputSplat.BaseUser = get-remotemailbox -OnPremisesOrganizationalUnit $($MbxSplat.OrganizationalUnit) -resultsize 50 | ? { $_.distinguishedname -notlike '*demo*' } | get-random   ) {
+                        if ( $InputSplat.BaseUser = get-remotemailbox -OnPremisesOrganizationalUnit $($MbxSplat.OrganizationalUnit) -resultsize 50 | Where-Object { $_.distinguishedname -notlike '*demo*' } | get-random   ) {
 
-                        }elseif ( $InputSplat.BaseUser=get-mailbox -OrganizationalUnit $($MbxSplat.OrganizationalUnit) -resultsize 50 | ?{$_.distinguishedname -notlike '*demo*'} | get-random
+                        }elseif ( $InputSplat.BaseUser=get-mailbox -OrganizationalUnit $($MbxSplat.OrganizationalUnit) -resultsize 50 | Where-Object{$_.distinguishedname -notlike '*demo*'} | get-random
                           ) {
-                        } elseif ( $InputSplat.BaseUser=get-remotemailbox -OnPremisesOrganizationalUnit  $FallBackBaseUserOU -resultsize 50 | ?{($_.distinguishedname -notlike '*demo*') -AND (!$_.CustomAttribute5)} | get-random ) {
+                        } elseif ( $InputSplat.BaseUser=get-remotemailbox -OnPremisesOrganizationalUnit  $FallBackBaseUserOU -resultsize 50 | Where-Object{($_.distinguishedname -notlike '*demo*') -AND (!$_.CustomAttribute5)} | get-random ) {
                             # if all else fails, pull a random remotemailbox from ($ADSiteCodeUS) - we're losing comps moving ahead
                         } else {
                             $smsg= "UNABLE TO FIND A BASEUSER - USE -BASEUSER TO SPECIFY A SUITABLE ACCT *SOMEWHERE*" ;
@@ -1061,7 +1061,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                     if($MbxSetSplat.CustomAttribute5){
                         # force trigger EAP toggle
                         $smsg= "$((get-date).ToString("HH:mm:ss")):(toggling EAP to force variant email...)";if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
-                        set-mailbox $($InputSplat.samaccountname) -domaincontroller $($InputSplat.domaincontroller) -EmailAddressPolicyEnabled $false  ;sleep 1; set-mailbox $($InputSplat.samaccountname) -domaincontroller $($InputSplat.domaincontroller) -EmailAddressPolicyEnabled $true;
+                        set-mailbox $($InputSplat.samaccountname) -domaincontroller $($InputSplat.domaincontroller) -EmailAddressPolicyEnabled $false  ;Start-Sleep 1; set-mailbox $($InputSplat.samaccountname) -domaincontroller $($InputSplat.domaincontroller) -EmailAddressPolicyEnabled $true;
                     } ;
 
                     #=========== V NOTES PARSER
@@ -1192,13 +1192,13 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                         $smsg= "Whatif skipping UPN Update...";if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                     } else {
                         # dynm pull the forestdom from the forest, match @DOMAIN.COM
-                        $forestdom=get-adforest -ea stop | select -expand upnsuffixes |?{$_ -match $rgxTTCDomainsLegacy}
+                        $forestdom=get-adforest -ea stop | Select-Object -expand upnsuffixes |Where-Object{$_ -match $rgxTTCDomainsLegacy}
                         if($forestdom -is [string]){
                             # pull primary SMTP:, verify -is [string]/non-array
                             Do {
                                 $smsg= "Waiting for ADUser to return email addresses" ;if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                                 write-host "." -NoNewLine;Start-Sleep -m (1000 * 5)
-                                $dirname=(Get-ADUser -identity $oMbx.samaccountname -server $InputSplat.domaincontroller -Properties proxyAddresses -ea 0 | Select -Expand proxyAddresses | Where {$_ -clike "SMTP:*"});
+                                $dirname=(Get-ADUser -identity $oMbx.samaccountname -server $InputSplat.domaincontroller -Properties proxyAddresses -ea 0 | Select-Object -Expand proxyAddresses | Where-Object {$_ -clike "SMTP:*"});
                             } Until (($dirname)) ;
 
                             if($dirname -is [string]){
@@ -1256,7 +1256,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                         $mbxo = get-mailbox -Identity $($InputSplat.samaccountname) -domaincontroller $($InputSplat.domaincontroller) ;
                         $cmbxo= Get-CASMailbox -Identity $($MbxSplat.samaccountname) -domaincontroller $($InputSplat.domaincontroller) ;
                         $aduprops="GivenName,Surname,Manager,Company,Office,Title,StreetAddress,City,StateOrProvince,c,co,countryCode,PostalCode,Phone,Fax,Description" ;
-                        $ADu = get-ADuser -Identity $($InputSplat.samaccountname) -properties * -server $($InputSplat.domaincontroller)| select *;
+                        $ADu = get-ADuser -Identity $($InputSplat.samaccountname) -properties * -server $($InputSplat.domaincontroller)| Select-Object *;
                         $smsg= "User Email:`t$(($mbxo.WindowsEmailAddress.tostring()).trim())" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                         $smsg= "Owner Email:`t$(($InputSplat.OwnerMbx.WindowsEmailAddress.tostring()).trim())" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                         $smsg= "Mailbox Information:" ;if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;

@@ -266,7 +266,7 @@ function add-MailboxAccessGrant {
                 write-host "GOTCHA!:$($tModName)" ;
             } ;
             $lVers = get-module -name $tModName -ListAvailable -ea 0 ;
-            if($lVers){                 $lVers=($lVers | sort version)[-1];                 try {                     import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking -verbose:$($false)                 }   catch {                      write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking -verbose:$($false)                } ;
+            if($lVers){                 $lVers=($lVers | Sort-Object version)[-1];                 try {                     import-module -name $tModName -RequiredVersion $lVers.Version.tostring() -force -DisableNameChecking -verbose:$($false)                 }   catch {                      write-warning "*BROKEN INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;import-module -name $tModDFile -force -DisableNameChecking -verbose:$($false)                } ;
             } elseif (test-path $tModFile) {                 write-warning "*NO* INSTALLED MODULE*:$($tModName)`nBACK-LOADING DCOPY@ $($tModDFile)" ;                 try {import-module -name $tModDFile -force -DisableNameChecking -verbose:$($false)}                 catch {                     write-error "*FAILED* TO LOAD MODULE*:$($tModName) VIA $(tModFile) !" ;                     $tModFile = "$($tModName).ps1" ;                     $sLoad = (join-path -path $LocalInclDir -childpath $tModFile) ;                     if (Test-Path $sLoad) {                         Write-Verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                         . $sLoad ;                         if ($showdebug) { Write-Verbose "Post $sLoad" };                     } else {                         $sLoad = (join-path -path $backInclDir -childpath $tModFile) ;                         if (Test-Path $sLoad) {                             write-verbose  ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                             . $sLoad ;                             if ($showdebug) { write-verbose  "Post $sLoad" };                         } else {                             Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                             exit;                         } ;                     } ;                 } ;             } ;
             if(!(test-path function:$tModCmdlet)){                 write-warning "UNABLE TO VALIDATE PRESENCE OF $tModCmdlet`nfailing through to `$backInclDir .ps1 version" ;                 $sLoad = (join-path -path $backInclDir -childpath "$($tModName).ps1") ;                 if (Test-Path $sLoad) {                     write-verbose ((Get-Date).ToString("HH:mm:ss") + "LOADING:" + $sLoad) ;                     . $sLoad ;                     if ($showdebug) { Write-Verbose "Post $sLoad" };                     if(!(test-path function:$tModCmdlet)){                         write-warning "$((get-date).ToString('HH:mm:ss')):FAILED TO CONFIRM `$tModCmdlet:$($tModCmdlet) FOR $($tModName)" ;                     } else {                         write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"                     }                 } else {                     Write-Warning ((Get-Date).ToString("HH:mm:ss") + ":MISSING:" + $sLoad + " EXITING...") ;                     exit;                 } ;
             } else {                 write-verbose  "(confirmed $tModName loaded: $tModCmdlet present)"             } ;
@@ -274,10 +274,10 @@ function add-MailboxAccessGrant {
         #*------^ END MOD LOADS ^------
 
         if($ParentPath){
-            $rgxProfilePaths='(\\Documents\\WindowsPowerShell\\scripts|\\Program\sFiles\\windowspowershell\\scripts)' ; 
+            $rgxProfilePaths='(\\Documents\\WindowsPowerShell\\scripts|\\Program\sFiles\\windowspowershell\\scripts)' ;
             if($ParentPath -match $rgxProfilePaths){
-                $ParentPath = "$(join-path -path 'c:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ; 
-            } ; 
+                $ParentPath = "$(join-path -path 'c:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ;
+            } ;
             $logspec = start-Log -Path ($ParentPath) -showdebug:$($showdebug) -whatif:$($whatif) ;
             if($logspec){
                 $logging=$logspec.logging ;
@@ -318,7 +318,7 @@ function add-MailboxAccessGrant {
         #$reqMods+="Reconnect-SOL;Connect-SOL;Disconnect-SOL".split(";") ;
         $reqMods += "Test-TranscriptionSupported;Test-Transcribing;Stop-TranscriptLog;Start-IseTranscript;Start-TranscriptLog;get-ArchivePath;Archive-Log;Start-TranscriptLog".split(";") ;
         # 12:15 PM 9/12/2018 remove dupes
-        $reqMods = $reqMods | select -Unique ;
+        $reqMods = $reqMods | Select-Object -Unique ;
 
         #region SPLATDEFS ; # ------
 
@@ -438,11 +438,11 @@ function add-MailboxAccessGrant {
 
         #
         #LEMS detect: IdleTimeout -ne -1
-        if(get-pssession |?{($_.configurationname -eq 'Microsoft.Exchange') -AND ($_.ComputerName -match $rgxEx10HostName) -AND ($_.IdleTimeout -ne -1)} ){
+        if(get-pssession |Where-Object{($_.configurationname -eq 'Microsoft.Exchange') -AND ($_.ComputerName -match $rgxEx10HostName) -AND ($_.IdleTimeout -ne -1)} ){
             write-verbose  "$((get-date).ToString('HH:mm:ss')):LOCAL EMS detected" ;
             $Global:E10IsDehydrated=$false ;
         # REMS detect dleTimeout -eq -1
-        } elseif(get-pssession |?{$_.configurationname -eq 'Microsoft.Exchange' -AND $_.ComputerName -match $rgxEx10HostName -AND ($_.IdleTimeout -eq -1)} ){
+        } elseif(get-pssession |Where-Object{$_.configurationname -eq 'Microsoft.Exchange' -AND $_.ComputerName -match $rgxEx10HostName -AND ($_.IdleTimeout -eq -1)} ){
             write-verbose  "$((get-date).ToString('HH:mm:ss')):REMOTE EMS detected" ;
             $reqMods+="get-GCFast;Get-ExchangeServerInSite;connect-Ex2010;Reconnect-Ex2010;Disconnect-Ex2010;Disconnect-PssBroken".split(";") ;
             if( !(check-ReqMods $reqMods) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; exit ;}  ;
@@ -577,7 +577,7 @@ function add-MailboxAccessGrant {
         $SGSplat.DisplayName = "$($SiteCode)-SEC-Email-$($Tmbx.DisplayName)-G";
 
         TRY {
-            $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | ? { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | select distinguishedname).distinguishedname.tostring() ;
+            $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
         } CATCH {
             $ErrTrpd = $_ ;
             $smsg = "UNABLE TO LOCATE $($FindOU) BELOW SITECODE $($SiteCode)!. EXITING!" ; $smsg = "MESSAGE" ;
@@ -600,7 +600,7 @@ function add-MailboxAccessGrant {
         $SGSplat.Path = $OU ;
         $smsg = "Checking specified SecGrp Members..." ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-        $SGMembers = ($InputSplat.members.split(",") | foreach { get-recipient $_ -ea stop })
+        $SGMembers = ($InputSplat.members.split(",") | ForEach-Object { get-recipient $_ -ea stop })
         $smsg = "Checking for existing $($SGSplat.DisplayName)..." ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
 
@@ -824,14 +824,14 @@ function add-MailboxAccessGrant {
                     } #  # loop-E;
                 } ;
             } # if-E whatif ;
-            $mbxp = $Tmbx | get-mailboxpermission -user ($oSG).Name -domaincontroller $InputSplat.domaincontroller -ea silentlycontinue | ? { $_.user -match ".*-(SEC|Data)-Email-.*$" }
+            $mbxp = $Tmbx | get-mailboxpermission -user ($oSG).Name -domaincontroller $InputSplat.domaincontroller -ea silentlycontinue | Where-Object { $_.user -match ".*-(SEC|Data)-Email-.*$" }
             $smsg = "`nChecking Mailbox Permission on $($Tmbx.samaccountname) mailbox to accessing user:`n $($oSG.Name)...`n(blank if none)`n---`n$(($mbxp | select user,AccessRights,IsInhertied,Deny | format-list|out-string).trim())" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
 
 
             # AD SendAs too
 
-            $mbxadp = $Tmbx | Get-ADPermission -domaincontroller $($InputSplat.domaincontroller) -ea Silentlycontinue | where { ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and ($_.user -match ".*-(SEC|Data)-Email-.*$") };
+            $mbxadp = $Tmbx | Get-ADPermission -domaincontroller $($InputSplat.domaincontroller) -ea Silentlycontinue | Where-Object { ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and ($_.user -match ".*-(SEC|Data)-Email-.*$") };
 
             $smsg = "`nChecking AD SendAs Permission on $($Tmbx.samaccountname) mailbox to accessing user:`n $($oSG.Name)...`n(blank if none)" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
@@ -1003,7 +1003,7 @@ function add-MailboxAccessGrant {
                 $smsg = "`nUpdated $($oSG.Name) Membership...`n" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                 write-host -foregroundcolor green "$((get-date).ToString("HH:mm:ss")):---";
-                if ($mbrs = Get-ADGroupMember -identity $oSG.samaccountname -server $($DomainController) | select distinguishedName ) {
+                if ($mbrs = Get-ADGroupMember -identity $oSG.samaccountname -server $($DomainController) | Select-Object distinguishedName ) {
                     $smsg = "$(($mbrs | out-string).trim() | out-default)`n-----------------------" ;
                 } else {
                     $smsg = "(NO MEMBERS RETURNED)`n-----------------------" ;

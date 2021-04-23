@@ -20,13 +20,13 @@ Function Connect-Ex2010 {
     * 11:22 AM 4/21/2021 coded around recent 'verbose the heck out of everything', yanked 99% of the verbose support - this seldom fails in a way that you need verbose, and when it's on, every cmdlet in the modules get echo'd, spams the heck out of console & logging. One key change (not sure if source) was to switch from inline import-pss & import-mod, into 2 steps with varis.
     * 10:02 AM 4/12/2021 add alias connect-ExOP (eventually rename verb-ex2010 to verb-exOnPrem)
     * 12:06 PM 4/2/2021 added alias cxOP ; added explicit echo on import-session|module, removed redundant catch block; added trycatch around import-sess|mod ; added recStatus support
-    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods ; renamed-standardized splat names (EMSSplat ->pltNSess ; ) ; flipped prefix into splat add ; 
+    # 8:34 AM 3/31/2021 added verbose suppress to all import-mods ; renamed-standardized splat names (EMSSplat ->pltNSess ; ) ; flipped prefix into splat add ;
     * 2:36 PM 3/23/2021 getting away from dyn, random from array in $XXXMeta.Ex10Server, doesn't rely on AD lookups for referrals
     * 10:14 AM 3/23/2021 flipped default $Cred spec, pointed at an OP cred (matching reconnect-ex2010())
     * 11:36 AM 3/5/2021 updated colorcode, subed wv -verbose with just write-verbose, added cred.uname echo
     * 1:15 PM 3/1/2021 added org-level color-coded console
     * 3:28 PM 2/17/2021 updated to support cross-org, leverages new $XXXMeta.ExRevision, ExViewForest
-    * 5:16 PM 10/22/2020 switched to no-loop meta lookup; debugged, fixed 
+    * 5:16 PM 10/22/2020 switched to no-loop meta lookup; debugged, fixed
     * 7:13 AM 7/22/2020 replaced codeblock w get-TenantTag(), flipped ExAdmin fr switch to un-typed
     * 5:11 PM 7/21/2020 added VEN support
     * 12:20 PM 5/27/2020 moved aliases: Add-EMSRemote,cx10 win func
@@ -114,15 +114,15 @@ Function Connect-Ex2010 {
         [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credOpTORSID
     )  ;
     BEGIN{
-        #$verbose = ($VerbosePreference -eq "Continue") ; 
+        #$verbose = ($VerbosePreference -eq "Continue") ;
         $sWebPoolVariant = "exadmin" ;
         $CommandPrefix = $null ;
         # use credential domain to determine target org
-        $rgxLegacyLogon = '\w*\\\w*' ; 
+        $rgxLegacyLogon = '\w*\\\w*' ;
         $TenOrg = get-TenantTag -Credential $Credential ;
         <#
         if($Credential.username -match $rgxLegacyLogon){
-            $credDom =$Credential.username.split('\')[0] ; 
+            $credDom =$Credential.username.split('\')[0] ;
         } elseif ($Credential.username.contains('@')){
             $credDom = ($Credential.username.split("@"))[1] ;
         } else {
@@ -131,30 +131,30 @@ Function Connect-Ex2010 {
         #>
     } ;  # BEG-E
     PROCESS{
-        $ExchangeServer=$null ; 
+        $ExchangeServer=$null ;
         # flip from dyn lookup to array in Ex10Server, and always use get-random to pick between. Returns a value, even when only a single value
-        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server|get-random ; 
-        $ExAdmin = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant ; 
-        $ExVers = (Get-Variable  -name "$($TenOrg)Meta").value.ExRevision ; 
-        $ExVwForest = (Get-Variable  -name "$($TenOrg)Meta").value.ExViewForest ;         
+        $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server|get-random ;
+        $ExAdmin = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10WebPoolVariant ;
+        $ExVers = (Get-Variable  -name "$($TenOrg)Meta").value.ExRevision ;
+        $ExVwForest = (Get-Variable  -name "$($TenOrg)Meta").value.ExViewForest ;
         $ExOPAccessFromToro = (Get-Variable  -name "$($TenOrg)Meta").value.ExOPAccessFromToro
-        # force unresolved to dyn 
+        # force unresolved to dyn
         if(!$ExchangeServer){
-            #$ExchangeServer = 'dynamic' ; 
+            #$ExchangeServer = 'dynamic' ;
             # getting away from dyn, random from array in Ex10Server
-            throw "Undefined `$ExchangeServer for $($TenOrg) org, and `$$($TenOrg)Meta.Ex10Server property" ; 
-            Exit ; 
+            throw "Undefined `$ExchangeServer for $($TenOrg) org, and `$$($TenOrg)Meta.Ex10Server property" ;
+            Exit ;
         } ;
         if($ExchangeServer -eq 'dynamic'){
-            if( $ExchangeServer = (Get-ExchangeServerInSite | ? { ($_.roles -eq 36) } | Get-Random ).FQDN){}
+            if( $ExchangeServer = (Get-ExchangeServerInSite | Where-Object { ($_.roles -eq 36) } | Get-Random ).FQDN){}
             else {
                 write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchangeServerInSite *FAILED*,`ndeferring to Get-ExchServerFromExServersGroup" ;
                 if(!($ExchangeServer = Get-ExchServerFromExServersGroup)){
-                    write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchServerFromExServersGroup *FAILED*,`n deferring to profile `$smtpserver:$($smtpserver))"  ; 
+                    write-warning "$((get-date).ToString('HH:mm:ss')):Get-ExchServerFromExServersGroup *FAILED*,`n deferring to profile `$smtpserver:$($smtpserver))"  ;
                     $ExchangeServer = $smtpserver ;
-                }; 
-            } ;  
-        } ; 
+                };
+            } ;
+        } ;
 
         write-host -foregroundcolor darkgray "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding EMS (connecting to $($ExchangeServer))..." ;
         # splat to open a session - # stock 'PSLanguageMode=Restricted' powershell IIS Webpool
@@ -164,28 +164,28 @@ Function Connect-Ex2010 {
             <#suppresses: The WinRM client cannot process the request. It cannot determine the content type of the HTTP response f rom the destination computer. The content type is absent or invalid
             #>
             $pltNSess.add('Authentication','Kerberos') ;
-        } ; 
+        } ;
         if ($ExAdmin) {
           # use variant IIS Webpool
           $pltNSess.ConnectionURI = $pltNSess.ConnectionURI.replace("/powershell", "/$($sWebPoolVariant)") ;
         }
         if ($Credential) {
-             $pltNSess.Add("Credential", $Credential) 
-             write-verbose "(using cred:$($credential.username))" ; 
+             $pltNSess.Add("Credential", $Credential)
+             write-verbose "(using cred:$($credential.username))" ;
         } ;
-        
+
         # -Authentication Basic only if specif needed: for Ex configured to connect via IP vs hostname)
         # try catch against and retry into stock if fails
         $error.clear() ;
         TRY {
             $Global:E10Sess = New-PSSession @pltNSess -ea STOP  ;
         } CATCH {
-            $ErrTrapd = $_ ; 
+            $ErrTrapd = $_ ;
             write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
             #-=-record a STATUSWARN=-=-=-=-=-=-=
             $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
-            if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-            if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+            if(Get-Variable passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+            if(Get-Variable -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
             #-=-=-=-=-=-=-=-=
             if ($ExAdmin) {
               # switch to stock pool and retry
@@ -200,15 +200,15 @@ Function Connect-Ex2010 {
         write-verbose "$((get-date).ToString('HH:mm:ss')):Importing Exchange 2010 Module" ;
         #$pltIMod=@{Global=$true;PassThru=$true;DisableNameChecking=$true ; verbose=$false} ; # force verbose off, suppress spam in console
         # tear verbose out
-        $pltIMod=@{Global=$true;PassThru=$true;DisableNameChecking=$true ;} ; 
+        $pltIMod=@{Global=$true;PassThru=$true;DisableNameChecking=$true ;} ;
         #$pltISess = [ordered]@{Session = $Global:E10Sess ; DisableNameChecking = $true  ; AllowClobber = $true ; ErrorAction = 'Stop' ; Verbose = $false ;} ;
         $pltISess = [ordered]@{Session = $Global:E10Sess ; DisableNameChecking = $true  ; AllowClobber = $true ; ErrorAction = 'Stop' ; } ;
         if($CommandPrefix){
             $pltIMod.add('Prefix',$CommandPrefix) ;
             $pltISess.add('Prefix',$CommandPrefix) ;
         } ;
-        $smsg = "$((get-date).ToString('HH:mm:ss')):Import-PSSession  w`n$(($pltISess|out-string).trim())`nImport-Module w`n$(($pltIMod|out-string).trim())" ; 
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        $smsg = "$((get-date).ToString('HH:mm:ss')):Import-PSSession  w`n$(($pltISess|out-string).trim())`nImport-Module w`n$(($pltIMod|out-string).trim())" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         $error.clear() ;
         TRY {
@@ -217,41 +217,41 @@ Function Connect-Ex2010 {
                 $VerbosePrefPrior = $VerbosePreference ;
                 $VerbosePreference = "SilentlyContinue" ;
                 $verbose = ($VerbosePreference -eq "Continue") ;
-            } ; 
+            } ;
             #$Global:E10Mod = Import-Module (Import-PSSession @pltISess) @pltIMod   ;
             # try 2-stopping (suppress verbose)
-            $xIPS = Import-PSSession @pltISess ; 
+            $xIPS = Import-PSSession @pltISess ;
             $Global:E10Mod = Import-Module $xIPS @pltIMod ;
             if($ExVwForest){
-                write-host "Setting EMS Session: Set-AdServerSettings -ViewEntireForest `$True" ; 
-                Set-AdServerSettings -ViewEntireForest $True ; 
-            } ; 
-            # reenable VerbosePreference:Continue, if set, during mod loads 
+                write-host "Setting EMS Session: Set-AdServerSettings -ViewEntireForest `$True" ;
+                Set-AdServerSettings -ViewEntireForest $True ;
+            } ;
+            # reenable VerbosePreference:Continue, if set, during mod loads
             if($VerbosePrefPrior -eq "Continue"){
                 $VerbosePreference = $VerbosePrefPrior ;
                 $verbose = ($VerbosePreference -eq "Continue") ;
-            } ; 
+            } ;
         } CATCH {
-            $ErrTrapd = $_ ; 
+            $ErrTrapd = $_ ;
             write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
             #-=-record a STATUSERROR=-=-=-=-=-=-=
             $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
-            if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-            if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+            if(Get-Variable passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+            if(Get-Variable -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
             #-=-=-=-=-=-=-=-=
         } ;
         # 7:54 AM 11/1/2017 add titlebar tag
         Add-PSTitleBar 'EMS' ;
-        # tag E10IsDehydrated 
+        # tag E10IsDehydrated
         $Global:E10IsDehydrated = $true ;
         write-host -foregroundcolor darkgray "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
     } ;  # PROC-E
     END {
         <# borked by psreadline v1/v2 breaking changes
         if(($PSFgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSFgColor) -AND ($PSBgColor = (Get-Variable  -name "$($TenOrg)Meta").value.PSBgColor)){
-            write-verbose "(setting console colors:$($TenOrg)Meta.PSFgColor:$($PSFgColor),PSBgColor:$($PSBgColor))" ; 
+            write-verbose "(setting console colors:$($TenOrg)Meta.PSFgColor:$($PSFgColor),PSBgColor:$($PSBgColor))" ;
             $Host.UI.RawUI.BackgroundColor = $PSBgColor
-            $Host.UI.RawUI.ForegroundColor = $PSFgColor ; 
+            $Host.UI.RawUI.ForegroundColor = $PSFgColor ;
         } ;
         #>
     }

@@ -9,7 +9,7 @@ Author      : Todd Kadrie
 Website     : http://www.toddomation.com
 Twitter     : @tostka / http://twitter.com/tostka
 CreatedDate : 2020-10-26
-FileName    : 
+FileName    :
 License     : MIT License
 Copyright   : (c) 2020 Todd Kadrie
 Github      : https://github.com/tostka/verb-XXX
@@ -32,22 +32,22 @@ https://github.com/tostka/verb-ex2010
 [CmdletBinding()]
 PARAM() ;
     # toggle forest view
-    if (get-command -name set-AdServerSettings){ 
+    if (get-command -name set-AdServerSettings){
         if ((get-AdServerSettings).ViewEntireForest ) {
               write-verbose "(set-AdServerSettings -ViewEntireForest `$False)"
-              set-AdServerSettings -ViewEntireForest $False 
+              set-AdServerSettings -ViewEntireForest $False
         } ;
     } else {
         #-=-record a STATUSERROR=-=-=-=-=-=-=
         $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
-        if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-        if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+        if(Get-Variable passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+        if(Get-Variable -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
         #-=-=-=-=-=-=-=-=
         $smsg = "MISSING:set-AdServerSettings`nOPEN an Exchange OnPrem connection FIRST!"
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        BREAK ; 
-    } ; 
+        BREAK ;
+    } ;
 }
 
 #*------^ disable-ForestView.ps1 ^------

@@ -121,17 +121,17 @@ Function Connect-Ex2010XO {
         #.OP_ExADRoot
         if( (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName ){
 
-        } else { 
+        } else {
             #.OP_rgxEMSComputerName
             if((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot){
                 set-Variable  -name "$($TenOrg)Meta" -value ( (Get-Variable  -name "$($TenOrg)Meta").value += @{'OP_rgxEMSComputerName' = "^\w*\.$([Regex]::Escape((Get-Variable  -name "$($TenOrg)Meta").value.OP_ExADRoot))$"} )
             } else {
                 $smsg = "Missing `$$((Get-Variable  -name "$($TenOrg)Meta").value.o365_Prefix).OP_ExADRoot value.`nProfile hasn't loaded proper tor-incl-infrastrings file)!"
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } #Error|Warn|Debug 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } #Error|Warn|Debug
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             } ;
         } ;
-    
+
     } ;  # BEG-E
     PROCESS{
         # if we're using ems-style BasicAuth, clear incompatible existing Rems PSS's
@@ -144,7 +144,7 @@ Function Connect-Ex2010XO {
         $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
             $_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (
             ( -not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) ) -AND (
-            -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available') 
+            -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available')
         } ;
         $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
             $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;

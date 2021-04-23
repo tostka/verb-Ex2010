@@ -20,8 +20,8 @@ Function Reconnect-Ex2010 {
     * 10:52 AM 4/2/2021 updated cbh
     * 1:56 PM 3/31/2021 rewrote to dyn detect pss, rather than reading out of date vari
     * 10:14 AM 3/23/2021 fix default $Cred spec, pointed at an OP cred
-    * 8:29 AM 11/17/2020 added missing $Credential param 
-    * 9:33 AM 5/28/2020 actually added the alias:rx10 
+    * 8:29 AM 11/17/2020 added missing $Credential param
+    * 9:33 AM 5/28/2020 actually added the alias:rx10
     * 12:20 PM 5/27/2020 updated cbh, moved alias: rx10 win func
     * 6:59 PM 1/15/2020 cleanup
     * 8:09 AM 11/1/2017 updated example to pretest for reqMods
@@ -44,7 +44,7 @@ Function Reconnect-Ex2010 {
     [Alias('rx10','rxOP','reconnect-ExOP')]
     Param(
         [Parameter(HelpMessage="Credential to use for this connection [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
-        $Credential = $global:credOpTORSID 
+        $Credential = $global:credOpTORSID
     )
     # checking stat on canned copy of hist sess, says nothing about current, possibly timed out, check them manually
     $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
@@ -55,7 +55,7 @@ Function Reconnect-Ex2010 {
     $Rems2WrongOrg = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
         $_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND (
         ( -not($_.ComputerName -match (Get-Variable  -name "$($TenOrg)Meta").value.OP_rgxEMSComputerName) ) -AND (
-        -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available') 
+        -not($_.ComputerName -match $rgxExoPsHostName)) ) -AND ($_.Availability -eq 'Available')
     } ;
     $Rems2Broken = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND (
         $_.Name -match $rgxRemsPSSName) -AND ($_.State -like "*Broken*") } ;
@@ -77,18 +77,18 @@ Function Reconnect-Ex2010 {
         } else {
             $bExistingREms= $false ;
         } ;
-    } else { 
+    } else {
         # doesn't match histo
         $bExistingREms= $false ;
-    } ; 
-    $propsPss =  'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ; 
+    } ;
+    $propsPss =  'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ;
     if($bExistingREms){
-        $smsg = "existing connection Open/Available:`n$(($tSess| ft -auto $propsPss |out-string).trim())" ; 
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        $smsg = "existing connection Open/Available:`n$(($tSess| ft -auto $propsPss |out-string).trim())" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-    } else { 
-        $smsg = "(resetting any existing EX10 connection and re-establishing)" ; 
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+    } else {
+        $smsg = "(resetting any existing EX10 connection and re-establishing)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         Disconnect-Ex2010 ; Start-Sleep -S 3;
         if (!$Credential) {
@@ -96,7 +96,7 @@ Function Reconnect-Ex2010 {
         } else {
             Connect-Ex2010 -Credential:$($Credential) ;
         } ;
-    } ; 
+    } ;
 }
 
 #*------^ Reconnect-Ex2010.ps1 ^------
