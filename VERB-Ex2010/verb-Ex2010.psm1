@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.58.0
+Version     : 1.1.60.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -4354,6 +4354,80 @@ function rx10tor {
 
 #*------^ rx10tor.ps1 ^------
 
+#*------v test-ExOPPSession.ps1 v------
+Function test-ExOPPSession {
+  <#
+    .SYNOPSIS
+    test-ExOPPSession - Does a *simple* - NO-ORG REVIEW - validation of functional PSSession with: ConfigurationName:'Microsoft.Exchange' -AND Name match  '^(Exchange2010|Session\sfor\simplicit\sremoting\smodule\sat\s.*)' -AND State:'Opened' -AND Availability:'Available' -AND can gcm -name 'Add-ADPermission'
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    Version     : 1.0.0
+    CreatedDate : 2021-04-15
+    FileName    : test-ExOPPSession()
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Exchange,Exchange-2013,Exchange-2016
+    REVISIONS   :
+    * 12:30 PM 5/3/2021 init vers ; revised rgxRemsPSSName
+    .DESCRIPTION
+    test-ExOPPSession - Does a *simple* - NO-ORG REVIEW - validation of functional PSSession with: ConfigurationName:'Microsoft.Exchange' -AND Name match  '^(Exchange2010|Session\sfor\simplicit\sremoting\smodule\sat\s.*)' -AND State:'Opened' -AND Availability:'Available' -AND can gcm -name 'Add-ADPermission'.
+    This does *NO* validation that any specific EXOnPrem org is attached! It just validates that an existing PSSession *exists* that *generically* matches a Remote Exchange Mgmt Shell connection in a usable state. Use case is scripts/functions that *assume* you've already pre-established a suitable connection, and just need to pre-test that *any* PSS is already open, before attempting commands. 
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    System.Management.Automation.Runspaces.PSSession. Returns the functional PSSession object(s)
+    .EXAMPLE
+    PS> if(test-ExOPPSession){'OK'} else { 'NOGO!'}  ;
+    .LINK
+    https://github.com/tostka/verb-Ex2010/
+    #>
+    [CmdletBinding()]
+    #[Alias()]
+    Param()  ;
+    BEGIN{
+        $verbose = ($VerbosePreference -eq "Continue") ;
+        $rgxRemsPSSName = "^(Exchange\d{4})$" ; 
+        $testCommand = 'Add-ADPermission' ; 
+        $propsREMS = 'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ; 
+    } ;  # BEG-E
+    PROCESS{
+        $error.clear() ;
+        TRY {
+            if($RemsGood = Get-PSSession | where-object { ($_.ConfigurationName -eq "Microsoft.Exchange") -AND ($_.Name -match $rgxRemsPSSName) -AND ($_.State -eq "Opened") -AND ($_.Availability -eq 'Available') }){
+                $smsg = "valid EMS PSSession found:`n$(($RemsGood|ft -a $propsREMS |out-string).trim())" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-VERBOSE "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                
+                if($tmod = (get-command -name $testCommand).source){
+                    $smsg = "(confirmed PSSession open/available, with $($testCommand) available)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    $RemsGood | write-output ; ;
+                } else { 
+                    throw "NO FUNCTIONAL PSSESSION FOUND!" ; 
+                } ; 
+            } else {
+                throw "No existing open/available Remote Exchange Management Shell found!"
+            } ;
+        } CATCH {
+            $ErrTrapd = $_ ;
+            write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+            #-=-record a STATUSERROR=-=-=-=-=-=-=
+            $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+            if(gv passstatus -scope Script -ea 0 ){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script  -ea 0 ){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+            #-=-=-=-=-=-=-=-=
+        } ;
+        
+    } ;  # PROC-E
+    END {}
+}
+
+#*------^ test-ExOPPSession.ps1 ^------
+
 #*------v toggle-ForestView.ps1 v------
 Function toggle-ForestView {
 <#
@@ -4407,14 +4481,14 @@ PARAM() ;
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex2010XO,cx10cmw,cx10tol,cx10tor,disable-ForestView,Disconnect-Ex2010,enable-ForestView,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,import-EMSLocalModule,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,rx10cmw,rx10tol,rx10tor,toggle-ForestView -Alias *
+Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex2010XO,cx10cmw,cx10tol,cx10tor,disable-ForestView,Disconnect-Ex2010,enable-ForestView,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,import-EMSLocalModule,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,rx10cmw,rx10tol,rx10tor,test-ExOPPSession,toggle-ForestView -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUYPr5Km39cAfAR+s3MsHg4yYn
-# 7JOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU9skSvdfjdFbQb53RpbuEy+Ou
+# ObugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4429,9 +4503,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex20
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQht2UJ
-# oJBfe1UzT7OdpKddNyc0/DANBgkqhkiG9w0BAQEFAASBgFb204Y0KHak4l5u5MXD
-# TTlz/nDrw5mvPsMddKJIBv4rGHOG+nRAdSaDIWKku1TB4DkiMerk21lIBtQdrE7v
-# NTLrQN2nQk0cf1DS3zSQBRrKWrHbd9Lt48HA57dtYN47VCSWZoIu2OcM7DPxFNY8
-# OkKd0pS6T9iGbVm8O08QxWXy
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQ/DTGA
+# H2zpsMjylhwH5LNydu/mLjANBgkqhkiG9w0BAQEFAASBgJidmx7yXQxLpXm2t3XH
+# tlnaGYx0sGcmf9A+PvIn5UN1/uEPcoemblEMNnu8Py7oMeoJ/TURyY7sRxRQLnxH
+# b5pLscZpP6WSkMHTlkc5AfEXue638pLGZMlKYdmdxxsCQs9sIU+Cg2pH0p65LXWe
+# sZYfglfOh/sIqQ/340NAykTD
 # SIG # End signature block

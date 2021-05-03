@@ -1,4 +1,4 @@
-# verb-ex2010.psm1
+﻿# verb-ex2010.psm1
 
 
 <#
@@ -4371,7 +4371,7 @@ Function test-ExOPPSession {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Exchange-2013,Exchange-2016
     REVISIONS   :
-    * 12:30 PM 5/3/2021 init vers ; revised rgxRemsPSSName
+    * 10:03 AM 4/16/2021 init vers
     .DESCRIPTION
     test-ExOPPSession - Does a *simple* - NO-ORG REVIEW - validation of functional PSSession with: ConfigurationName:'Microsoft.Exchange' -AND Name match  '^(Exchange2010|Session\sfor\simplicit\sremoting\smodule\sat\s.*)' -AND State:'Opened' -AND Availability:'Available' -AND can gcm -name 'Add-ADPermission'.
     This does *NO* validation that any specific EXOnPrem org is attached! It just validates that an existing PSSession *exists* that *generically* matches a Remote Exchange Mgmt Shell connection in a usable state. Use case is scripts/functions that *assume* you've already pre-established a suitable connection, and just need to pre-test that *any* PSS is already open, before attempting commands. 
@@ -4389,7 +4389,7 @@ Function test-ExOPPSession {
     Param()  ;
     BEGIN{
         $verbose = ($VerbosePreference -eq "Continue") ;
-        $rgxRemsPSSName = "^(Exchange\d{4})$" ; 
+        $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
         $testCommand = 'Add-ADPermission' ; 
         $propsREMS = 'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ; 
     } ;  # BEG-E
@@ -4483,3 +4483,29 @@ PARAM() ;
 
 Export-ModuleMember -Function add-MailboxAccessGrant,Connect-Ex2010,Connect-Ex2010XO,cx10cmw,cx10tol,cx10tor,disable-ForestView,Disconnect-Ex2010,enable-ForestView,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,import-EMSLocalModule,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxShared,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,rx10cmw,rx10tol,rx10tor,test-ExOPPSession,toggle-ForestView -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU0kEuScmKjCwRTJrl/q79qF5H
+# 9pmgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQi28kR
+# jDxX5VbvkSR052/4wCPboDANBgkqhkiG9w0BAQEFAASBgI+sbWA0PeYAOm8fKQUR
+# OBky11peKATfsW/yFqh+F1QOIH26mXeK1Aj+8YTS+ZFcgI+dnp/lSuaGTEUcqLmt
+# yQ/mE83phZIqjzBbwSmiBEfxzuub6jzIlz0nHX/Raza8X7CzZhHLTifkf+U3bC9U
+# S/sJ4Co5o6WsQJVJ7RuwZLo7
+# SIG # End signature block
