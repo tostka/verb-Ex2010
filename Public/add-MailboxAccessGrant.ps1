@@ -278,7 +278,7 @@ function add-MailboxAccessGrant {
             if($ParentPath -match $rgxProfilePaths){
                 $ParentPath = "$(join-path -path 'c:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ;
             } ;
-            $logspec = start-Log -Path ($ParentPath) -showdebug:$($showdebug) -whatif:$($whatif) ;
+            $logspec = start-Log -Path ($ParentPath) -showdebug:$($showdebug) -whatif:$($whatif) -tag $TargetID;
             if($logspec){
                 $logging=$logspec.logging ;
                 $logfile=$logspec.logfile ;
