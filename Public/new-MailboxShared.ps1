@@ -18,6 +18,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 1:52 PM 5/5/2021 added dot-divided displayname support (split fname & lname for generics, to auto-gen specific requested eml addresses) ; diverted parentpath log pref to d: before c: w test; untested code
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
     # 1:29 PM 4/23/2020 updated dynpath & logging, unwrapped loadmod,
     # 4:28 PM 4/22/2020 updated logging code, to accomodate dynamic locations and $ParentPath
@@ -297,7 +298,11 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         if($ParentPath){
             $rgxProfilePaths='(\\Documents\\WindowsPowerShell\\scripts|\\Program\sFiles\\windowspowershell\\scripts)' ;
             if($ParentPath -match $rgxProfilePaths){
-                $ParentPath = "$(join-path -path 'c:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ;
+                if(test-path -Path 'd:\scripts\'){
+                    $ParentPath = "$(join-path -path 'd:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ;
+                }else{
+                    $ParentPath = "$(join-path -path 'c:\scripts\' -ChildPath (split-path $ParentPath -leaf))" ;
+                } ; 
             } ;
             $logspec = start-Log -Path ($ParentPath) -showdebug:$($showdebug) -whatif:$($whatif) -tag $DisplayName;
             if($logspec){
@@ -664,7 +669,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 } ;
 
             } else {
-                # strict shared acct, no FirstName
+                # strict shared acct, no FirstName - revising, we'll support period in name and auto-split fname.lname, to create requested fname.lname@domain.com addresses wo post modification
                 # support for shared/room/equip
                 if(!$Equip -AND !$Room){
                     # only use Shared when not Equip or Room
@@ -673,6 +678,14 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                     # tear out the unused
                     $InputSplat.Remove("Room") ;
                     $InputSplat.Remove("Equip") ;
+                    # add support divide on period
+                    if ($InputSplat.DisplayName.tostring().indexof(".") -gt 0){
+                        $InputSplat.Add("FirstName",$($InputSplat.DisplayName.tostring().split(".")[0].trim()) ) ;
+                        $InputSplat.Add("LastName",$($InputSplat.DisplayName.tostring().split(".")[1].trim()) ) ;
+                    } else { 
+                        $InputSplat.Add("FirstName",$null ) ;
+                        $InputSplat.Add("LastName",$InputSplat.DisplayName) ;
+                    } ; 
                 } else {
                     $InputSplat.Remove("Shared") ;
                     if($Room -AND !$Equip){
@@ -684,9 +697,10 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                         $InputSplat.Add("Equip",$true) ;
                         $InputSplat.Remove("Room") ;
                     } else { throw "INVALID OPTIONS: USE -Room OR -Equip BUT NOT BOTH" }
+                    $InputSplat.Add("FirstName",$null ) ;
+                    $InputSplat.Add("LastName",$InputSplat.DisplayName) ;
                 } ;
-                $InputSplat.Add("FirstName",$null ) ;
-                $InputSplat.Add("LastName",$InputSplat.DisplayName) ;
+                
                 # psv2 LACKS the foreign-lang cleanup funtions below, skip on psv2
                 if($host.version.major -lt 3){
                     write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):Psv2 detected, skipping foreign character normalization!" ;
