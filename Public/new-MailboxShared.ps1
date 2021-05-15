@@ -18,6 +18,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 11:10 AM 5/11/2021 swapped parentpath code for dyn module-support code (moving the new-mailboxgenerictor & add-mbxaccessgrant preproc .ps1's to ex2010 mod functions)
     # 1:52 PM 5/5/2021 added dot-divided displayname support (split fname & lname for generics, to auto-gen specific requested eml addresses) ; diverted parentpath log pref to d: before c: w test; untested code
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
     # 1:29 PM 4/23/2020 updated dynpath & logging, unwrapped loadmod,
@@ -295,6 +296,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         } ;  # loop-E
         #*------^ END MOD LOADS ^------
 
+        <# rem, shifting preprocessor to module, loses $parentpath function, (resolves to module file in allusers context)
         if($ParentPath){
             $rgxProfilePaths='(\\Documents\\WindowsPowerShell\\scripts|\\Program\sFiles\\windowspowershell\\scripts)' ;
             if($ParentPath -match $rgxProfilePaths){
@@ -311,6 +313,37 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 $transcript=$logspec.transcript ;
             } else {$smsg = "Unable to configure logging!" ; write-warning "$((get-date).ToString('HH:mm:ss')):$($sMsg)" ; Exit ;} ;
         } else {$smsg = "No functional `$ParentPath found!" ; write-warning "$((get-date).ToString('HH:mm:ss')):$($sMsg)" ;  Exit ;} ;
+        #>
+        # detect profile installs (installed mod or script), and redir to stock location
+        $dPref = 'd','c' ; foreach($budrv in $dpref){ if(test-path -path "$($budrv):\scripts" -ea 0 ){ break ;  } ;  } ;
+        [regex]$rgxScriptsModsAllUsersScope="^$([regex]::escape([environment]::getfolderpath('ProgramFiles')))\\((Windows)*)PowerShell\\(Scripts|Modules)" ;
+        [regex]$rgxScriptsModsCurrUserScope="^$([regex]::escape([environment]::getfolderpath('Mydocuments')))\\((Windows)*)PowerShell\\(Scripts|Modules)" ;
+        # -Tag "($TenOrg)-LASTPASS" 
+        $pltSLog = [ordered]@{ NoTimeStamp=$false ; Tag=$lTag  ; showdebug=$($showdebug) ;whatif=$($whatif) ;} ;
+        if($PSCommandPath){
+            if(($PSCommandPath -match $rgxScriptsModsAllUsersScope) -OR ($PSCommandPath -match $rgxScriptsModsCurrUserScope) ){
+                # AllUsers or CU installed script, divert into [$budrv]:\scripts (don't write logs into allusers context folder)
+                if($PSCommandPath -match '\.ps(d|m)1$'){
+                    # module function: use the ${CmdletName} for childpath
+                    $pltSLog.Path= (join-path -Path "$($budrv):\scripts" -ChildPath "$(${CmdletName}).ps1" )  ;
+                } else { 
+                    $pltSLog.Path=(join-path -Path "$($budrv):\scripts" -ChildPath (split-path $PSCommandPath -leaf)) ;
+                } ; 
+            }else {
+                $pltSLog.Path=$PSCommandPath ;
+            } ;
+        } else {
+            if( ($MyInvocation.MyCommand.Definition -match $rgxScriptsModsAllUsersScope) -OR ($MyInvocation.MyCommand.Definition -match $rgxScriptsModsCurrUserScope) ){
+                $pltSLog.Path=(join-path -Path "$($budrv):\scripts" -ChildPath (split-path $PSCommandPath -leaf)) ;
+            } else {
+                $pltSLog.Path=$MyInvocation.MyCommand.Definition ;
+            } ;
+        } ;
+        $smsg = "start-Log w`n$(($pltSLog|out-string).trim())" ;
+        if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        $logspec = start-Log @pltSLog ;
+
         if($whatif){
             $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
             $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;

@@ -15,6 +15,7 @@ Function import-EMSLocalModule {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Exchange-2013,Exchange-2016
     REVISIONS   :
+    * 11:40 AM 5/14/2021 added -ea 0 to the gv tests (suppresses not-found error when called without logging config)
     * 9:21 AM 4/16/2021 renamed load-emsmodule -> import-EMSLocalModule, added pretest and post verify
     * 10:14 AM 4/12/2021 init vers
     .DESCRIPTION
@@ -84,4 +85,5 @@ Function import-EMSLocalModule {
         } ;
     }
 }
+
 #*------^ import-EMSLocalModule.ps1 ^------
