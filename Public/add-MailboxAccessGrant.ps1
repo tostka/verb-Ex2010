@@ -15,6 +15,8 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    # 4:21 PM 5/19/2021 added -ea STOP to splats, to force retry's to trigger
+    # 5:03 PM 5/18/2021 fixed the fundementally borked start-log I created below
     # 11:10 AM 5/11/2021 swapped parentpath code for dyn module-support code (moving the new-mailboxgenerictor & add-mbxaccessgrant preproc .ps1's to ex2010 mod functions)
     # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
@@ -319,20 +321,32 @@ function add-MailboxAccessGrant {
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
         $logspec = start-Log @pltSLog ;
         
-        if($whatif){
-            $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
-            $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
-        } else {
-            $logfile=$logfile.replace("-BATCH","-BATCH-EXEC") ;
-            $transcript=$transcript.replace("-BATCH","-BATCH-EXEC") ;
-        } ;
-        if($Ticket){
-            $logfile=$logfile.replace("-BATCH","-$($Ticket)") ;
-            $transcript=$transcript.replace("-BATCH","-$($Ticket)") ;
-        } else {
-            $logfile=$logfile.replace("-BATCH","-nnnnnn") ;
-            $transcript=$transcript.replace("-BATCH","-nnnnnn") ;
-        } ;
+        if($logspec){
+            $logging=$logspec.logging ;
+            $logfile=$logspec.logfile ;
+            $transcript=$logspec.transcript ;
+            
+            if($whatif){
+                $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
+                $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
+            } else {
+                $logfile=$logfile.replace("-BATCH","-BATCH-EXEC") ;
+                $transcript=$transcript.replace("-BATCH","-BATCH-EXEC") ;
+            } ;
+            if($Ticket){
+                $logfile=$logfile.replace("-BATCH","-$($Ticket)") ;
+                $transcript=$transcript.replace("-BATCH","-$($Ticket)") ;
+            } else {
+                $logfile=$logfile.replace("-BATCH","-nnnnnn") ;
+                $transcript=$transcript.replace("-BATCH","-nnnnnn") ;
+            } ;
+            
+            if(Test-TranscriptionSupported){
+                $stopResults = try {Stop-transcript -ErrorAction stop} catch {} ;
+                start-transcript -Path $transcript ;
+            } ;
+        } else {throw "Unable to configure logging!" } ;
+        
 
         <#
         $sBnr="#*======v START PASS:$($ScriptBaseName) v======" ;
@@ -423,31 +437,37 @@ function add-MailboxAccessGrant {
                 OtherAttributes = "";
                 Path            = "";
                 Server          = ""
+                ErrorAction     = 'STOP' # need this to trigger retries
             };
             $SGUpdtSplat = [ordered]@{
                 Identity = "";
                 Server   = ""
+                ErrorAction     = 'STOP' # need this to trigger retries
             };
             $DGEnableSplat = [ordered]@{
                 Identity         = "";
                 DomainController = ""
+                ErrorAction     = 'STOP' # need this to trigger retries
             };
             $DGUpdtSplat = [ordered]@{
                 Identity                      = "";
                 HiddenFromAddressListsEnabled = $true ;
                 DomainController              = "" ;
+                ErrorAction     = 'STOP' # need this to trigger retries
             } ;
             $GrantSplat = [ordered]@{
                 Identity        = "" ;
                 User            = "" ;
                 AccessRights    = "FullAccess";
                 InheritanceType = "All";
+                ErrorAction     = 'STOP' # need this to trigger retries
             };
             # add for AD SendAs perms grant
             #pulling id, pipeline it in
             $ADMbxGrantSplat = [ordered]@{
                 User           = "" ;
                 ExtendedRights = "Send As" ;
+                ErrorAction     = 'STOP' # need this to trigger retries
             };
         }
 
@@ -762,7 +782,7 @@ function add-MailboxAccessGrant {
             $smsg = "---`nWhatif $($SGSplat.Name) creation...";
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
 
-            New-AdGroup @SGSplat -whatif -ea stop;
+            New-AdGroup @SGSplat -whatif ;
             $DGEnableSplat.identity = $SGSplat.SamAccountName ;
             $DGUpdtSplat.identity = $SGSplat.SamAccountName ;
 
@@ -780,7 +800,7 @@ function add-MailboxAccessGrant {
                 } else {
                     $smsg = "Executing...";
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-                    New-AdGroup @SGSplat -ea stop ;
+                    New-AdGroup @SGSplat  ;
                     Do { write-host "." -NoNewLine; Start-Sleep -s 1 } Until (Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController)) ;
                     #$oSG= (get-adgroup "$($SGSplat.DisplayName)" -server $($InputSplat.Domain) -ea stop );
                     $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController) -ErrorAction stop;
@@ -829,7 +849,7 @@ function add-MailboxAccessGrant {
                     If ($ExistMbrs -notcontains $Mbr.sAMAccountName) {
                         $smsg = "Test ADD:$($mbr.samaccountname)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
-                        Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname) -ea stop -whatif ;
+                        Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname)  -whatif ;
                     } else {
                         $smsg = "SKIPPING:$($mbr.samaccountname) is already a member of $($oSG.samaccountname)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
@@ -850,7 +870,7 @@ function add-MailboxAccessGrant {
                                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                             } else {
                                 # 8:33 AM 6/27/2019 fix latest ADmod, added a conflicting param, autoresolve fails, typo -member -> proper -members
-                                Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname) -ea stop ;
+                                Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname)  ;
                             } ;
                         } else {
                             "SKIPPING:$($mbr.samaccountname) is already a member of $($oSG.samaccountname)"

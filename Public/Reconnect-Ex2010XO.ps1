@@ -10,6 +10,7 @@ Function Reconnect-Ex2010XO {
     Based on original function Author: ExactMike Perficient, Global Knowl... (Partner)
     Website:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
     REVISIONS   :
+    # 3:18 PM 5/18/2021 somehow lost $credOpTORSID, so flipped lost default $credOPTor -> $credTORSID
     * 1:57 PM 3/31/2021 wrapped long lines for vis
     * 8:30 AM 10/22/2020 ren'd $TentantTag -> $TenOrg, swapped looping meta resolve with 1-liner approach ; added AcceptedDom caching to the middle status test (suppress one more get-exoaccepteddomain call if possible), replaced all $Meta.value with the $TenOrg version
     * 1:19 PM 10/15/2020 converted connect-exo to Ex2010, adding onprem validation
@@ -190,4 +191,5 @@ Function Reconnect-Ex2010XO {
         } ;
     } ; # END-E
 }
+
 #*------^ Reconnect-Ex2010XO.ps1 ^------

@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.63.0
+Version     : 1.1.71.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -73,6 +73,8 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    # 4:21 PM 5/19/2021 added -ea STOP to splats, to force retry's to trigger
+    # 5:03 PM 5/18/2021 fixed the fundementally borked start-log I created below
     # 11:10 AM 5/11/2021 swapped parentpath code for dyn module-support code (moving the new-mailboxgenerictor & add-mbxaccessgrant preproc .ps1's to ex2010 mod functions)
     # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
@@ -377,20 +379,32 @@ function add-MailboxAccessGrant {
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
         $logspec = start-Log @pltSLog ;
         
-        if($whatif){
-            $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
-            $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
-        } else {
-            $logfile=$logfile.replace("-BATCH","-BATCH-EXEC") ;
-            $transcript=$transcript.replace("-BATCH","-BATCH-EXEC") ;
-        } ;
-        if($Ticket){
-            $logfile=$logfile.replace("-BATCH","-$($Ticket)") ;
-            $transcript=$transcript.replace("-BATCH","-$($Ticket)") ;
-        } else {
-            $logfile=$logfile.replace("-BATCH","-nnnnnn") ;
-            $transcript=$transcript.replace("-BATCH","-nnnnnn") ;
-        } ;
+        if($logspec){
+            $logging=$logspec.logging ;
+            $logfile=$logspec.logfile ;
+            $transcript=$logspec.transcript ;
+            
+            if($whatif){
+                $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
+                $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
+            } else {
+                $logfile=$logfile.replace("-BATCH","-BATCH-EXEC") ;
+                $transcript=$transcript.replace("-BATCH","-BATCH-EXEC") ;
+            } ;
+            if($Ticket){
+                $logfile=$logfile.replace("-BATCH","-$($Ticket)") ;
+                $transcript=$transcript.replace("-BATCH","-$($Ticket)") ;
+            } else {
+                $logfile=$logfile.replace("-BATCH","-nnnnnn") ;
+                $transcript=$transcript.replace("-BATCH","-nnnnnn") ;
+            } ;
+            
+            if(Test-TranscriptionSupported){
+                $stopResults = try {Stop-transcript -ErrorAction stop} catch {} ;
+                start-transcript -Path $transcript ;
+            } ;
+        } else {throw "Unable to configure logging!" } ;
+        
 
         <#
         $sBnr="#*======v START PASS:$($ScriptBaseName) v======" ;
@@ -481,31 +495,37 @@ function add-MailboxAccessGrant {
                 OtherAttributes = "";
                 Path            = "";
                 Server          = ""
+                ErrorAction     = 'STOP' # need this to trigger retries
             };
             $SGUpdtSplat = [ordered]@{
                 Identity = "";
                 Server   = ""
+                ErrorAction     = 'STOP' # need this to trigger retries
             };
             $DGEnableSplat = [ordered]@{
                 Identity         = "";
                 DomainController = ""
+                ErrorAction     = 'STOP' # need this to trigger retries
             };
             $DGUpdtSplat = [ordered]@{
                 Identity                      = "";
                 HiddenFromAddressListsEnabled = $true ;
                 DomainController              = "" ;
+                ErrorAction     = 'STOP' # need this to trigger retries
             } ;
             $GrantSplat = [ordered]@{
                 Identity        = "" ;
                 User            = "" ;
                 AccessRights    = "FullAccess";
                 InheritanceType = "All";
+                ErrorAction     = 'STOP' # need this to trigger retries
             };
             # add for AD SendAs perms grant
             #pulling id, pipeline it in
             $ADMbxGrantSplat = [ordered]@{
                 User           = "" ;
                 ExtendedRights = "Send As" ;
+                ErrorAction     = 'STOP' # need this to trigger retries
             };
         }
 
@@ -820,7 +840,7 @@ function add-MailboxAccessGrant {
             $smsg = "---`nWhatif $($SGSplat.Name) creation...";
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
 
-            New-AdGroup @SGSplat -whatif -ea stop;
+            New-AdGroup @SGSplat -whatif ;
             $DGEnableSplat.identity = $SGSplat.SamAccountName ;
             $DGUpdtSplat.identity = $SGSplat.SamAccountName ;
 
@@ -838,7 +858,7 @@ function add-MailboxAccessGrant {
                 } else {
                     $smsg = "Executing...";
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-                    New-AdGroup @SGSplat -ea stop ;
+                    New-AdGroup @SGSplat  ;
                     Do { write-host "." -NoNewLine; Start-Sleep -s 1 } Until (Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController)) ;
                     #$oSG= (get-adgroup "$($SGSplat.DisplayName)" -server $($InputSplat.Domain) -ea stop );
                     $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController) -ErrorAction stop;
@@ -887,7 +907,7 @@ function add-MailboxAccessGrant {
                     If ($ExistMbrs -notcontains $Mbr.sAMAccountName) {
                         $smsg = "Test ADD:$($mbr.samaccountname)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
-                        Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname) -ea stop -whatif ;
+                        Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname)  -whatif ;
                     } else {
                         $smsg = "SKIPPING:$($mbr.samaccountname) is already a member of $($oSG.samaccountname)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
@@ -908,7 +928,7 @@ function add-MailboxAccessGrant {
                                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                             } else {
                                 # 8:33 AM 6/27/2019 fix latest ADmod, added a conflicting param, autoresolve fails, typo -member -> proper -members
-                                Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname) -ea stop ;
+                                Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname)  ;
                             } ;
                         } else {
                             "SKIPPING:$($mbr.samaccountname) is already a member of $($oSG.samaccountname)"
@@ -1528,6 +1548,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    # 3:18 PM 5/18/2021 somehow lost $credOpTORSID, so flipped lost default $credOPTor -> $credTORSID
     * 11:40 AM 5/14/2021 added -ea 0 to the gv tests (suppresses not-found error when called without logging config)
     * 11:22 AM 4/21/2021 coded around recent 'verbose the heck out of everything', yanked 99% of the verbose support - this seldom fails in a way that you need verbose, and when it's on, every cmdlet in the modules get echo'd, spams the heck out of console & logging. One key change (not sure if source) was to switch from inline import-pss & import-mod, into 2 steps with varis.
     * 10:02 AM 4/12/2021 add alias connect-ExOP (eventually rename verb-ex2010 to verb-exOnPrem)
@@ -1623,7 +1644,7 @@ Function Connect-Ex2010 {
     Param(
         [Parameter(Position = 0, HelpMessage = "Exch server to Remote to")][string]$ExchangeServer,
         [Parameter(HelpMessage = 'Use exadmin IIS WebPool for remote EMS[-ExAdmin]')]$ExAdmin,
-        [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credOpTORSID
+        [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credTORSID
     )  ;
     BEGIN{
         #$verbose = ($VerbosePreference -eq "Continue") ;
@@ -1794,6 +1815,7 @@ Function Connect-Ex2010XO {
     AddedWebsite2:	https://github.com/JeremyTBradshaw
     AddedTwitter2:
     REVISIONS   :
+    # 3:18 PM 5/18/2021 somehow lost $credOpTORSID, so flipped lost default $credOPTor -> $credTORSID
     # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods; flipped import-psess & import-mod to splats (cleaner) ; line-wrapped longer post-filters for legib
     * 8:30 AM 10/22/2020 ren'd $TentantTag -> $TenOrg, swapped looping meta resolve with 1-liner approach ; added AcceptedDom caching to the middle status test (suppress one more get-exoaccepteddomain call if possible), replaced all $Meta.value with the $TenOrg version
@@ -2097,6 +2119,7 @@ function cx10tor {
     Connect-EX2010 - Connect-EX2010 to specified on-prem Exchange
     .NOTES
     REVISIONS   :
+    # 3:18 PM 5/18/2021 somehow lost $credOpTORSID, so flipped lost default $credOPTor -> $credTORSID
     # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     .EXAMPLE
     cx10tor
@@ -3554,6 +3577,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 4:37 PM 5/18/2021 fixed broken start-log call (wasn't recycling logspec into logfile & transcrpt)
     # 11:10 AM 5/11/2021 swapped parentpath code for dyn module-support code (moving the new-mailboxgenerictor & add-mbxaccessgrant preproc .ps1's to ex2010 mod functions)
     # 1:52 PM 5/5/2021 added dot-divided displayname support (split fname & lname for generics, to auto-gen specific requested eml addresses) ; diverted parentpath log pref to d: before c: w test; untested code
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
@@ -3879,21 +3903,33 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
         $logspec = start-Log @pltSLog ;
+        if($logspec){
+            $logging=$logspec.logging ;
+            $logfile=$logspec.logfile ;
+            $transcript=$logspec.transcript ;
 
-        if($whatif){
-            $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
-            $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
-        } else {
-            $logfile=$logfile.replace("-BATCH","-BATCH-EXEC") ;
-            $transcript=$transcript.replace("-BATCH","-BATCH-EXEC") ;
-        } ;
-        if($Ticket){
-            $logfile=$logfile.replace("-BATCH","-$($Ticket)") ;
-            $transcript=$transcript.replace("-BATCH","-$($Ticket)") ;
-        } else {
-            $logfile=$logfile.replace("-BATCH","-nnnnnn") ;
-            $transcript=$transcript.replace("-BATCH","-nnnnnn") ;
-        } ;
+            if($whatif){
+                $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
+                $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
+            } else {
+                $logfile=$logfile.replace("-BATCH","-BATCH-EXEC") ;
+                $transcript=$transcript.replace("-BATCH","-BATCH-EXEC") ;
+            } ;
+            if($Ticket){
+                $logfile=$logfile.replace("-BATCH","-$($Ticket)") ;
+                $transcript=$transcript.replace("-BATCH","-$($Ticket)") ;
+            } else {
+                $logfile=$logfile.replace("-BATCH","-nnnnnn") ;
+                $transcript=$transcript.replace("-BATCH","-nnnnnn") ;
+            } ;
+
+            if(Test-TranscriptionSupported){
+                $stopResults = try {Stop-transcript -ErrorAction stop} catch {} ;
+                start-transcript -Path $transcript ;
+            } ;
+        } else {throw "Unable to configure logging!" } ;
+
+        
 
         $xxx="====VERB====";
         $xxx=$xxx.replace("VERB","NewMbx") ;
@@ -4903,6 +4939,7 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 4:31 PM 5/18/2l lost $global:credOpTORSID, sub in $global:credTORSID
     * 10:52 AM 4/2/2021 updated cbh
     * 1:56 PM 3/31/2021 rewrote to dyn detect pss, rather than reading out of date vari
     * 10:14 AM 3/23/2021 fix default $Cred spec, pointed at an OP cred
@@ -4930,7 +4967,7 @@ Function Reconnect-Ex2010 {
     [Alias('rx10','rxOP','reconnect-ExOP')]
     Param(
         [Parameter(HelpMessage="Credential to use for this connection [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
-        $Credential = $global:credOpTORSID
+        $Credential = $global:credTORSID
     )
     # checking stat on canned copy of hist sess, says nothing about current, possibly timed out, check them manually
     $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
@@ -4999,6 +5036,7 @@ Function Reconnect-Ex2010XO {
     Based on original function Author: ExactMike Perficient, Global Knowl... (Partner)
     Website:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
     REVISIONS   :
+    # 3:18 PM 5/18/2021 somehow lost $credOpTORSID, so flipped lost default $credOPTor -> $credTORSID
     * 1:57 PM 3/31/2021 wrapped long lines for vis
     * 8:30 AM 10/22/2020 ren'd $TentantTag -> $TenOrg, swapped looping meta resolve with 1-liner approach ; added AcceptedDom caching to the middle status test (suppress one more get-exoaccepteddomain call if possible), replaced all $Meta.value with the $TenOrg version
     * 1:19 PM 10/15/2020 converted connect-exo to Ex2010, adding onprem validation
@@ -5471,8 +5509,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU18toR6v97ZjEKmbDlfFMG8jg
-# o9egggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUNFb1tDt3+88FvMUgQPpt5z0h
+# gmWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -5487,9 +5525,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRTwYXp
-# di9ZGZxyHTsJtnAB9b6iVTANBgkqhkiG9w0BAQEFAASBgCXD5PUCkyAR+JvpDVCq
-# /BEh9jRpqAg3W8V0iNScbb1P0xmUrlfGYJ8G9/x4po4cY1jvXlO45aH8nYySiedj
-# bGef4gIodiA2kIHlQZYl5fV0Mh3b2eh/TaiBs+qGh8g1pJcvTqMI4b+luHVHoP+l
-# b9R0Yqur4lPu5J3BClTeR9P5
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRarXOX
+# BpQlLnyoHR9B8f6MvJAzCjANBgkqhkiG9w0BAQEFAASBgHs9hjiyXgDQyo3wVbDG
+# +zD5uaJhqUXWslWce6AdQ68zvaOgdGKudpMq85B9Rf8Cjp7cnWVoFxkvj15TONrz
+# tlIos3YbhyRsDMvzFaHgwshR4Jb/+BoU1N54gM+/w07TqAlb/ehpt1SwMJYCUaQ1
+# 8pv7401gkV5mnd/9qax+/sQ3
 # SIG # End signature block

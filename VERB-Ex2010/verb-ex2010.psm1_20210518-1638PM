@@ -1,11 +1,11 @@
-# verb-ex2010.psm1
+﻿# verb-ex2010.psm1
 
 
 <#
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.70.0
+Version     : 1.1.65.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -73,8 +73,6 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
-    # 4:21 PM 5/19/2021 added -ea STOP to splats, to force retry's to trigger
-    # 5:03 PM 5/18/2021 fixed the fundementally borked start-log I created below
     # 11:10 AM 5/11/2021 swapped parentpath code for dyn module-support code (moving the new-mailboxgenerictor & add-mbxaccessgrant preproc .ps1's to ex2010 mod functions)
     # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
@@ -379,32 +377,20 @@ function add-MailboxAccessGrant {
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
         $logspec = start-Log @pltSLog ;
         
-        if($logspec){
-            $logging=$logspec.logging ;
-            $logfile=$logspec.logfile ;
-            $transcript=$logspec.transcript ;
-            
-            if($whatif){
-                $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
-                $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
-            } else {
-                $logfile=$logfile.replace("-BATCH","-BATCH-EXEC") ;
-                $transcript=$transcript.replace("-BATCH","-BATCH-EXEC") ;
-            } ;
-            if($Ticket){
-                $logfile=$logfile.replace("-BATCH","-$($Ticket)") ;
-                $transcript=$transcript.replace("-BATCH","-$($Ticket)") ;
-            } else {
-                $logfile=$logfile.replace("-BATCH","-nnnnnn") ;
-                $transcript=$transcript.replace("-BATCH","-nnnnnn") ;
-            } ;
-            
-            if(Test-TranscriptionSupported){
-                $stopResults = try {Stop-transcript -ErrorAction stop} catch {} ;
-                start-transcript -Path $transcript ;
-            } ;
-        } else {throw "Unable to configure logging!" } ;
-        
+        if($whatif){
+            $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
+            $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
+        } else {
+            $logfile=$logfile.replace("-BATCH","-BATCH-EXEC") ;
+            $transcript=$transcript.replace("-BATCH","-BATCH-EXEC") ;
+        } ;
+        if($Ticket){
+            $logfile=$logfile.replace("-BATCH","-$($Ticket)") ;
+            $transcript=$transcript.replace("-BATCH","-$($Ticket)") ;
+        } else {
+            $logfile=$logfile.replace("-BATCH","-nnnnnn") ;
+            $transcript=$transcript.replace("-BATCH","-nnnnnn") ;
+        } ;
 
         <#
         $sBnr="#*======v START PASS:$($ScriptBaseName) v======" ;
@@ -495,37 +481,31 @@ function add-MailboxAccessGrant {
                 OtherAttributes = "";
                 Path            = "";
                 Server          = ""
-                ErrorAction     = 'STOP' # need this to trigger retries
             };
             $SGUpdtSplat = [ordered]@{
                 Identity = "";
                 Server   = ""
-                ErrorAction     = 'STOP' # need this to trigger retries
             };
             $DGEnableSplat = [ordered]@{
                 Identity         = "";
                 DomainController = ""
-                ErrorAction     = 'STOP' # need this to trigger retries
             };
             $DGUpdtSplat = [ordered]@{
                 Identity                      = "";
                 HiddenFromAddressListsEnabled = $true ;
                 DomainController              = "" ;
-                ErrorAction     = 'STOP' # need this to trigger retries
             } ;
             $GrantSplat = [ordered]@{
                 Identity        = "" ;
                 User            = "" ;
                 AccessRights    = "FullAccess";
                 InheritanceType = "All";
-                ErrorAction     = 'STOP' # need this to trigger retries
             };
             # add for AD SendAs perms grant
             #pulling id, pipeline it in
             $ADMbxGrantSplat = [ordered]@{
                 User           = "" ;
                 ExtendedRights = "Send As" ;
-                ErrorAction     = 'STOP' # need this to trigger retries
             };
         }
 
@@ -840,7 +820,7 @@ function add-MailboxAccessGrant {
             $smsg = "---`nWhatif $($SGSplat.Name) creation...";
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
 
-            New-AdGroup @SGSplat -whatif ;
+            New-AdGroup @SGSplat -whatif -ea stop;
             $DGEnableSplat.identity = $SGSplat.SamAccountName ;
             $DGUpdtSplat.identity = $SGSplat.SamAccountName ;
 
@@ -858,7 +838,7 @@ function add-MailboxAccessGrant {
                 } else {
                     $smsg = "Executing...";
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-                    New-AdGroup @SGSplat  ;
+                    New-AdGroup @SGSplat -ea stop ;
                     Do { write-host "." -NoNewLine; Start-Sleep -s 1 } Until (Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController)) ;
                     #$oSG= (get-adgroup "$($SGSplat.DisplayName)" -server $($InputSplat.Domain) -ea stop );
                     $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController) -ErrorAction stop;
@@ -907,7 +887,7 @@ function add-MailboxAccessGrant {
                     If ($ExistMbrs -notcontains $Mbr.sAMAccountName) {
                         $smsg = "Test ADD:$($mbr.samaccountname)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
-                        Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname)  -whatif ;
+                        Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname) -ea stop -whatif ;
                     } else {
                         $smsg = "SKIPPING:$($mbr.samaccountname) is already a member of $($oSG.samaccountname)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
@@ -928,7 +908,7 @@ function add-MailboxAccessGrant {
                                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                             } else {
                                 # 8:33 AM 6/27/2019 fix latest ADmod, added a conflicting param, autoresolve fails, typo -member -> proper -members
-                                Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname)  ;
+                                Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname) -ea stop ;
                             } ;
                         } else {
                             "SKIPPING:$($mbr.samaccountname) is already a member of $($oSG.samaccountname)"
@@ -3577,7 +3557,6 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
-    # 4:37 PM 5/18/2021 fixed broken start-log call (wasn't recycling logspec into logfile & transcrpt)
     # 11:10 AM 5/11/2021 swapped parentpath code for dyn module-support code (moving the new-mailboxgenerictor & add-mbxaccessgrant preproc .ps1's to ex2010 mod functions)
     # 1:52 PM 5/5/2021 added dot-divided displayname support (split fname & lname for generics, to auto-gen specific requested eml addresses) ; diverted parentpath log pref to d: before c: w test; untested code
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
@@ -3903,33 +3882,21 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
         $logspec = start-Log @pltSLog ;
-        if($logspec){
-            $logging=$logspec.logging ;
-            $logfile=$logspec.logfile ;
-            $transcript=$logspec.transcript ;
 
-            if($whatif){
-                $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
-                $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
-            } else {
-                $logfile=$logfile.replace("-BATCH","-BATCH-EXEC") ;
-                $transcript=$transcript.replace("-BATCH","-BATCH-EXEC") ;
-            } ;
-            if($Ticket){
-                $logfile=$logfile.replace("-BATCH","-$($Ticket)") ;
-                $transcript=$transcript.replace("-BATCH","-$($Ticket)") ;
-            } else {
-                $logfile=$logfile.replace("-BATCH","-nnnnnn") ;
-                $transcript=$transcript.replace("-BATCH","-nnnnnn") ;
-            } ;
-
-            if(Test-TranscriptionSupported){
-                $stopResults = try {Stop-transcript -ErrorAction stop} catch {} ;
-                start-transcript -Path $transcript ;
-            } ;
-        } else {throw "Unable to configure logging!" } ;
-
-        
+        if($whatif){
+            $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
+            $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
+        } else {
+            $logfile=$logfile.replace("-BATCH","-BATCH-EXEC") ;
+            $transcript=$transcript.replace("-BATCH","-BATCH-EXEC") ;
+        } ;
+        if($Ticket){
+            $logfile=$logfile.replace("-BATCH","-$($Ticket)") ;
+            $transcript=$transcript.replace("-BATCH","-$($Ticket)") ;
+        } else {
+            $logfile=$logfile.replace("-BATCH","-nnnnnn") ;
+            $transcript=$transcript.replace("-BATCH","-nnnnnn") ;
+        } ;
 
         $xxx="====VERB====";
         $xxx=$xxx.replace("VERB","NewMbx") ;
@@ -5505,3 +5472,29 @@ PARAM() ;
 
 Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup,Connect-Ex2010,Connect-Ex2010XO,cx10cmw,cx10tol,cx10tor,disable-ForestView,Disconnect-Ex2010,enable-ForestView,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,import-EMSLocalModule,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxGenericTOR,_cleanup,new-MailboxShared,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,rx10cmw,rx10tol,rx10tor,test-ExOPPSession,toggle-ForestView -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUmVrTBxROLXUv2M1bJ3AmejPL
+# 6tOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSUcT+j
+# WHuAgk3TucP+Kfc2t1K1ATANBgkqhkiG9w0BAQEFAASBgJHVUcUDjKHWY+RXVa+B
+# d+a5SntmbGC26nvQpSeej6KIoP6Ptekp3S7QS7S0BXUmg1Ol4uojk+AwfxgcomiZ
+# Fm8mEpAC/CXFx7nwyTgwe7HFEElCDHZjWWWnEvSO1ECclTIUVtG5yL/50L2bbevy
+# pwVqYrFQA1u0ZJHg9aiDvHon
+# SIG # End signature block

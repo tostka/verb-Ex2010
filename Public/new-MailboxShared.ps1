@@ -18,6 +18,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 4:37 PM 5/18/2021 fixed broken start-log call (wasn't recycling logspec into logfile & transcrpt)
     # 11:10 AM 5/11/2021 swapped parentpath code for dyn module-support code (moving the new-mailboxgenerictor & add-mbxaccessgrant preproc .ps1's to ex2010 mod functions)
     # 1:52 PM 5/5/2021 added dot-divided displayname support (split fname & lname for generics, to auto-gen specific requested eml addresses) ; diverted parentpath log pref to d: before c: w test; untested code
     # 8:34 AM 3/31/2021 added verbose suppress to all import-mods
@@ -343,21 +344,33 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         if($verbose){ if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
         $logspec = start-Log @pltSLog ;
+        if($logspec){
+            $logging=$logspec.logging ;
+            $logfile=$logspec.logfile ;
+            $transcript=$logspec.transcript ;
 
-        if($whatif){
-            $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
-            $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
-        } else {
-            $logfile=$logfile.replace("-BATCH","-BATCH-EXEC") ;
-            $transcript=$transcript.replace("-BATCH","-BATCH-EXEC") ;
-        } ;
-        if($Ticket){
-            $logfile=$logfile.replace("-BATCH","-$($Ticket)") ;
-            $transcript=$transcript.replace("-BATCH","-$($Ticket)") ;
-        } else {
-            $logfile=$logfile.replace("-BATCH","-nnnnnn") ;
-            $transcript=$transcript.replace("-BATCH","-nnnnnn") ;
-        } ;
+            if($whatif){
+                $logfile=$logfile.replace("-BATCH","-BATCH-WHATIF") ;
+                $transcript=$transcript.replace("-BATCH","-BATCH-WHATIF") ;
+            } else {
+                $logfile=$logfile.replace("-BATCH","-BATCH-EXEC") ;
+                $transcript=$transcript.replace("-BATCH","-BATCH-EXEC") ;
+            } ;
+            if($Ticket){
+                $logfile=$logfile.replace("-BATCH","-$($Ticket)") ;
+                $transcript=$transcript.replace("-BATCH","-$($Ticket)") ;
+            } else {
+                $logfile=$logfile.replace("-BATCH","-nnnnnn") ;
+                $transcript=$transcript.replace("-BATCH","-nnnnnn") ;
+            } ;
+
+            if(Test-TranscriptionSupported){
+                $stopResults = try {Stop-transcript -ErrorAction stop} catch {} ;
+                start-transcript -Path $transcript ;
+            } ;
+        } else {throw "Unable to configure logging!" } ;
+
+        
 
         $xxx="====VERB====";
         $xxx=$xxx.replace("VERB","NewMbx") ;

@@ -7,6 +7,7 @@ function cx10tor {
     Connect-EX2010 - Connect-EX2010 to specified on-prem Exchange
     .NOTES
     REVISIONS   :
+    # 3:18 PM 5/18/2021 somehow lost $credOpTORSID, so flipped lost default $credOPTor -> $credTORSID
     # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     .EXAMPLE
     cx10tor
@@ -28,4 +29,5 @@ function cx10tor {
     } ; 
     Connect-EX2010 -cred $Credential #-Verbose:($VerbosePreference -eq 'Continue') ; 
 }
+
 #*------^ cx10tor.ps1 ^------
