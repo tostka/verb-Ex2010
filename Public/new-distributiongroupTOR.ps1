@@ -178,7 +178,7 @@ BEGIN {
     if(!$rgxDeadUserDN){$rgxDeadUserDN = '(,OU=|/)(Disabled|TERMedUsers)(,(DC|OU)=|/)'} ;
 
     if(!$global:Retries){$Retries = 4 ; } ;# number of re-attempts
-    if(!$global:$RetrySleep){$RetrySleep = 5 ;} # seconds to wait between retries
+    if(!$global:RetrySleep){$RetrySleep = 5 ;} # seconds to wait between retries
     if(!$global:DomTORfqdn){throw "UNDEFINED `$DomTORfqdn!" ; BREAK ; }
 
     $rgxEmailAddr = "^([0-9a-zA-Z]+[-._+&'])*[0-9a-zA-Z]+@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}$"
@@ -411,62 +411,51 @@ PROCESS {
     # call func with $PSBoundParameters and an extra (includes Verbose)
     #call-somefunc @PSBoundParameters -anotherParam
 
-        $procd++ ;
+    $procd++ ;
 
-        # pre-clear dc, before querying
-        $domaincontroller = $null ;
-        # we don't know which subdoms may be in play
-        pushd ; # cache pwd
-        if( $tPsd = "$((Get-Variable  -name "$($TenOrg)Meta").value.ADForestName -replace $rgxDriveBanChars):" ){
-            if(test-path $tPsd){
-                $error.clear() ;
-                TRY {
-                    set-location -Path $tPsd -ea STOP ;
-                    $objForest = get-adforest ;
-                    $doms = @($objForest.Domains) ; # ad mod get-adforest vers
-                    # do simple detect 2 doms (parent & child), use child (non-parent dom):
-                    if(($doms|?{$_ -ne $objforest.name}|measure).count -eq 1){
-                        $subdom = $doms|?{$_ -ne $objforest.name} ;
-                        $domaincontroller = get-gcfastxo -TenOrg $TenOrg -Subdomain $subdom -verbose:$($verbose) |?{$_.length} ;
-                        $smsg = "get-gcfastxo:returned $($domaincontroller)" ;
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    } else {
-                        # as this is just EX, and not AD search, open the forestview up - all Ex OP qrys will search entire forest
-                        enable-forestview
-                        $domaincontroller = $null ;
-                        # use the forest root
-                        # otherwise would have to recursive search an ADObj to find the host subdomain, and use it with: get-adXXX -server sub.domain.com
-                    } ;
-                } CATCH {
-                    $ErrTrapd=$Error[0] ;
-                    $smsg= "Failed to exec cmd because: $($ErrTrapd)" ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+    # pre-clear dc, before querying
+    $domaincontroller = $null ;
+    # we don't know which subdoms may be in play
+    pushd ; # cache pwd
+    if( $tPsd = "$((Get-Variable  -name "$($TenOrg)Meta").value.ADForestName -replace $rgxDriveBanChars):" ){
+        if(test-path $tPsd){
+            $error.clear() ;
+            TRY {
+                set-location -Path $tPsd -ea STOP ;
+                $objForest = get-adforest ;
+                $doms = @($objForest.Domains) ; # ad mod get-adforest vers
+                # do simple detect 2 doms (parent & child), use child (non-parent dom):
+                if(($doms|?{$_ -ne $objforest.name}|measure).count -eq 1){
+                    $subdom = $doms|?{$_ -ne $objforest.name} ;
+                    $domaincontroller = get-gcfastxo -TenOrg $TenOrg -Subdomain $subdom -verbose:$($verbose) |?{$_.length} ;
+                    $smsg = "get-gcfastxo:returned $($domaincontroller)" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
                     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    #-=-record a STATUSERROR=-=-=-=-=-=-=
-                    $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
-                    if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
-                    if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
-                    #-=-=-=-=-=-=-=-=
-                    $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
-                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    popd ; # restore dir
-                    BREAK #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                } else {
+                    # as this is just EX, and not AD search, open the forestview up - all Ex OP qrys will search entire forest
+                    enable-forestview
+                    $domaincontroller = $null ;
+                    # use the forest root
+                    # otherwise would have to recursive search an ADObj to find the host subdomain, and use it with: get-adXXX -server sub.domain.com
                 } ;
-            } else {
-                $smsg = "UNABLE TO FIND *MOUNTED* AD PSDRIVE $($Tpsd) FROM `$$($TENorg)Meta!" ;
+            } CATCH {
+                $ErrTrapd=$Error[0] ;
+                $smsg= "Failed to exec cmd because: $($ErrTrapd)" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
-                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 #-=-record a STATUSERROR=-=-=-=-=-=-=
                 $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
                 if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
                 if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
                 #-=-=-=-=-=-=-=-=
+                $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                popd ; # restore dir
                 BREAK #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
             } ;
         } else {
-            $smsg = "UNABLE TO RESOLVE PROPER AD PSDRIVE FROM `$$($TENorg)Meta!" ;
+            $smsg = "UNABLE TO FIND *MOUNTED* AD PSDRIVE $($Tpsd) FROM `$$($TENorg)Meta!" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
             else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             #-=-record a STATUSERROR=-=-=-=-=-=-=
@@ -476,193 +465,178 @@ PROCESS {
             #-=-=-=-=-=-=-=-=
             BREAK #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
         } ;
+    } else {
+        $smsg = "UNABLE TO RESOLVE PROPER AD PSDRIVE FROM `$$($TENorg)Meta!" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #-=-record a STATUSERROR=-=-=-=-=-=-=
+        $statusdelta = ";ERROR"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+        if(gv passstatus -scope Script){$script:PassStatus += $statusdelta } ;
+        if(gv -Name PassStatus_$($tenorg) -scope Script){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+        #-=-=-=-=-=-=-=-=
+        BREAK #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+    } ;
 
-        popd ; # cd to prior dir
+    popd ; # cd to prior dir
 
 
-        #Reconnect-EXO ;
-        if($pltRX10){
-            ReConnect-Ex2010 @pltRX10 ;
-        } else { Reconnect-Ex2010 ; } ;
-        $error.clear() ;
+    #Reconnect-EXO ;
+    if($pltRX10){
+        ReConnect-Ex2010 @pltRX10 ;
+    } else { Reconnect-Ex2010 ; } ;
+    $error.clear() ;
 
 
 
-        $error.clear() ;
-        TRY {
+    $error.clear() ;
+    TRY {
 
-            $oManagedBy = get-recipient $ManagedBy ;
+        $oManagedBy = get-recipient $ManagedBy ;
 
-            switch ($oManagedBy.RecipientType ) {
-                "UserMailbox" {
-                    # no issue
-                }
-                "MailUser" {
-                    # no issue
-                }
-                "MailContact"{
-                        throw "Specified ManagedBy:$($InputSplat.Owner) is a MailContact:Non-Security Principal *cannot* be ManagedBy on an object!`nPlease specify a local Security Principal (Mailbox/MailUser/RemoteMailbox/ADUser) for the ManagedBy, and rerun the script" ;
-                        Cleanup ; Exit ;
-                }
-                default {
-                    throw "$($InputSplat.Owner) Not found, or unrecognized RecipientType" ;
+        switch ($oManagedBy.RecipientType ) {
+            "UserMailbox" {
+                # no issue
+            }
+            "MailUser" {
+                # no issue
+            }
+            "MailContact"{
+                    throw "Specified ManagedBy:$($oManagedBy.displayname) is a MailContact:Non-Security Principal *cannot* be ManagedBy on an object!`nPlease specify a local Security Principal (Mailbox/MailUser/RemoteMailbox/ADUser) for the ManagedBy, and rerun the script" ;
                     Cleanup ; Exit ;
-                }
-            } ; # swtch-E
+            }
+            default {
+                throw "$($oManagedBy.displayname) Not found, or unrecognized RecipientType" ;
+                Cleanup ; Exit ;
+            }
+        } ; # swtch-E
 
-            $pltNDG.ManagedBy = $oManagedBy.primarysmtpaddress ;
-            $smsg = "Explicit -ManagedBy specified, forcing to specified $($oManagedBy.primarysmtpaddress)" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $pltNDG.ManagedBy = $oManagedBy.primarysmtpaddress ;
+        $smsg = "Explicit -ManagedBy specified, forcing to specified $($oManagedBy.primarysmtpaddress)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
 
-            $members = $members | get-recipient -domaincontroller $domaincontroller -ErrorAction Continue | select -expand distinguishedname  | select -unique ;
+        $members = $members | get-recipient -domaincontroller $domaincontroller -ErrorAction Continue | select -expand distinguishedname  | select -unique ;
 
-            # resolve OU
-            if ($SiteOverride) {
-                $SiteCode = $($SiteOverride);
-            } else {
-                # we need to use the OwnerMbx - Owner currently is the alias, we want the object with it's dn
-                $SiteCode = $oManagedBy.identity.tostring().split("/")[1]  ;
-            } ;
-            if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
+        # resolve OU
+        if ($SiteOverride) {
+            $SiteCode = $($SiteOverride);
+        } else {
+            # we need to use the OwnerMbx - Owner currently is the alias, we want the object with it's dn
+            $SiteCode = $oManagedBy.identity.tostring().split("/")[1]  ;
+        } ;
+        if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
+            if(!($FindOU = $TorMeta.rgxDistGrpOuDnName)){
                 $FindOU = "^OU=Distribution\sGroups,";
-            } ELSEif ($env:USERDOMAIN -eq $TOLMeta['legacyDomain']) {
-                # CN=Lab-SEC-Email-Thomas Jefferson,OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=LYN,DC=SUBDOM,DC=DOMAIN,DC=DOMAIN,DC=com
+            } ; 
+        } ELSEif ($env:USERDOMAIN -eq $TOLMeta['legacyDomain']) {
+            # CN=Lab-SEC-Email-Thomas Jefferson,OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=LYN,DC=SUBDOM,DC=DOMAIN,DC=DOMAIN,DC=com
+            if(!($FindOU = $TolMeta.rgxDistGrpOuDnName)){
                 $FindOU = "^OU=Distribution\sGroups,"; ;
-            } else {
-                throw "UNRECOGNIZED USERDOMAIN:$($env:USERDOMAIN)" ;
-            } ;
-            TRY {
-                $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
-            } CATCH {
-                $ErrTrpd = $_ ;
-                $smsg = "UNABLE TO LOCATE $($FindOU) BELOW SITECODE $($SiteCode)!. EXITING!" ; $smsg = "MESSAGE" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } ; #Error|Warn
-                $smsg = "Failed processing $($ErrTrpd.Exception.ItemName). `nError Message: $($ErrTrpd.Exception.Message)`nError Details: $($ErrTrpd)" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } ; #Error|Warn
-                Exit
-            } ;
-            If ($OU -isnot [string]) {
-                $smsg = "WARNING AD OU SEARCH SITE:$($InputSplat.SiteCode), FindOU:$($FindOU), FAILED TO RETURN A SINGLE OU...`n$($OU.distinguishedname)`nEXITING!";
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } ; #Error|Warn
-                Exit ;
-            } ;
-            $smsg = "SiteCode:$SiteCode" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            $smsg = "OU:$OU" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-
-
-            #$SGSplat.DisplayName = "$($SiteCode)-SEC-Email-$($Tmbx.DisplayName)-G";
-
-            $pltNDG=[ordered]@{
-                DisplayName=$DisplayName;
-                Name=$DisplayName;
-                Members=$members ;
-                DomainController=$domaincontroller;
-                Alias=([System.Text.RegularExpressions.Regex]::Replace($DisplayName,"[^1-9a-zA-Z_]",""));
-                ManagedBy=$oManagedBy;
-                OrganizationalUnit = $OU ;
-                ErrorAction = 'Stop' ;
-                whatif=$($whatif);
-            } ;
-
-            if($existDG=get-distributiongroup -id $pltndg.alias -ResultSize 1 -ea 0){
-                $pltSetDG=[ordered]@{
-                    identity = $existDG.primarysmtpaddress ;
-                    #Members=$members ; # not supported have to add-DistributionGroupMember them in on existings
-                    DomainController=$domaincontroller;
-                    ManagedBy=$oManagedBy;
-                    whatif=$($whatif);
-                    ErrorAction = 'Stop' ;
-                } ;
-                $smsg = "UpdateExisting DG:Set-DistributionGroup  w`n$(($pltSetDG|out-string).trim())" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                set-DistributionGroup @pltSetDG ;
-                # pre-purge
-                $prembrs = get-DistributionGroupMember -id $pltSetDG.identity ;
-                $pltModDGMbr=[ordered]@{identity= $pltSetDG.identity ;whatif = $($whatif) ;erroraction = 'STOP'  ;confirm=$false ;}
-                $smsg = "Clear existing members:remove-DistributionGroupMember w`n$(($pltModDGMbr|out-string).trim())`n$(($prembrs |out-string).trim())" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                #$prembrs | %{remove-DistributionGroupMember @$pltModDGMbr -Member $_.alias  } ;
-                $prembrs.distinguishedname | remove-DistributionGroupMember @pltModDGMbr ;
-                # get-DistributionGroupMember -id $pltSetDG.identity | remove-DistributionGroupMember -id $pltSetDG.identity –whatif:$($whatif) -ea STOP ;
-                # then add validated from scratch
-                $smsg = "re-add VALIDATED members:add-DistributionGroupMember w`n$(($pltModDGMbr|out-string).trim())`n$(($members|out-string).trim())" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                $members | add-DistributionGroupMember @pltModDGMbr ;
-            } else {
-                $smsg = "New-DistributionGroup  w`n$(($pltNDG|out-string).trim())" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                New-DistributionGroup @pltNDG ;
-            } ;
-            if(!$whatif){
-                $1F=$false ;Do {if($1F){Sleep -s 5} ;  write-host "." -NoNewLine ; $1F=$true ; } Until ($existDG = get-DistributionGroup $pltNDG.alias -dom $domaincontroller -EA 0) ;
-                # set hidden (can't be done with new-dg command): -HiddenFromAddressListsEnabled
-                $pltSetDG=[ordered]@{
-                   identity = $existDG.primarysmtpaddress ;
-                   HiddenFromAddressListsEnabled = $true ;
-                    whatif=$($whatif);
-                    ErrorAction = 'Stop' ;
-                } ;
-                $smsg = "HiddenFromAddressListsEnabled:UpdateExisting DG:Set-DistributionGroup  w`n$(($pltSetDG|out-string).trim())" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                set-DistributionGroup @pltSetDG ;
-
-                $approvedsndrDLs = $preDDG.AcceptMessagesOnlyFromDLMembers ;
-                $approvedsndrDLs += $existdg.DistinguishedName ;
-                # now have a mix of DN & canonicalNames, resolve them all to DN syntasx, and de-dupe
-                $approvedsndrDLs  = $approvedsndrDLs | get-recipient -domaincontroller $domaincontroller -ErrorAction Continue | select -expand distinguishedname  | select -unique ;
-
-                $pltSetDDG=[ordered]@{
-                    identity=$preDDG.alias;
-                    AcceptMessagesOnlyFromDLMembers = $approvedsndrDLs ;
-                    DomainController=$domaincontroller;
-                    ErrorAction = 'Stop' ;
-                    whatif=$($whatif);
-                } ;
-                $smsg = "Set-DynamicDistributionGroup  w`n$(($pltSetDDG|out-string).trim())" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                Set-DynamicDistributionGroup @pltSetDDG ;
-                $pddg = get-DynamicDistributionGroup -id $pltSetDDG.identity -dom $domaincontroller -ErrorAction 'Stop' ; ;
-
-                $smsg = "POST:$($pddg.alias):`n$(($pddg | fl *name*,prim*,accept*|out-string).trim())" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } else {
-                $smsg = "(-whatif: skipping balance of process)" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            }  ;
-
+            } ; 
+        } else {
+            throw "UNRECOGNIZED USERDOMAIN:$($env:USERDOMAIN)" ;
+        } ;
+        TRY {
+            $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
         } CATCH {
-            $ErrTrapd=$Error[0] ;
-            $smsg = "Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            #-=-record a STATUSWARN=-=-=-=-=-=-=
-            $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
-            if(Get-Variable passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
-            if(Get-Variable -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
-            #-=-=-=-=-=-=-=-=
+            $ErrTrpd = $_ ;
+            $smsg = "UNABLE TO LOCATE $($FindOU) BELOW SITECODE $($SiteCode)!. EXITING!" ; $smsg = "MESSAGE" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } ; #Error|Warn
+            $smsg = "Failed processing $($ErrTrpd.Exception.ItemName). `nError Message: $($ErrTrpd.Exception.Message)`nError Details: $($ErrTrpd)" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } ; #Error|Warn
+            Exit
+        } ;
+        If ($OU -isnot [string]) {
+            $smsg = "WARNING AD OU SEARCH SITE:$($InputSplat.SiteCode), FindOU:$($FindOU), FAILED TO RETURN A SINGLE OU...`n$($OU.distinguishedname)`nEXITING!";
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } ; #Error|Warn
+            Exit ;
+        } ;
+        $smsg = "SiteCode:$SiteCode" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $smsg = "OU:$OU" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
 
-            Continue ; #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+
+        #$SGSplat.DisplayName = "$($SiteCode)-SEC-Email-$($Tmbx.DisplayName)-G";
+
+        $pltNDG=[ordered]@{
+            DisplayName=$DisplayName;
+            Name=$DisplayName;
+            Members=$members ;
+            DomainController=$domaincontroller;
+            Alias=([System.Text.RegularExpressions.Regex]::Replace($DisplayName,"[^1-9a-zA-Z_]",""));
+            ManagedBy=$oManagedBy;
+            OrganizationalUnit = $OU ;
+            ErrorAction = 'Stop' ;
+            whatif=$($whatif);
         } ;
 
+        if($existDG=get-distributiongroup -id $pltndg.alias -ResultSize 1 -ea 0){
+            $pltSetDG=[ordered]@{
+                identity = $existDG.primarysmtpaddress ;
+                #Members=$members ; # not supported have to add-DistributionGroupMember them in on existings
+                DomainController=$domaincontroller;
+                ManagedBy=$oManagedBy;
+                whatif=$($whatif);
+                ErrorAction = 'Stop' ;
+            } ;
+            $smsg = "UpdateExisting DG:Set-DistributionGroup  w`n$(($pltSetDG|out-string).trim())" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            set-DistributionGroup @pltSetDG ;
+            # pre-purge
+            $prembrs = get-DistributionGroupMember -id $pltSetDG.identity ;
+            $pltModDGMbr=[ordered]@{identity= $pltSetDG.identity ;whatif = $($whatif) ;erroraction = 'STOP'  ;confirm=$false ;}
+            $smsg = "Clear existing members:remove-DistributionGroupMember w`n$(($pltModDGMbr|out-string).trim())`n$(($prembrs |out-string).trim())" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            #$prembrs | %{remove-DistributionGroupMember @$pltModDGMbr -Member $_.alias  } ;
+            $prembrs.distinguishedname | remove-DistributionGroupMember @pltModDGMbr ;
+            # get-DistributionGroupMember -id $pltSetDG.identity | remove-DistributionGroupMember -id $pltSetDG.identity –whatif:$($whatif) -ea STOP ;
+            # then add validated from scratch
+            $smsg = "re-add VALIDATED members:add-DistributionGroupMember w`n$(($pltModDGMbr|out-string).trim())`n$(($members|out-string).trim())" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            $members | add-DistributionGroupMember @pltModDGMbr ;
+        } else {
+            $smsg = "New-DistributionGroup  w`n$(($pltNDG|out-string).trim())" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            $existDG = New-DistributionGroup @pltNDG ;
+        } ;
+
+    } CATCH {
+        $ErrTrapd=$Error[0] ;
+        $smsg = "Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #-=-record a STATUSWARN=-=-=-=-=-=-=
+        $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+        if(Get-Variable passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+        if(Get-Variable -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ;
+        #-=-=-=-=-=-=-=-=
+
+        Continue ; #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+    } ;
 
 
-        start-sleep -Milliseconds $ThrottleMs
+
+    start-sleep -Milliseconds $ThrottleMs
 
 } ;  # PROC-E
 END {
+    
+    if(!$whatif -AND $existDG){
+        $existDG | Write-Output
+    } else { 
+        $smsg = "(whatif, no expected output returned)" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $false | write-output ;
+    } ; 
+
     $smsg = "$($sBnr.replace('=v','=^').replace('v=','^='))" ;
     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
