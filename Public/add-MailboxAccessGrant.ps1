@@ -15,6 +15,7 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    # 1:51 PM 6/30/201:51 PM 6/30/2021 trying to work around sporadic $oSG add-mailboxperm fails, played with -user $osg designator - couldn't use DN, went back to samacctname, but added explicit RETRY echos on failretries (was visible evid at least one retry was in mix) ; hardened up the report gathers - stuck thge get-s in a try/catch ahead of echos, (vs inlines) ; we'll see if the above improve the issue - another option is to build something that can parse the splt echo back into a functional splat, to at least make remediation easier (copy, convert, rerun on fly).
     # 4:21 PM 5/19/2021 added -ea STOP to splats, to force retry's to trigger
     # 5:03 PM 5/18/2021 fixed the fundementally borked start-log I created below
     # 11:10 AM 5/11/2021 swapped parentpath code for dyn module-support code (moving the new-mailboxgenerictor & add-mbxaccessgrant preproc .ps1's to ex2010 mod functions)
@@ -827,12 +828,38 @@ function add-MailboxAccessGrant {
             $ExistMbrs = @() ;
             # 11:27 AM 6/23/2017 typo, vari with no leading $
             $oSG | Get-ADGroupMember -server $($DomainController) | Select-Object -ExpandProperty sAMAccountName | ForEach-Object { $ExistMbrs += $_ } ;
-            $SGUpdtSplat.Identity = $($oSG.samaccountname) ;
-            $DGEnableSplat.Identity = $($oSG.samaccountname) ;
-            $DGUpdtSplat.Identity = $($oSG.samaccountname) ;
-            $GrantSplat.User = $($oSG.SamAccountName);
-            #8:41 AM 10/14/2015 add adp
+            $SGUpdtSplat.Identity = $DGEnableSplat.Identity = $DGUpdtSplat.Identity = $GrantSplat.User = $ADMbxGrantSplat.User = $oSG.samaccountname ;
+            # stack below on one line, ensure they line up.
+            <#$DGEnableSplat.Identity = $oSG.samaccountname ;
+            $DGUpdtSplat.Identity = $oSG.samaccountname ;
+            $GrantSplat.User = $($oSG.SamAccountName); # $osG.Samaccountname: 'ELC-SEC-Email-ToroAgSupport-G'
             $ADMbxGrantSplat.User = $($oSG.SamAccountName);
+            #>
+            <# 12:30 PM 6/30/2021 sporadic error: 2x retries
+            #-=-=-=-=-=-=-=-=
+            Add-MailboxPermission -whatif w
+            Name                           Value
+            ----                           -----
+            Identity                       ToroAgSupport
+            User                           ELC-SEC-Email-ToroAgSupport-G
+            AccessRights                   FullAccess
+            InheritanceType                All
+            ErrorAction                    STOP
+            DomainController               LYNMS812
+            Couldn't resolve the user or group "ELC-SEC-Email-ToroAgSupport-G." If the user or group is a foreign forest principal,
+            you must have either a two-way trust or an outgoing trust.
+                + CategoryInfo          : InvalidOperation: (:) [Add-MailboxPermission], LocalizedException
+                + FullyQualifiedErrorId : E4BAC784,Microsoft.Exchange.Management.RecipientTasks.AddMailboxPermission
+                + PSComputerName        : bccms650.global.ad.toro.com
+            Couldn't resolve the user or group "ELC-SEC-Email-ToroAgSupport-G." If the user or group is a foreign forest principal, you must have either a two-way trust or an outgoing trust.
+                + CategoryInfo          : InvalidOperation: (:) [Add-MailboxPermission], LocalizedException
+                + FullyQualifiedErrorId : E4BAC784,Microsoft.Exchange.Management.RecipientTasks.AddMailboxPermission
+                + PSComputerName        : bccms650.global.ad.toro.com
+            #-=-=-=-=-=-=-=-=
+            # source call was: $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -prop * -server $($InputSplat.DomainController) -ErrorAction stop;
+            #>
+            # we're using the samaccountname for -user spec, 
+            # can't use the DN either (won't resolve)
             $SGUpdtSplat.Server = $($InputSplat.DomainController) ;
             $DGEnableSplat.DomainController = $($InputSplat.DomainController) ;
             $DGUpdtSplat.DomainController = $($InputSplat.DomainController) ;
@@ -878,14 +905,17 @@ function add-MailboxAccessGrant {
                     } #  # loop-E;
                 } ;
             } # if-E whatif ;
-            $mbxp = $Tmbx | get-mailboxpermission -user ($oSG).Name -domaincontroller $InputSplat.domaincontroller -ea silentlycontinue | Where-Object { $_.user -match ".*-(SEC|Data)-Email-.*$" }
+            #$mbxp = $Tmbx | get-mailboxpermission -user ($oSG).Name -domaincontroller $InputSplat.domaincontroller -ea silentlycontinue | 
+            $mbxp = $Tmbx | get-mailboxpermission -user $oSG.samaccountname -domaincontroller $InputSplat.domaincontroller  | 
+                Where-Object { $_.user -match ".*-(SEC|Data)-Email-.*$" }
             $smsg = "`nChecking Mailbox Permission on $($Tmbx.samaccountname) mailbox to accessing user:`n $($oSG.Name)...`n(blank if none)`n---`n$(($mbxp | select user,AccessRights,IsInhertied,Deny | format-list|out-string).trim())" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
 
 
             # AD SendAs too
 
-            $mbxadp = $Tmbx | Get-ADPermission -domaincontroller $($InputSplat.domaincontroller) -ea Silentlycontinue | Where-Object { ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and ($_.user -match ".*-(SEC|Data)-Email-.*$") };
+            $mbxadp = $Tmbx | Get-ADPermission -domaincontroller $($InputSplat.domaincontroller) -ea Silentlycontinue |
+                 Where-Object { ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and ($_.user -match ".*-(SEC|Data)-Email-.*$") };
 
             $smsg = "`nChecking AD SendAs Permission on $($Tmbx.samaccountname) mailbox to accessing user:`n $($oSG.Name)...`n(blank if none)" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
@@ -904,6 +934,11 @@ function add-MailboxAccessGrant {
             $Exit = 0 ;
             # do loop until up to 4 retries...
             Do {
+                if($Exit -gt 0){
+                    $smsg = "RETRY#:$($exit)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ; 
                 Try {
                     add-mailboxpermission @GrantSplat -whatif ;
                     $Exit = $Retries ;
@@ -926,6 +961,11 @@ function add-MailboxAccessGrant {
 
             $Exit = 0 ;
             Do {
+                if($Exit -gt 0){
+                    $smsg = "RETRY#:$($exit)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ; 
                 Try {
                     add-adpermission -identity $($TMbx.Identity) @ADMbxGrantSplat -whatif ;
                     $Exit = $Retries ;
@@ -950,6 +990,11 @@ function add-MailboxAccessGrant {
                 $Exit = 0 ;
                 # do loop until up to 4 retries...
                 Do {
+                    if($Exit -gt 0){
+                        $smsg = "RETRY#:$($exit)" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    } ; 
                     Try {
                         add-mailboxpermission @GrantSplat ;
                         $Exit = $Retries ;
@@ -970,6 +1015,11 @@ function add-MailboxAccessGrant {
 
                 $Exit = 0 ;
                 Do {
+                    if($Exit -gt 0){
+                        $smsg = "RETRY#:$($exit)" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    } ; 
                     Try {
                         add-adpermission -identity $($TMbx.Identity) @ADMbxGrantSplat ;
                         $Exit = $Retries ;
@@ -1034,10 +1084,43 @@ function add-MailboxAccessGrant {
 
             # secgrp membership seldom comes through clean, add a refresh loop
             do {
+                # 12:53 PM 6/30/2021 idsolate the get's & add try/catch
+                TRY{
+                    $propsMbxP = 'user','AccessRights','IsInhertied','Deny' ; 
+                    $propsAMbxP = 'User','ExtendedRights','Inherited','Deny' ; 
+                    $rMbxP = get-mailboxpermission -identity $($TMbx.Identity) -user $oSG.samaccountname -domaincontroller $($InputSplat.domaincontroller) |
+                        ?{$_.user -match ".*-(SEC|Data)-Email-.*$"} ; 
+                    $rAMbxP = Get-ADPermission -identity $($TMbx.Identity) -domaincontroller $($InputSplat.domaincontroller) -user $oSG.distinguishedName ; 
+                    $mbrs = Get-ADGroupMember -identity $oSG.distinguishedName -server $($DomainController) | 
+                        Select-Object distinguishedName ;
+                 <# orig, revised to modern standard below
+                 } Catch {
+                    $ErrTrapd = $Error[0] ;
+                    Start-Sleep -Seconds $RetrySleep ;
+                    $Exit ++ ;
+                    $smsg = "Failed to exec add-DistributionGroupMember EXEC cmd because: $($ErrTrapd)`nTry #: $($Exit)" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Warn } ; #Error|Warn|Debug
+                    If ($Exit -eq $Retries) { $smsg = "Unable to exec cmd!" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } ; } ;
+                    # 11:15 AM 11/26/2019 add Cont - doesn't seem to be retrying
+                    Continue ;
+                } # try-E
+                #>
+                } CATCH {
+                    $ErrTrapd=$Error[0] ;
+                    $smsg = "Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Warn } #Error|Warn|Debug 
+                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    
+                    Continue ;#Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                } ; 
+                
                 $smsg = "===REVIEW SETTINGS:===`n----Updated Permissions:`n`nChecking Mailbox/AD Permission on $($Tmbx.samaccountname) mailbox `n to accessing user:`n $($oSG.SamAccountName)`n---" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
 
-                $smsg = "`n$((get-mailboxpermission -identity $($TMbx.Identity) -user $(($oSG).Name) -domaincontroller $($InputSplat.domaincontroller) | ?{$_.user -match ".*-(SEC|Data)-Email-.*$"} | format-list user,AccessRights,IsInhertied,Deny |out-string).trim())" ;
+                #$smsg = "`n$((get-mailboxpermission -identity $($TMbx.Identity) -user $(($oSG).Name) -domaincontroller $($InputSplat.domaincontroller) | ?{$_.user -match ".*-(SEC|Data)-Email-.*$"} | format-list user,AccessRights,IsInhertied,Deny |out-string).trim())" ;
+                # 12:52 PM 6/30/2021 fix typo:
+                #$smsg = "`n$((get-mailboxpermission -identity $($TMbx.Identity) -user $oSG.distinguishedName -domaincontroller $($InputSplat.domaincontroller) | ?{$_.user -match ".*-(SEC|Data)-Email-.*$"} | format-list user,AccessRights,IsInhertied,Deny |out-string).trim())" ;
+                $smsg = "`n$(($rMbxP | format-list $propsMbxP |out-string).trim())" ; 
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                 #$smsg = "`n$((get-mailboxpermission -identity $($TMbx.Identity) -user $(($oSG).Name) -domaincontroller $($InputSplat.domaincontroller) | ?{$_.user -match ".*-(SEC|Data)-Email-.*$"} | format-list user,AccessRights,IsInhertied,Deny|out-string).trim())" ;
                 #if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
@@ -1047,7 +1130,9 @@ function add-MailboxAccessGrant {
 
                 # 10:04 AM 11/22/2017 put the accgrant confirmation into the output:
                 if ($Tmbx.distinguishedname -match $rgxUserOUs) {
-                    $smsg = "$((Get-ADPermission -identity $($TMbx.Identity) -domaincontroller $($InputSplat.domaincontroller) -user "$($oSG.SamAccountName)"|  format-list User,ExtendedRights,Inherited,Deny | out-string).trim())" ;
+                    #$smsg = "$((Get-ADPermission -identity $($TMbx.Identity) -domaincontroller $($InputSplat.domaincontroller) -user "$($oSG.SamAccountName)"|  format-list User,ExtendedRights,Inherited,Deny | out-string).trim())" ;
+                    $smsg = "`n$(($rAMbxP|out-string | format-list $propsAMbxP ).trim())" ; 
+                    # $rAMbxP 
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                 } else {
                     $smsg = "TMBX $($tMbx.samaccountname) is in a non-User OU: Term Hide/Unhide groups do not apply...";
@@ -1057,7 +1142,8 @@ function add-MailboxAccessGrant {
                 $smsg = "`nUpdated $($oSG.Name) Membership...`n" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                 write-host -foregroundcolor green "$((get-date).ToString("HH:mm:ss")):---";
-                if ($mbrs = Get-ADGroupMember -identity $oSG.samaccountname -server $($DomainController) | Select-Object distinguishedName ) {
+                #if ($mbrs = Get-ADGroupMember -identity $oSG.samaccountname -server $($DomainController) | Select-Object distinguishedName ) {
+                if ($mbrs) {
                     $smsg = "$(($mbrs | out-string).trim() | out-default)`n-----------------------" ;
                 } else {
                     $smsg = "(NO MEMBERS RETURNED)`n-----------------------" ;
