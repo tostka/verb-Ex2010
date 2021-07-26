@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.73.0
+Version     : 1.1.75.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1634,6 +1634,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    # 1:31 PM 7/21/2021 revised Add-PSTitleBar $sTitleBarTag with TenOrg spec (for prompt designators)
     # 3:18 PM 5/18/2021 somehow lost $credOpTORSID, so flipped lost default $credOPTor -> $credTORSID
     * 11:40 AM 5/14/2021 added -ea 0 to the gv tests (suppresses not-found error when called without logging config)
     * 11:22 AM 4/21/2021 coded around recent 'verbose the heck out of everything', yanked 99% of the verbose support - this seldom fails in a way that you need verbose, and when it's on, every cmdlet in the modules get echo'd, spams the heck out of console & logging. One key change (not sure if source) was to switch from inline import-pss & import-mod, into 2 steps with varis.
@@ -1860,7 +1861,11 @@ Function Connect-Ex2010 {
             #-=-=-=-=-=-=-=-=
         } ;
         # 7:54 AM 11/1/2017 add titlebar tag
-        Add-PSTitleBar 'EMS' ;
+        #Add-PSTitleBar 'EMS' ;
+        # 1:31 PM 7/21/2021 build with TenOrg spec
+        $sTitleBarTag = @("EMS") ;
+        $sTitleBarTag += $TenOrg ;
+        Add-PSTitleBar $sTitleBarTag -verbose:$($VerbosePreference -eq "Continue")  ;
         # tag E10IsDehydrated
         $Global:E10IsDehydrated = $true ;
         write-host -foregroundcolor darkgray "`n$(($Global:E10Sess | select ComputerName,Availability,State,ConfigurationName | format-table -auto |out-string).trim())" ;
@@ -2118,7 +2123,7 @@ Function Connect-Ex2010XO {
                 $VerbosePreference = $VerbosePrefPrior ;
                 $verbose = ($VerbosePreference -eq "Continue") ;
             } ;
-            Add-PSTitleBar $sTitleBarTag ;
+            Add-PSTitleBar $sTitleBarTag -verbose:$($VerbosePreference -eq "Continue")  ;
 
         } ; #  # if-E $bExistingREms
     } ;  # PROC-E
@@ -2332,7 +2337,29 @@ Function Disconnect-Ex2010 {
     if($Global:E10Mod){$Global:E10Mod | Remove-Module -Force -verbose:$($false) } ;
     if($Global:E10Sess){$Global:E10Sess | Remove-PSSession -verbose:$($false)} ;
     # 7:56 AM 11/1/2017 remove titlebar tag
-    Remove-PSTitlebar 'EMS' ;
+    Remove-PSTitlebar 'EMS' -verbose:$($VerbosePreference -eq "Continue")  ;
+    # should pull TenOrg if no other mounted 
+    <#$sXopDesig = 'xp' ;
+    $sXoDesig = 'xo' ;
+    #>
+    #$xxxMeta.rgxOrgSvcs : $ExchangeServer = (Get-Variable  -name "$($TenOrg)Meta").value.Ex10Server|get-random ;
+    # normally would be org specific, but we don't have a cred or a TenOrg ref to resolve, so just check xx's version
+    # -replace 'EMS','' -replace '\(\|','(' -replace '\|\)',')'
+    #if($host.ui.RawUI.WindowTitle -notmatch ((Get-Variable  -name "TorMeta").value.rgxOrgSvcs-replace 'EMS','' -replace '\(\|','(' -replace '\|\)',')' )){
+    # drop the current tag being removed from the rgx...
+    [regex]$rgxsvcs = ('(' + (((Get-Variable  -name "TorMeta").value.OrgSvcs |?{$_ -ne 'EMS'} |%{[regex]::escape($_)}) -join '|') + ')') ;
+    if($host.ui.RawUI.WindowTitle -notmatch $rgxsvcs){
+        write-verbose "(removing TenOrg reference from PSTitlebar)" ; 
+        #Remove-PSTitlebar $TenOrg ;
+        # split the rgx into an array of tags
+        #sTitleBarTag = (((Get-Variable  -name "TorMeta").value.rgxOrgSvcs) -replace '(\\s\(|\)\\s)','').split('|') ; 
+        # no remove all meta tenorg tags - shouldn't be cross-org connecting
+        $Metas=(get-variable *meta|?{$_.name -match '^\w{3}Meta$'}).name ; 
+        $sTitleBarTag = $metas.substring(0,3) ; 
+        Remove-PSTitlebar $sTitleBarTag -verbose:$($VerbosePreference -eq "Continue") ;
+    } else {
+        write-verbose "(detected matching OrgSvcs in PSTitlebar: *not* removing TenOrg reference)" ; 
+    } ; 
     # kill any other sessions using distinctive name; add verbose, to ensure they're echo'd that they were missed
     Get-PSSession | Where-Object { $_.name -eq 'Exchange2010' } | Remove-PSSession -verbose:$($false);
     # kill any broken PSS, self regen's even for L13 leave the original borked and create a new 'Session for implicit remoting module at C:\Users\', toast them, they don't reopen. Same for Ex2010 REMS, identical new PSS, indistinguishable from the L13 regen, except the random tmp_xxxx.psm1 module name. Toast them, it's just a growing stack of broken's
@@ -5595,8 +5622,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUh4WRHEMnXWbWul4d6u0G9GPw
-# yV2gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU5nhl0lgX2Byx9eJinl4lh7jZ
+# c2qgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -5611,9 +5638,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQjspSn
-# RvwKk7bm7WmSFix/A6PIAjANBgkqhkiG9w0BAQEFAASBgCNTDIyEj33PLwmC3MbT
-# glcXWxjBL4GZP/iv+l7ej0QgRWedBJO54dWHYC4brkleMuVKxI3gmEJEG/quzxFy
-# f8zsnY6uyW44pLTPAOvY9tJAOD8zJdr2CsuJI/AD036uZN2Kritm45ueMbl3NLWF
-# leMsyiVcWGf0TXOgCmukte6b
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSbLK/2
+# MiEgfRu1i0tOTKPvmat4xDANBgkqhkiG9w0BAQEFAASBgBPNGRhYaCn/FUjaDQEi
+# RZgvoyhcWuZSImzNHakgmSJnMOqC3o4gi8dysFbQrS2B5ul0Xvj7mlXQj+gHhXCK
+# 85B3Q2GcYPmqI69TG3NVgMlMClMAHv8Wb+eUo1RKR90S002EZcMMUsiwkulLrVzt
+# 4oWCs9j+YKhEKyl0l9gaQhwq
 # SIG # End signature block

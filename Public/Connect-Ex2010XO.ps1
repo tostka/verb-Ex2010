@@ -238,7 +238,7 @@ Function Connect-Ex2010XO {
                 $VerbosePreference = $VerbosePrefPrior ;
                 $verbose = ($VerbosePreference -eq "Continue") ;
             } ;
-            Add-PSTitleBar $sTitleBarTag ;
+            Add-PSTitleBar $sTitleBarTag -verbose:$($VerbosePreference -eq "Continue")  ;
 
         } ; #  # if-E $bExistingREms
     } ;  # PROC-E
