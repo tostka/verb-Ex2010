@@ -92,14 +92,33 @@ Function Connect-Ex2010XO {
         => ^\w*\.cmw.internal$
         #>
 
-        $sTitleBarTag = "EMS" ;
+        #$sTitleBarTag = "EMS" ;
         $CommandPrefix = $null ;
 
         $TenOrg=get-TenantTag -Credential $Credential ;
-        if($TenOrg -ne 'TOR'){
+        <#if($TenOrg -ne 'TOR'){
             # explicitly leave this tenant (default) untagged
             $sTitleBarTag += $TenOrg ;
         } ;
+        #>
+        if($TenOrg){
+            switch -regex ($TenOrg){
+                '^(CMW|TOR)$'{
+                    $sTitleBarTag = @("EMS$($TenOrg.substring(0,1).tolower())") ; # 1st char
+                }
+                '^TOL$'{
+                    $sTitleBarTag = @("EMS$($TenOrg.substring(2,1).tolower())") ; # last char
+                } ;
+                default{
+                    throw "$($TenOrg):unsupported `$TenOrg!" ;
+                    break ;
+                }
+            } ;
+        } else {
+            $sTitleBarTag = @("EMS") ;
+        } ;
+        write-verbose "`$sTitleBarTag:$($sTitleBarTag)" ; 
+
         <#
         $credDom = ($Credential.username.split("\"))[0] ;
         $Metas=(get-variable *meta|Where-Object{$_.name -match '^\w{3}Meta$'}) ;

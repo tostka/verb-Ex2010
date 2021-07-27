@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.76.0
+Version     : 1.1.75.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1634,7 +1634,6 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
-    # 9:43 AM 7/27/2021 revised -PSTitleBar to support suffix EMS[ctl]
     # 1:31 PM 7/21/2021 revised Add-PSTitleBar $sTitleBarTag with TenOrg spec (for prompt designators)
     # 3:18 PM 5/18/2021 somehow lost $credOpTORSID, so flipped lost default $credOPTor -> $credTORSID
     * 11:40 AM 5/14/2021 added -ea 0 to the gv tests (suppresses not-found error when called without logging config)
@@ -1864,33 +1863,8 @@ Function Connect-Ex2010 {
         # 7:54 AM 11/1/2017 add titlebar tag
         #Add-PSTitleBar 'EMS' ;
         # 1:31 PM 7/21/2021 build with TenOrg spec
-        # 9:00 AM 7/27/2021 revise to support EMS[tlc] single-letter onprem conne designator (already in infra file OrgSvcs list).
-        if($TenOrg){
-            <# can't just use last char, lab varies from others
-            if($TenOrg -ne 'TOL' ){
-                $sTitleBarTag = @("EMS$($TenOrg.substring(0,1).tolower())") ; # 1st char
-            }else{
-                $sTitleBarTag = @("EMS$($TenOrg.substring(2,1).tolower())") ; # last char
-            } ; 
-            #>
-            switch -regex ($TenOrg){
-                '^(CMW|TOR)$'{
-                    $sTitleBarTag = @("EMS$($TenOrg.substring(0,1).tolower())") ; # 1st char
-                }
-                '^TOL$'{
-                    $sTitleBarTag = @("EMS$($TenOrg.substring(2,1).tolower())") ; # last char
-                } ; 
-                default{
-                    throw "$($TenOrg):unsupported `$TenOrg!" ; 
-                    break ; 
-                }
-            } ; 
-        } else { 
-            $sTitleBarTag = @("EMS") ;
-        } ; 
-        write-verbose "`$sTitleBarTag:$($sTitleBarTag)" ; 
-        
-        #$sTitleBarTag += $TenOrg ;
+        $sTitleBarTag = @("EMS") ;
+        $sTitleBarTag += $TenOrg ;
         Add-PSTitleBar $sTitleBarTag -verbose:$($VerbosePreference -eq "Continue")  ;
         # tag E10IsDehydrated
         $Global:E10IsDehydrated = $true ;
@@ -2003,33 +1977,14 @@ Function Connect-Ex2010XO {
         => ^\w*\.cmw.internal$
         #>
 
-        #$sTitleBarTag = "EMS" ;
+        $sTitleBarTag = "EMS" ;
         $CommandPrefix = $null ;
 
         $TenOrg=get-TenantTag -Credential $Credential ;
-        <#if($TenOrg -ne 'TOR'){
+        if($TenOrg -ne 'TOR'){
             # explicitly leave this tenant (default) untagged
             $sTitleBarTag += $TenOrg ;
         } ;
-        #>
-        if($TenOrg){
-            switch -regex ($TenOrg){
-                '^(CMW|TOR)$'{
-                    $sTitleBarTag = @("EMS$($TenOrg.substring(0,1).tolower())") ; # 1st char
-                }
-                '^TOL$'{
-                    $sTitleBarTag = @("EMS$($TenOrg.substring(2,1).tolower())") ; # last char
-                } ;
-                default{
-                    throw "$($TenOrg):unsupported `$TenOrg!" ;
-                    break ;
-                }
-            } ;
-        } else {
-            $sTitleBarTag = @("EMS") ;
-        } ;
-        write-verbose "`$sTitleBarTag:$($sTitleBarTag)" ; 
-
         <#
         $credDom = ($Credential.username.split("\"))[0] ;
         $Metas=(get-variable *meta|Where-Object{$_.name -match '^\w{3}Meta$'}) ;
@@ -2354,7 +2309,6 @@ Function Disconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,ExchangeOnline
     REVISIONS   :
-    # 9:44 AM 7/27/2021 add -PsTitleBar EMS[ctl] support by dyn gathering range of all 1st & last $Meta.Name[0,2] values
     # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     * 1:14 PM 3/1/2021 added color reset
     * 4:13 PM 10/22/2020 added pretest of $Global:*'s before running at remove-module (suppresses errors)
@@ -2382,18 +2336,8 @@ Function Disconnect-Ex2010 {
     Param()
     if($Global:E10Mod){$Global:E10Mod | Remove-Module -Force -verbose:$($false) } ;
     if($Global:E10Sess){$Global:E10Sess | Remove-PSSession -verbose:$($false)} ;
-    $Metas=(get-variable *meta|?{$_.name -match '^\w{3}Meta$'}).name ; 
     # 7:56 AM 11/1/2017 remove titlebar tag
-    #Remove-PSTitlebar 'EMS' -verbose:$($VerbosePreference -eq "Continue")  ;
-    # 9:21 AM 7/27/2021 expand to cover EMS[tlc]
-    #Remove-PSTitlebar 'EMS[ctl]' -verbose:$($VerbosePreference -eq "Continue")  ;
-    # make it fully dyn: build range of all meta 1sts & last chars
-    [array]$chrs = $metas.substring(0,3).substring(0,1) ; 
-    $chrs+= $metas.substring(0,3).substring(2,1) ; 
-    $chrs=$chrs.tolower()|select -unique ;
-    $sTitleBarTag = "EMS$('[' + (($chrs |%{[regex]::escape($_)}) -join '') + ']')" ; 
-    write-verbose "remove PSTitleBarstring:$($sTitleBarTag)" ; 
-    Remove-PSTitlebar $sTitleBarTag -verbose:$($VerbosePreference -eq "Continue")  ;
+    Remove-PSTitlebar 'EMS' -verbose:$($VerbosePreference -eq "Continue")  ;
     # should pull TenOrg if no other mounted 
     <#$sXopDesig = 'xp' ;
     $sXoDesig = 'xo' ;
@@ -2403,7 +2347,6 @@ Function Disconnect-Ex2010 {
     # -replace 'EMS','' -replace '\(\|','(' -replace '\|\)',')'
     #if($host.ui.RawUI.WindowTitle -notmatch ((Get-Variable  -name "TorMeta").value.rgxOrgSvcs-replace 'EMS','' -replace '\(\|','(' -replace '\|\)',')' )){
     # drop the current tag being removed from the rgx...
-    <# # at this point, if we're no longer using explict Org tag (EMS[tlc] instead), don't need to remove, they'll come out with the EMS removel
     [regex]$rgxsvcs = ('(' + (((Get-Variable  -name "TorMeta").value.OrgSvcs |?{$_ -ne 'EMS'} |%{[regex]::escape($_)}) -join '|') + ')') ;
     if($host.ui.RawUI.WindowTitle -notmatch $rgxsvcs){
         write-verbose "(removing TenOrg reference from PSTitlebar)" ; 
@@ -2411,13 +2354,12 @@ Function Disconnect-Ex2010 {
         # split the rgx into an array of tags
         #sTitleBarTag = (((Get-Variable  -name "TorMeta").value.rgxOrgSvcs) -replace '(\\s\(|\)\\s)','').split('|') ; 
         # no remove all meta tenorg tags - shouldn't be cross-org connecting
-        #$Metas=(get-variable *meta|?{$_.name -match '^\w{3}Meta$'}).name ; 
+        $Metas=(get-variable *meta|?{$_.name -match '^\w{3}Meta$'}).name ; 
         $sTitleBarTag = $metas.substring(0,3) ; 
         Remove-PSTitlebar $sTitleBarTag -verbose:$($VerbosePreference -eq "Continue") ;
     } else {
         write-verbose "(detected matching OrgSvcs in PSTitlebar: *not* removing TenOrg reference)" ; 
     } ; 
-    #>
     # kill any other sessions using distinctive name; add verbose, to ensure they're echo'd that they were missed
     Get-PSSession | Where-Object { $_.name -eq 'Exchange2010' } | Remove-PSSession -verbose:$($false);
     # kill any broken PSS, self regen's even for L13 leave the original borked and create a new 'Session for implicit remoting module at C:\Users\', toast them, they don't reopen. Same for Ex2010 REMS, identical new PSS, indistinguishable from the L13 regen, except the random tmp_xxxx.psm1 module name. Toast them, it's just a growing stack of broken's
@@ -2653,7 +2595,6 @@ Function import-EMSLocalModule {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Exchange-2013,Exchange-2016
     REVISIONS   :
-    * 9:48 AM 7/27/2021 added verbose to -pstitlebar
     * 11:40 AM 5/14/2021 added -ea 0 to the gv tests (suppresses not-found error when called without logging config)
     * 9:21 AM 4/16/2021 renamed load-emsmodule -> import-EMSLocalModule, added pretest and post verify
     * 10:14 AM 4/12/2021 init vers
@@ -2711,7 +2652,7 @@ Function import-EMSLocalModule {
             #-=-=-=-=-=-=-=-=
         } ;
         # 7:54 AM 11/1/2017 add titlebar tag
-        if(Get-Command Add-PSTitleBar -ea 0 ){Add-PSTitleBar 'EMSL' -verbose:$($VerbosePreference -eq "Continue");} ;
+        if(Get-Command Add-PSTitleBar -ea 0 ){Add-PSTitleBar 'EMSL' ;} ;
         # tag E10IsDehydrated
         $Global:ExOPIsDehydrated = $false ;
     } ;  # PROC-E
@@ -5409,7 +5350,6 @@ Function remove-EMSLocalModule {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Exchange-2013,Exchange-2016
     REVISIONS   :
-    * 9:42 AM 7/27/2021 add verbose to *-PsTitleBar calls
     * 10:03 AM 4/16/2021 init vers
     .DESCRIPTION
     remove-EMSLocalModule - remove/unload local server bin-module-based ExchOnPrem Mgmt Shell connection ; validated Exch2016)
@@ -5447,7 +5387,7 @@ Function remove-EMSLocalModule {
             #-=-=-=-=-=-=-=-=
         } ;
         # 7:54 AM 11/1/2017 add titlebar tag
-        if(gcm Remove-PSTitleBar-PSTitleBar -ea 0 ){Remove-PSTitleBar-PSTitleBar 'EMSL' -verbose:$($VerbosePreference -eq "Continue") ;} ;
+        if(gcm Remove-PSTitleBar-PSTitleBar -ea 0 ){Remove-PSTitleBar-PSTitleBar 'EMSL' ;} ;
         # tag E10IsDehydrated
         $Global:ExOPIsDehydrated = $null ;
     } ;  # PROC-E
@@ -5682,8 +5622,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUliDOIYsFuwmzGD1GWwoExfAe
-# THigggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU5nhl0lgX2Byx9eJinl4lh7jZ
+# c2qgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -5698,9 +5638,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS5oG5i
-# R2OuSRenAPYd6E7EWBwo+zANBgkqhkiG9w0BAQEFAASBgBNJeD8nwj7rxjj2SjrH
-# FLVgl7URZ9J3ttpgei9T8Fh49d7JAdGXJqwyOpltBkSPYqxOUjn6ymEKt0sS5wkG
-# v+d33Wsxqz9FfdoYViTIbH66AyalzI3UCAP+LJi+cz3As/Ik1M8FjD/isEU0Q3tR
-# fKnx6o59wpFNiXhGvc4qlN8x
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSbLK/2
+# MiEgfRu1i0tOTKPvmat4xDANBgkqhkiG9w0BAQEFAASBgBPNGRhYaCn/FUjaDQEi
+# RZgvoyhcWuZSImzNHakgmSJnMOqC3o4gi8dysFbQrS2B5ul0Xvj7mlXQj+gHhXCK
+# 85B3Q2GcYPmqI69TG3NVgMlMClMAHv8Wb+eUo1RKR90S002EZcMMUsiwkulLrVzt
+# 4oWCs9j+YKhEKyl0l9gaQhwq
 # SIG # End signature block

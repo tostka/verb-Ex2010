@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    # 9:43 AM 7/27/2021 revised -PSTitleBar to support suffix EMS[ctl]
     # 1:31 PM 7/21/2021 revised Add-PSTitleBar $sTitleBarTag with TenOrg spec (for prompt designators)
     # 3:18 PM 5/18/2021 somehow lost $credOpTORSID, so flipped lost default $credOPTor -> $credTORSID
     * 11:40 AM 5/14/2021 added -ea 0 to the gv tests (suppresses not-found error when called without logging config)
@@ -246,8 +247,33 @@ Function Connect-Ex2010 {
         # 7:54 AM 11/1/2017 add titlebar tag
         #Add-PSTitleBar 'EMS' ;
         # 1:31 PM 7/21/2021 build with TenOrg spec
-        $sTitleBarTag = @("EMS") ;
-        $sTitleBarTag += $TenOrg ;
+        # 9:00 AM 7/27/2021 revise to support EMS[tlc] single-letter onprem conne designator (already in infra file OrgSvcs list).
+        if($TenOrg){
+            <# can't just use last char, lab varies from others
+            if($TenOrg -ne 'TOL' ){
+                $sTitleBarTag = @("EMS$($TenOrg.substring(0,1).tolower())") ; # 1st char
+            }else{
+                $sTitleBarTag = @("EMS$($TenOrg.substring(2,1).tolower())") ; # last char
+            } ; 
+            #>
+            switch -regex ($TenOrg){
+                '^(CMW|TOR)$'{
+                    $sTitleBarTag = @("EMS$($TenOrg.substring(0,1).tolower())") ; # 1st char
+                }
+                '^TOL$'{
+                    $sTitleBarTag = @("EMS$($TenOrg.substring(2,1).tolower())") ; # last char
+                } ; 
+                default{
+                    throw "$($TenOrg):unsupported `$TenOrg!" ; 
+                    break ; 
+                }
+            } ; 
+        } else { 
+            $sTitleBarTag = @("EMS") ;
+        } ; 
+        write-verbose "`$sTitleBarTag:$($sTitleBarTag)" ; 
+        
+        #$sTitleBarTag += $TenOrg ;
         Add-PSTitleBar $sTitleBarTag -verbose:$($VerbosePreference -eq "Continue")  ;
         # tag E10IsDehydrated
         $Global:E10IsDehydrated = $true ;

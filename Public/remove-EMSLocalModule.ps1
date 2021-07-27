@@ -15,6 +15,7 @@ Function remove-EMSLocalModule {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Exchange-2013,Exchange-2016
     REVISIONS   :
+    * 9:42 AM 7/27/2021 add verbose to *-PsTitleBar calls
     * 10:03 AM 4/16/2021 init vers
     .DESCRIPTION
     remove-EMSLocalModule - remove/unload local server bin-module-based ExchOnPrem Mgmt Shell connection ; validated Exch2016)
@@ -52,7 +53,7 @@ Function remove-EMSLocalModule {
             #-=-=-=-=-=-=-=-=
         } ;
         # 7:54 AM 11/1/2017 add titlebar tag
-        if(gcm Remove-PSTitleBar-PSTitleBar -ea 0 ){Remove-PSTitleBar-PSTitleBar 'EMSL' ;} ;
+        if(gcm Remove-PSTitleBar-PSTitleBar -ea 0 ){Remove-PSTitleBar-PSTitleBar 'EMSL' -verbose:$($VerbosePreference -eq "Continue") ;} ;
         # tag E10IsDehydrated
         $Global:ExOPIsDehydrated = $null ;
     } ;  # PROC-E

@@ -15,6 +15,7 @@ Function import-EMSLocalModule {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Exchange-2013,Exchange-2016
     REVISIONS   :
+    * 9:48 AM 7/27/2021 added verbose to -pstitlebar
     * 11:40 AM 5/14/2021 added -ea 0 to the gv tests (suppresses not-found error when called without logging config)
     * 9:21 AM 4/16/2021 renamed load-emsmodule -> import-EMSLocalModule, added pretest and post verify
     * 10:14 AM 4/12/2021 init vers
@@ -72,7 +73,7 @@ Function import-EMSLocalModule {
             #-=-=-=-=-=-=-=-=
         } ;
         # 7:54 AM 11/1/2017 add titlebar tag
-        if(Get-Command Add-PSTitleBar -ea 0 ){Add-PSTitleBar 'EMSL' ;} ;
+        if(Get-Command Add-PSTitleBar -ea 0 ){Add-PSTitleBar 'EMSL' -verbose:$($VerbosePreference -eq "Continue");} ;
         # tag E10IsDehydrated
         $Global:ExOPIsDehydrated = $false ;
     } ;  # PROC-E
