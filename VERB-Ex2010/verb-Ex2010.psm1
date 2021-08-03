@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.79.0
+Version     : 1.1.80.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -2656,8 +2656,27 @@ function get-UserMailADSummary {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 10:57 AM 8/2/2021 add 'Unresolved' (failed to return an object from 
+    get-recipient, normally a 'System.Management.Automation.RemoteException', 
+    Exception -match "couldn't\sbe\sfound\son") & 'Failed' (catch failure that 
+    doesn't match the prior) properties, stuffing in the input designators as a raw 
+    array (indicates cloud objects hybrid sync'd to another external directory) 
     * 12:07 PM 7/30/2021 added CustAttribs to the props dumped ; pulled 'verb-Ex2010' from #requires (nesting limit) ; init
     .DESCRIPTION
+    get-UserMailADSummary.ps1 - Resolve specified array of -users (displayname, emailaddress, samaccountname) to mail asset and AD details
+    The specific goal of this function is to assist in differentiated 'Active' user mailboxes from termainted/disabled/offboarded user mailboxes (or (Shared|Room|Equpment)mailboxes with disabled ADUser accounts.
+    
+    Fed an array of mailbox descriptors - emailaddress/UPN, alias, displayname, etc) - the function attempts to resolve a local recipient object, and a matching local ADUser object. 
+
+    The ADUser is evaluated for .enabled status, and the distinguishedName is checked to locate 'non-Active/Term' users (by OU name in their DN). 
+    
+    The resulting lookups are categorized into four properties of the returned SystemObject:
+    - Enabled - resolved local recipient & local ADUser. ADUser.Enabled=$true, ADUser.distinguishedName does not include a 'Disabled*' or 'Termed*' OU in it's tree.
+    - Disabled - resolved local recipient, & local ADUser. ADUser.Enabled=$false and/or ADUser.distinguishedName includes a 'Disabled*' or 'Termed*' OU in it's tree.
+    - UnResolved - get-recipient failed to return a local recipient matching the specified mailbox designator (most frequently reflects EXO cloud mailboxes that are hybrid-federated out of an other external AD as Source-Of-Authority.
+    - Failed - any get-recipient try/catch fail that doesn't appear to be Exception.Type 'System.Management.Automation.RemoteException', Exception match "couldn't\sbe\sfound\son"
+
+    The resulting SystemObject from the above is returned to the pipeline.
     .PARAMETER  users
     Array of user descriptors: displayname, emailaddress, UPN, samaccountname (checks clipboard where unspecified)
     .PARAMETER ADDisabledOnly
@@ -2751,7 +2770,7 @@ function get-UserMailADSummary {
     } 
     PROCESS{
         $Procd=0 ;$pct = 0 ; 
-        $aggreg =@() ; $contacts =@() ;
+        $aggreg =@() ; $contacts =@() ; $UnResolved = @() ; $Failed = @() ;
         $pltGRcp=[ordered]@{identity=$null;erroraction='STOP';resultsize=1;} ; 
         $pltGMbx=[ordered]@{identity=$null;erroraction='STOP'} ; 
         $pltGadu=[ordered]@{Identity = $null ; Properties='*' ;errorAction='STOP'} ;
@@ -2770,61 +2789,79 @@ function get-UserMailADSummary {
                 $pltGRcp.identity = $usr ; 
                 write-verbose "get-recipient  w`n$(($pltGRcp|out-string).trim())" ; 
                 $rrcp = get-recipient @pltGRcp ;
-                $pltgmbx.identity = $rrcp.PrimarySmtpAddress ; 
-                switch ($rrcp.recipienttype){
-                    'MailUser'{
-                        write-verbose "get-remotemailbox  w`n$(($pltgmbx|out-string).trim())" ; 
-                        $mbx = get-remotemailbox @pltgmbx 
-                    } 
-                    'UserMailbox' {
-                        write-verbose "get-mailbox w`n$(($pltgmbx|out-string).trim())" ; 
-                        $mbx = get-mailbox @pltgmbx ;
-                    }
-                    'MailContact' {
-                        write-verbose "get-mailcontact w`n$(($pltgmbx|out-string).trim())" ; 
-                        $mc = get-mailcontact @pltgmbx ;
-                    }
-                    default {throw "$($rrcp.alias):Unsupported RecipientType:$($rrcp.recipienttype)" }
-                } ; 
-                if(-not($mc)){
-                    $mbxspecs =  $mbx| select $propsmbx ;
-                    $pltGadu.identity = $mbx.samaccountname ; 
-                    write-verbose "Get-ADUser w`n$(($pltGadu|out-string).trim())" ; 
-                    Try {
-                        $adspecs =Get-ADUser @pltGadu | select $propsadu ;
-                    } Catch [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException] {
-                        $smsg = "(no matching ADuser found:$($pltGadu.identity))" ; 
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        Continue ;
-                    } catch {
-                        $ErrTrapd=$Error[0] ;
-                        $smsg = "Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        Continue ;
+                if($rrcp){
+                    $pltgmbx.identity = $rrcp.PrimarySmtpAddress ; 
+                    switch ($rrcp.recipienttype){
+                        'MailUser'{
+                            write-verbose "get-remotemailbox  w`n$(($pltgmbx|out-string).trim())" ; 
+                            $mbx = get-remotemailbox @pltgmbx 
+                        } 
+                        'UserMailbox' {
+                            write-verbose "get-mailbox w`n$(($pltgmbx|out-string).trim())" ; 
+                            $mbx = get-mailbox @pltgmbx ;
+                        }
+                        'MailContact' {
+                            write-verbose "get-mailcontact w`n$(($pltgmbx|out-string).trim())" ; 
+                            $mc = get-mailcontact @pltgmbx ;
+                        }
+                        default {throw "$($rrcp.alias):Unsupported RecipientType:$($rrcp.recipienttype)" }
                     } ; 
-                    $summary = @{} ;
-                    foreach($object_properties in $mbxspecs.PsObject.Properties) {
-                        $summary.add($object_properties.Name,$object_properties.Value) ;
-                    } ;
-                    foreach($object_properties in $adspecs.PsObject.Properties) {
-                        $summary.add("AD$($object_properties.Name)",$object_properties.Value) ;
-                    } ;
-                    $aggreg+= New-Object PSObject -Property $summary ;
+                    if(-not($mc)){
+                        $mbxspecs =  $mbx| select $propsmbx ;
+                        $pltGadu.identity = $mbx.samaccountname ; 
+                        write-verbose "Get-ADUser w`n$(($pltGadu|out-string).trim())" ; 
+                        Try {
+                            $adspecs =Get-ADUser @pltGadu | select $propsadu ;
+                        } CATCH [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException] {
+                            $smsg = "(no matching ADuser found:$($pltGadu.identity))" ; 
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            Continue ;
+                        } catch {
+                            $ErrTrapd=$Error[0] ;
+                            $smsg = "Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            Continue ;
+                        } ; 
+                        $summary = @{} ;
+                        foreach($object_properties in $mbxspecs.PsObject.Properties) {
+                            $summary.add($object_properties.Name,$object_properties.Value) ;
+                        } ;
+                        foreach($object_properties in $adspecs.PsObject.Properties) {
+                            $summary.add("AD$($object_properties.Name)",$object_properties.Value) ;
+                        } ;
+                        $aggreg+= New-Object PSObject -Property $summary ;
 
+                    } else { 
+                        $smsg = "Resolved user for $($usr) is RecipientType:$($mc.RecipientType)`nIt is not a local mail object, or AD object, and simply reflects a pointer to an external mail recipient.`nThis object is being added to the 'Contacts' section of the output.." ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        $contacts += $mc | select $propsMC ;
+                    } ; 
                 } else { 
-                    $smsg = "Resolved user for $($usr) is RecipientType:$($mc.RecipientType)`nIt is not a local mail object, or AD object, and simply reflects a pointer to an external mail recipient.`nThis object is being added to the 'Contacts' section of the output.." ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    $contacts += $mc | select $propsMC ;
+                    # in ISE $Error[0] is empty
+                    #$ErrTrapd=$Error[0] ;
+                    #if($ErrTrapd.Exception -match "couldn't\sbe\sfound\son"){
+                        $UnResolved += $pltGRcp.identity ;
+                    #} else { 
+                        #$Failed += $pltGRcp.identity ;
+                    #} ; 
                 } ; 
-                
+            } CATCH [System.Management.Automation.RemoteException] {
+                # catch error never gets here (at least not in ISE)
+                $ErrTrapd=$Error[0] ;
+                if($ErrTrapd.Exception -match "couldn't\sbe\sfound\son"){
+                    $UnResolved += $pltGRcp.identity ;
+                } else { 
+                    $Failed += $pltGRcp.identity ;
+                } ;                 
             } CATCH {
                 $ErrTrapd=$Error[0] ;
                 $smsg = "Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                 else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                $Failed += $pltGRcp.identity ;
             } ; 
 
             if($verbose){
@@ -2839,6 +2876,8 @@ function get-UserMailADSummary {
                 Enabled = $Aggreg|?{($_.ADEnabled -eq $true ) -AND -not($_.distinguishedname -match $rgxDisabledOUs) } ;#?{$_.adDisabled -ne $true -AND -not($_.distinguishedname -match $rgxDisabledOUs)}
                 Disabled = $Aggreg|?{($_.ADEnabled -eq $False) } ; 
                 Contacts = $contacts ; 
+                Unresolved = $Unresolved ; 
+                Failed = $Failed;
             } ; 
             write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):outputing $(($Report.Enabled|measure).count) Enabled User summaries,`nand $(($Report.Disabled|measure).count) ADUser.Disabled or Disabled/TERM-OU account summaries`nand $(($Report.Contacts|measure).count) users resolved to MailContacts" ; 
         } else { 
@@ -2846,6 +2885,8 @@ function get-UserMailADSummary {
                 Enabled = $Aggreg|?{($_.ADEnabled -eq $true) -AND -not($_.distinguishedname -match $rgxDisabledOUs) } ;#?{$_.adDisabled -ne $true -AND -not($_.distinguishedname -match $rgxDisabledOUs)}
                 Disabled = $Aggreg|?{($_.ADEnabled -eq $False) -OR ($_.distinguishedname -match $rgxDisabledOUs) } ; 
                 Contacts = $contacts ; 
+                Unresolved = $Unresolved ; 
+                Failed = $Failed;
             } ; 
             write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):outputing $(($Report.Enabled|measure).count) Enabled User summaries,`nand $(($Report.Disabled|measure).count) ADUser.Disabled`nand $(($Report.Contacts|measure).count) users resolved to MailContacts" ; 
             write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):-ADDisabledOnly specified: 'Disabled' output are *solely* ADUser.Disabled (no  Disabled/TERM-OU account filtering applied)`nand $(($Report.Contacts|measure).count) users resolved to MailContacts" ; 
@@ -5903,8 +5944,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU9y0Ei7JJIk88km+h2SCQ3c5Z
-# SKegggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU4KxpbX4Oe4xEPHK3yyyQ58E5
+# N7WgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -5919,9 +5960,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTki1zb
-# HOIfCZemm/kOmzlmuTipUTANBgkqhkiG9w0BAQEFAASBgAMn9T8PXjSwrL3nPtKo
-# jpUEJLpV2IdUr/LsbNWpDkXgvAuvCYIjMTt3LzexXLpMylhER76zKsP6/R0Syw+t
-# OU+LiyQzhwVnKrN6XstGfx2i47NesOyLlKN3ULiM5rMf9vyG6WtPYCRL9+676p4Y
-# qA555+YtfWbrMCbg5gTuzeG6
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSr08bL
+# 4ah7gOc03Xe5JINn48MQlzANBgkqhkiG9w0BAQEFAASBgDmHD5B8gcBB34w9K6rY
+# 7SL9cjOpixYhDANRQCSn2ydxFj/N8PvNjXC46cM7/4+JxNduLGJxWQnkBTsOrwNI
+# YNRQiW6RTP6xGEHTeEKNBtl8+hYQGlSrXKFr2rlooFTgIk8XlfLaBSLhbtYhoBLm
+# eme233JXKuPXlWnpzQYrxWmn
 # SIG # End signature block
