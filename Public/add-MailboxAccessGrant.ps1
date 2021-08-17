@@ -15,6 +15,8 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    # 3:21 PM 8/17/2021 recoded grabbing outputs, on object creations in EMS, tho' AD object creations generate no proper output. functoinal on current ticket.
+    # 4:48 PM 8/16/2021 still wrestling grant fails, switched the *permission -user targets to the dg object.primarysmtpaddr (was adg.samaccountname), if the adg.sama didn't match the alias, that woulda caused failures. Seemd to work better in debugging
     # 1:51 PM 6/30/201:51 PM 6/30/2021 trying to work around sporadic $oSG add-mailboxperm fails, played with -user $osg designator - couldn't use DN, went back to samacctname, but added explicit RETRY echos on failretries (was visible evid at least one retry was in mix) ; hardened up the report gathers - stuck thge get-s in a try/catch ahead of echos, (vs inlines) ; we'll see if the above improve the issue - another option is to build something that can parse the splt echo back into a functional splat, to at least make remediation easier (copy, convert, rerun on fly).
     # 4:21 PM 5/19/2021 added -ea STOP to splats, to force retry's to trigger
     # 5:03 PM 5/18/2021 fixed the fundementally borked start-log I created below
@@ -673,6 +675,13 @@ function add-MailboxAccessGrant {
                 $smsg = "`$oSG.DN:$($oSG.DistinguishedName)" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Debug } ; #Error|Warn
             } ;
+
+            # 4:16 PM 8/16/2021 nope, it's not dg-enabled yet, it's a secgrp, can't pull it.
+            # try flipping the $osg adg, to a resolved equiv dg obj, and use it's primarysmtpaddress rather than the adg.samaccountname (which may not match the alias, as an id). The dG should be a native rcp obj better fit to the add-mailboxperm cmd
+            $oDG = get-distributiongroup -DomainController $InputSplat.DomainController -Identity $osg.DistinguishedName -ErrorAction 'STOP' ;
+            #$SGUpdtSplat.Identity = $DGEnableSplat.Identity = $DGUpdtSplat.Identity = $GrantSplat.User = $ADMbxGrantSplat.User = $oSG.samaccountname ;
+            $GrantSplat.User = $ADMbxGrantSplat.User = $oDG.primarysmtpaddress ;
+
             # _append_ the $InfoStr into any existing Info for the object
             # can't use [ordered] on psv2 if we must have these in order use a psv2 OrderedDictionary
             if (($host.version.major) -lt 3) {
@@ -782,7 +791,7 @@ function add-MailboxAccessGrant {
 
             $smsg = "---`nWhatif $($SGSplat.Name) creation...";
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-
+            # unlike most other modules, ADMS and it's new-ADGroup does *not* return the created object. Have to qry the object back, cold. 
             New-AdGroup @SGSplat -whatif ;
             $DGEnableSplat.identity = $SGSplat.SamAccountName ;
             $DGUpdtSplat.identity = $SGSplat.SamAccountName ;
@@ -811,13 +820,19 @@ function add-MailboxAccessGrant {
                     } ;
                     $smsg = "Enable-DistributionGroup w`n$(($DGEnableSplat|out-string).trim())" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
-                    Enable-DistributionGroup @DGEnableSplat ;
+                    # capture the enabl - EMS ps returns the intact $osg DG object
+                    $oDG = Enable-DistributionGroup @DGEnableSplat ;
                     $smsg = "Set HiddenFromAddressListsEnabled:Set-DistributionGroup w`n$(($DGUpdtSplat|out-string).trim())" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
+                    # but set-dg does *not* return the updated object, it has to be re-queried for current status. 
                     Set-DistributionGroup @DGUpdtSplat ;
                     $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -prop * -server $($InputSplat.DomainController) -ErrorAction stop;
                     $smsg = "Final SecGrp Config:$($oSG.SamAccountname)`n:$(($oSG | fl Name,GroupCategory,GroupScope,msExchRecipientDisplayType,showInAddressBook,mail|out-string).trim())" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
+                    # qry back updated status
+                    $oDG = get-distributiongroup -DomainController $InputSplat.DomainController -Identity $oDG.DistinguishedName -ErrorAction 'STOP' ;
+                    #$SGUpdtSplat.Identity = $DGEnableSplat.Identity = $DGUpdtSplat.Identity = $GrantSplat.User = $ADMbxGrantSplat.User = $oSG.samaccountname ;
+                    $GrantSplat.User = $ADMbxGrantSplat.User = $oDG.primarysmtpaddress ;
                 } ;
             } else { $smsg = "INVALID KEY ABORTING NO CHANGE!" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; Exit ; } ;
         } # if-E $osg
@@ -828,7 +843,8 @@ function add-MailboxAccessGrant {
             $ExistMbrs = @() ;
             # 11:27 AM 6/23/2017 typo, vari with no leading $
             $oSG | Get-ADGroupMember -server $($DomainController) | Select-Object -ExpandProperty sAMAccountName | ForEach-Object { $ExistMbrs += $_ } ;
-            $SGUpdtSplat.Identity = $DGEnableSplat.Identity = $DGUpdtSplat.Identity = $GrantSplat.User = $ADMbxGrantSplat.User = $oSG.samaccountname ;
+            # but use the native adg.samaccountname for the ad-related methods
+            $DGEnableSplat.Identity = $DGUpdtSplat.Identity = $SGUpdtSplat.Identity = $oSG.samaccountname ;
             # stack below on one line, ensure they line up.
             <#$DGEnableSplat.Identity = $oSG.samaccountname ;
             $DGUpdtSplat.Identity = $oSG.samaccountname ;
@@ -940,7 +956,8 @@ function add-MailboxAccessGrant {
                     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 } ; 
                 Try {
-                    add-mailboxpermission @GrantSplat -whatif ;
+                     # capture returned added perms (not full perms on mbx)
+                    $addedmbxp = add-mailboxpermission @GrantSplat -whatif ;
                     $Exit = $Retries ;
                 } Catch {
                     $ErrTrapd = $Error[0] ;
@@ -967,7 +984,8 @@ function add-MailboxAccessGrant {
                     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 } ; 
                 Try {
-                    add-adpermission -identity $($TMbx.Identity) @ADMbxGrantSplat -whatif ;
+                    # capture returned added perms (not full perms on mbx)
+                    $addedadmbxp = add-adpermission -identity $($TMbx.Identity) @ADMbxGrantSplat -whatif ;
                     $Exit = $Retries ;
                 } Catch {
                     $ErrTrapd = $Error[0] ;

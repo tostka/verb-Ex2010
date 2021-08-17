@@ -17,6 +17,7 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 1:17 PM 8/17/2021 added -silent param
     * 4:31 PM 5/18/2l lost $global:credOpTORSID, sub in $global:credTORSID
     * 10:52 AM 4/2/2021 updated cbh
     * 1:56 PM 3/31/2021 rewrote to dyn detect pss, rather than reading out of date vari
@@ -45,8 +46,11 @@ Function Reconnect-Ex2010 {
     [Alias('rx10','rxOP','reconnect-ExOP')]
     Param(
         [Parameter(HelpMessage="Credential to use for this connection [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
-        $Credential = $global:credTORSID
+        $Credential = $global:credTORSID,
+        [Parameter(HelpMessage="Silent output (suppress status echos)[-silent]")]
+        [switch] $silent
     )
+
     # checking stat on canned copy of hist sess, says nothing about current, possibly timed out, check them manually
     $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
     # back the TenOrg out of the Credential
@@ -84,9 +88,11 @@ Function Reconnect-Ex2010 {
     } ;
     $propsPss =  'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ;
     if($bExistingREms){
-        $smsg = "existing connection Open/Available:`n$(($tSess| ft -auto $propsPss |out-string).trim())" ;
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        if($silent){} else { 
+            $smsg = "existing connection Open/Available:`n$(($tSess| ft -auto $propsPss |out-string).trim())" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        } ; 
     } else {
         $smsg = "(resetting any existing EX10 connection and re-establishing)" ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug

@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.81.0
+Version     : 1.1.83.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -73,6 +73,8 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    # 3:21 PM 8/17/2021 recoded grabbing outputs, on object creations in EMS, tho' AD object creations generate no proper output. functoinal on current ticket.
+    # 4:48 PM 8/16/2021 still wrestling grant fails, switched the *permission -user targets to the dg object.primarysmtpaddr (was adg.samaccountname), if the adg.sama didn't match the alias, that woulda caused failures. Seemd to work better in debugging
     # 1:51 PM 6/30/201:51 PM 6/30/2021 trying to work around sporadic $oSG add-mailboxperm fails, played with -user $osg designator - couldn't use DN, went back to samacctname, but added explicit RETRY echos on failretries (was visible evid at least one retry was in mix) ; hardened up the report gathers - stuck thge get-s in a try/catch ahead of echos, (vs inlines) ; we'll see if the above improve the issue - another option is to build something that can parse the splt echo back into a functional splat, to at least make remediation easier (copy, convert, rerun on fly).
     # 4:21 PM 5/19/2021 added -ea STOP to splats, to force retry's to trigger
     # 5:03 PM 5/18/2021 fixed the fundementally borked start-log I created below
@@ -731,6 +733,13 @@ function add-MailboxAccessGrant {
                 $smsg = "`$oSG.DN:$($oSG.DistinguishedName)" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Debug } ; #Error|Warn
             } ;
+
+            # 4:16 PM 8/16/2021 nope, it's not dg-enabled yet, it's a secgrp, can't pull it.
+            # try flipping the $osg adg, to a resolved equiv dg obj, and use it's primarysmtpaddress rather than the adg.samaccountname (which may not match the alias, as an id). The dG should be a native rcp obj better fit to the add-mailboxperm cmd
+            $oDG = get-distributiongroup -DomainController $InputSplat.DomainController -Identity $osg.DistinguishedName -ErrorAction 'STOP' ;
+            #$SGUpdtSplat.Identity = $DGEnableSplat.Identity = $DGUpdtSplat.Identity = $GrantSplat.User = $ADMbxGrantSplat.User = $oSG.samaccountname ;
+            $GrantSplat.User = $ADMbxGrantSplat.User = $oDG.primarysmtpaddress ;
+
             # _append_ the $InfoStr into any existing Info for the object
             # can't use [ordered] on psv2 if we must have these in order use a psv2 OrderedDictionary
             if (($host.version.major) -lt 3) {
@@ -840,7 +849,7 @@ function add-MailboxAccessGrant {
 
             $smsg = "---`nWhatif $($SGSplat.Name) creation...";
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-
+            # unlike most other modules, ADMS and it's new-ADGroup does *not* return the created object. Have to qry the object back, cold. 
             New-AdGroup @SGSplat -whatif ;
             $DGEnableSplat.identity = $SGSplat.SamAccountName ;
             $DGUpdtSplat.identity = $SGSplat.SamAccountName ;
@@ -869,13 +878,19 @@ function add-MailboxAccessGrant {
                     } ;
                     $smsg = "Enable-DistributionGroup w`n$(($DGEnableSplat|out-string).trim())" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
-                    Enable-DistributionGroup @DGEnableSplat ;
+                    # capture the enabl - EMS ps returns the intact $osg DG object
+                    $oDG = Enable-DistributionGroup @DGEnableSplat ;
                     $smsg = "Set HiddenFromAddressListsEnabled:Set-DistributionGroup w`n$(($DGUpdtSplat|out-string).trim())" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
+                    # but set-dg does *not* return the updated object, it has to be re-queried for current status. 
                     Set-DistributionGroup @DGUpdtSplat ;
                     $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -prop * -server $($InputSplat.DomainController) -ErrorAction stop;
                     $smsg = "Final SecGrp Config:$($oSG.SamAccountname)`n:$(($oSG | fl Name,GroupCategory,GroupScope,msExchRecipientDisplayType,showInAddressBook,mail|out-string).trim())" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
+                    # qry back updated status
+                    $oDG = get-distributiongroup -DomainController $InputSplat.DomainController -Identity $oDG.DistinguishedName -ErrorAction 'STOP' ;
+                    #$SGUpdtSplat.Identity = $DGEnableSplat.Identity = $DGUpdtSplat.Identity = $GrantSplat.User = $ADMbxGrantSplat.User = $oSG.samaccountname ;
+                    $GrantSplat.User = $ADMbxGrantSplat.User = $oDG.primarysmtpaddress ;
                 } ;
             } else { $smsg = "INVALID KEY ABORTING NO CHANGE!" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; Exit ; } ;
         } # if-E $osg
@@ -886,7 +901,8 @@ function add-MailboxAccessGrant {
             $ExistMbrs = @() ;
             # 11:27 AM 6/23/2017 typo, vari with no leading $
             $oSG | Get-ADGroupMember -server $($DomainController) | Select-Object -ExpandProperty sAMAccountName | ForEach-Object { $ExistMbrs += $_ } ;
-            $SGUpdtSplat.Identity = $DGEnableSplat.Identity = $DGUpdtSplat.Identity = $GrantSplat.User = $ADMbxGrantSplat.User = $oSG.samaccountname ;
+            # but use the native adg.samaccountname for the ad-related methods
+            $DGEnableSplat.Identity = $DGUpdtSplat.Identity = $SGUpdtSplat.Identity = $oSG.samaccountname ;
             # stack below on one line, ensure they line up.
             <#$DGEnableSplat.Identity = $oSG.samaccountname ;
             $DGUpdtSplat.Identity = $oSG.samaccountname ;
@@ -998,7 +1014,8 @@ function add-MailboxAccessGrant {
                     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 } ; 
                 Try {
-                    add-mailboxpermission @GrantSplat -whatif ;
+                     # capture returned added perms (not full perms on mbx)
+                    $addedmbxp = add-mailboxpermission @GrantSplat -whatif ;
                     $Exit = $Retries ;
                 } Catch {
                     $ErrTrapd = $Error[0] ;
@@ -1025,7 +1042,8 @@ function add-MailboxAccessGrant {
                     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 } ; 
                 Try {
-                    add-adpermission -identity $($TMbx.Identity) @ADMbxGrantSplat -whatif ;
+                    # capture returned added perms (not full perms on mbx)
+                    $addedadmbxp = add-adpermission -identity $($TMbx.Identity) @ADMbxGrantSplat -whatif ;
                     $Exit = $Retries ;
                 } Catch {
                     $ErrTrapd = $Error[0] ;
@@ -5463,6 +5481,7 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 1:17 PM 8/17/2021 added -silent param
     * 4:31 PM 5/18/2l lost $global:credOpTORSID, sub in $global:credTORSID
     * 10:52 AM 4/2/2021 updated cbh
     * 1:56 PM 3/31/2021 rewrote to dyn detect pss, rather than reading out of date vari
@@ -5491,8 +5510,11 @@ Function Reconnect-Ex2010 {
     [Alias('rx10','rxOP','reconnect-ExOP')]
     Param(
         [Parameter(HelpMessage="Credential to use for this connection [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
-        $Credential = $global:credTORSID
+        $Credential = $global:credTORSID,
+        [Parameter(HelpMessage="Silent output (suppress status echos)[-silent]")]
+        [switch] $silent
     )
+
     # checking stat on canned copy of hist sess, says nothing about current, possibly timed out, check them manually
     $rgxRemsPSSName = "^(Session\d|Exchange\d{4})$" ;
     # back the TenOrg out of the Credential
@@ -5530,9 +5552,11 @@ Function Reconnect-Ex2010 {
     } ;
     $propsPss =  'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ;
     if($bExistingREms){
-        $smsg = "existing connection Open/Available:`n$(($tSess| ft -auto $propsPss |out-string).trim())" ;
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        if($silent){} else { 
+            $smsg = "existing connection Open/Available:`n$(($tSess| ft -auto $propsPss |out-string).trim())" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        } ; 
     } else {
         $smsg = "(resetting any existing EX10 connection and re-establishing)" ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
@@ -6034,8 +6058,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUI6jY2z6nuiRPCHSSKookllR5
-# o4igggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQYugtYgqR4cB00c/cVpkqnLJ
+# WhygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -6050,9 +6074,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSc1J2Y
-# fpMpTrXmC5CuLqiwBbs/8TANBgkqhkiG9w0BAQEFAASBgAb0qnJ0oiwgmz+syPTn
-# 99IdXuH9/14tLv9cbv2/0FPoQ78X/c1YjHJTrwqA4UnY2wJwexAE5i2qqcUYsUlr
-# g4G/unxg7NInNWjurXfg0q8UZ+U/8gkKT+rbp2gawi5P8+Jvt3NTJf94a4Xgf1HD
-# vk/IseD9zX7EOUqyAfvOqJIq
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQdNJdf
+# NoVQkYatnKyYjI0U9Vn/czANBgkqhkiG9w0BAQEFAASBgAuIo4yjKepirjck5wbu
+# 4Z+EOXYpSwzUS63sgbnaXb6KUb4ipWAENJlV/CxUzOgFNO/MEMV+DxF+Qmzf/FFD
+# ODu4O9ytoY1uWJNbBxz7WUE8z8C0mthBZI+dD7YCcSbOR3zpt9SEE1ltIuZ6qKiU
+# of8eVABPduDFGqA2vhafccth
 # SIG # End signature block
