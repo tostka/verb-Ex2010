@@ -18,6 +18,7 @@ function resolve-RecipientEAP {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 3:27 PM 8/23/2021 revised patched in new preview-EAPUpdate() support; added default EAP cheatsheet output dump to console
     * 3:00 PM 8/19/2021 tested, fixed perrotpl issue (overly complicated rcpfltr), 
     pulls a single recipient back on a match on any domain. Considered running a 
     blanket 'get all matches' on each, and then post-filtering for target user(s) 
@@ -34,6 +35,8 @@ function resolve-RecipientEAP {
     Array of recipient descriptors: displayname, emailaddress, UPN, samaccountname[-recip some.user@domain.com]
     .PARAMETER useEXOv2
     Use EXOv2 (ExchangeOnlineManagement) over basic auth legacy connection [-useEXOv2]
+    .PARAMETER useAltFilter
+    Switch to attempt broad append '(existing) -AND (Alias -eq '`$(alias)' to eap.recipientfilter, rather than fancy search/replc on clauses (defaulted TRUE) [-useAltFilter]
     .INPUTS
     None. Does not accepted piped input.(.NET types, can add description)
     .OUTPUTS
@@ -60,8 +63,9 @@ function resolve-RecipientEAP {
         $Recipient,
         [Parameter(HelpMessage="Use EXOv2 (ExchangeOnlineManagement) over basic auth legacy connection [-useEXOv2]")]
         [switch] $useEXOv2,
-        [Parameter(HelpMessage="Use EXOv2 (ExchangeOnlineManagement) over basic auth legacy connection [-useEXOv2]")]
-        [switch] $outObject
+        [Parameter(HelpMessage="Switch to attempt broad append '(existing) -AND (Alias -eq '`$(alias)' to eap.recipientfilter, rather than fancy search/replc on clauses [-useAltFilter]")]
+        [switch] $useAltFilter=$true,
+        $showCheatsheet=$true
     ) ;
     BEGIN{
         $Verbose = ($VerbosePreference -eq 'Continue') ; 
@@ -70,6 +74,22 @@ function resolve-RecipientEAP {
         $rgxSamAcctNameTOR = "^\w{2,20}$" ; # up to 20k, the limit prior to win2k
         #$rgxSamAcctName = "^[^\/\\\[\]:;|=,+?<>@?]+$" # no char limit ;
         $propsEAPFiltering = 'EmailAddressPolicyEnabled','CustomAttribute5','primarysmtpaddress','Office','distinguishedname','Recipienttype','RecipientTypeDetails' ; 
+        $hCheatSheet = @"
+
+Email Address Policy AddressTemplate format variables:
+|Vari |Value
+|-----|-------------------------------------|
+|%d   |Display name                       
+|%g   |Given name                         
+|%i   |Middle initial                      
+|%m   |Exchange alias                      
+|%rxy |Replace all occurrences of x with y 
+|%rxx |Remove all occurrences of x         
+|%s   |Surname                 
+|%ng  |The first n letters of the givenname.
+|%ns  |The first n letters of the surname. 
+
+"@ ; 
         
         rx10 -Verbose:$false ; 
         #rxo  -Verbose:$false ; cmsol  -Verbose:$false ;
@@ -101,7 +121,8 @@ function resolve-RecipientEAP {
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
         $sw = [Diagnostics.Stopwatch]::StartNew();
-        $eaps = Get-EmailAddressPolicy ;
+        # use -warningaction silentlycontinue to suppress the 'WARNING: Recipient policy objects that don't contain e-mail address won't be shown unless you include the IncludeMailboxSettingOnlyPolicy'
+        $eaps = Get-EmailAddressPolicy -WarningAction 0 ;
         $sw.Stop() ;
         $eaps = $eaps | select $eapprops | sort Priority  ; 
         
@@ -138,9 +159,6 @@ function resolve-RecipientEAP {
 
         rx10 -Verbose:$false -silent ;
         $error.clear() ;
-
-
-
 
         $sw = [Diagnostics.Stopwatch]::StartNew();
         $hSum.OPRcp=get-recipient @pltgM -ea 0 |?{$_.recipienttypedetails -ne 'MailContact'}
@@ -209,31 +227,43 @@ The above settings need to exactly match one or more of the EAP's to generate th
                     $propsEAP = 'name','RecipientFilter','RecipientContainer','Priority','EnabledPrimarySMTPAddressTemplate',
                         'EnabledEmailAddressTemplates','DisabledEmailAddressTemplates','Enabled' ; 
                     $aliasmatch = $hSum.OPRcp.alias ;
+                    <#
                     $aliasClauseMatch = "Alias -ne `$null" ; # alias type original clause substring to find
                     $aliasClauseReplace = "Alias -eq '$($aliasmatch)'" ; # updated recipient-targeting updated clause to use for recipientpreview tests
                     $RecipientTypeMatch = "((RecipientType -eq 'UserMailbox') -or (RecipientType -eq 'MailUser'))" ; # recipienttype original clause substring to find
                     # updated recipient-targeting updated recipienttype clause to use for recipientpreview tests
                     $RecipientTypeReplace = "( Alias -eq '$($aliasmatch)') -AND ((RecipientType -eq 'UserMailbox') -or (RecipientType -eq 'MailUser'))"; 
-
+                    #>
+                    write-host "`n(Comparing to $(($Eaps|measure).count) EmailAddressPolicies for filter-match...)" ;
                     foreach($eap in $eaps){
+                        if(!$verbose){
+                            write-host "." -NoNewLine ;
+                        } ; 
                         $smsg = "`n`n==$($eap.name):$($eap.RecipientFilter)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                        # match to clauses, and sub in Alias -eq $Sum.OPRcp.alias to return solely the single user
-                        if($eap.RecipientFilter.indexof($aliasClauseMatch) -ge 0 ){
-                            $tmpfilter = $eap.recipientfilter.replace($aliasClauseMatch,$aliasClauseReplace) ; 
+                        if(!$useAltFilter){
+                            <# too complicated altfilter much simpler, always works
+                            # match to clauses, and sub in Alias -eq $Sum.OPRcp.alias to return solely the single user
+                            if($eap.RecipientFilter.indexof($aliasClauseMatch) -ge 0 ){
+                                $tmpfilter = $eap.recipientfilter.replace($aliasClauseMatch,$aliasClauseReplace) ; 
 
-                        } elseif( $eap.RecipientFilter.indexof($RecipientTypeMatch) -gt 0 ) {
-                            # match to recipienttype block, and add an alias filter -AND'd to the block
-                            $tmpfilter = $eap.recipientfilter.replace($RecipientTypeMatch,$RecipientTypeReplace) ;
-                        } else {
-                            # matched neither, throw an error, need to update the script to target the clause for the intended target.
-                            $smsg = "Unable to match $($EAP.name) a RecipentFilter clause...`n$($eap.RecipientFilter)`n" ;
-                            $smsg += "... to either:`nan $($aliasClauseMatch) clause`nor a $($RecipientTypeMatch ) clause!" ; 
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
-                            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            $tmpfilter = 'NOMATCH' ; 
-                        } ; ; 
+                            } elseif( $eap.RecipientFilter.indexof($RecipientTypeMatch) -gt 0 ) {
+                                # match to recipienttype block, and add an alias filter -AND'd to the block
+                                $tmpfilter = $eap.recipientfilter.replace($RecipientTypeMatch,$RecipientTypeReplace) ;
+                            } else {
+                                # matched neither, throw an error, need to update the script to target the clause for the intended target.
+                                $smsg = "Unable to match $($EAP.name) a RecipentFilter clause...`n$($eap.RecipientFilter)`n" ;
+                                $smsg += "... to either:`nan $($aliasClauseMatch) clause`nor a $($RecipientTypeMatch ) clause!" ; 
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+                                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                $tmpfilter = 'NOMATCH' ; 
+                            } ; ; 
+                            #>
+                        } else { 
+                            # try a simple (existing) -AND "Alias -eq '$($aliasmatch)'" filter mod
+                            $tmpfilter = "($($eap.recipientfilter)) -and (Alias -eq '$($aliasmatch)')" ; 
+                        } ; 
                         $smsg = "using `$tmpfilter recipientFilter:`n$($tmpfilter)" ;  
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
@@ -250,6 +280,7 @@ The above settings need to exactly match one or more of the EAP's to generate th
                         $sw = [Diagnostics.Stopwatch]::StartNew();
                         if($rcp =get-recipient @pltGRcpV| ?{$_.alias -eq $aliasmatch} ){
                             $sw.Stop() ;
+                            write-host "MATCHED!:$($Eap.name)`n" ;
                             $matchedEAP = $eap ;
                             $smsg = ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ; 
                             $smsg = "Matched OnPremRecipient $($Sum.OPRcp.alias) to EAP Preview grp:$($rcp.primarysmtpaddress)`n" ; 
@@ -257,6 +288,25 @@ The above settings need to exactly match one or more of the EAP's to generate th
                             $smsg += "EnabledEmailAddressTemplates:`n$(($eap | select -expand EnabledEmailAddressTemplates |out-string).trim())`n" ; 
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
+                            $genEml = preview-EAPUpdate  -eap $matchedEAP -Recipient $hSum.OPRcp -Verbose:($VerbosePreference -eq 'Continue')
+                            if($geneml -ne $hSum.OPRcp.PrimarySmtpAddress){
+                                $smsg = "`n===Specified recip's PrimarySmtpAddress ($hSum.OPRcp.PrimarySmtpAddress))`n"
+                                $smsg += "does *not* appear to match specified template!`n" ; 
+                                $smsg += "*manualy review* the template specs *validate*`n"
+                                $smsg += "that the desired scheme is being applied!`n==="
+                                #write-warning $smsg ; 
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+                                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            }else {
+                                $smsg = "`n===PrimarysmtpAddr $($hSum.OPRcp.PrimarySmtpAddress))`n"
+                                $smsg += "roughly conforms to specified template primary addr`n" ;
+                                $smsg += "$($matchedEAP.EnabledPrimarySMTPAddressTemplate)...===`n" ;
+                                #write-host -foregroundcolor Green $smsg ;
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                                else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                            } ;
+
                             break ;
                         } else {
                             $sw.Stop() ;
@@ -264,8 +314,12 @@ The above settings need to exactly match one or more of the EAP's to generate th
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                             else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
                         } ;
-                    };
-                
+                    }; # E-loop
+                    
+                    if($showCheatsheet){
+                        write-host $hCheatSheet
+                    } ; 
+
                 } CATCH {
                     $ErrTrapd=$Error[0] ;
                     $smsg = "Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
@@ -288,7 +342,9 @@ The above settings need to exactly match one or more of the EAP's to generate th
     } #  PROC-E
     END{
         if( $matchedEAP){
+            
             $matchedEAP | write-output ; 
+
         } else { 
             $smsg = "Failed to resolve specified recipient $($user) to a matching EmailAddressPolicy" ; 
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
@@ -299,6 +355,7 @@ The above settings need to exactly match one or more of the EAP's to generate th
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
      }
- }
 
+     #*======^ END SUB MAIN ^======
+ } ;
 #*------^ resolve-RecipientEAP.ps1 ^------
