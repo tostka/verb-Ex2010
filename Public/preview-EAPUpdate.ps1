@@ -18,14 +18,18 @@
         AddedWebsite: URL
         AddedTwitter: URL
         REVISIONS
-        * 2:00 PM 8/23/2021 added drop of illegal chars (shows up distinctively as spaces in dname :P); fixed bug in regex ps replace; haven't ested balance of fancy substring replace options; %g, %s working.
+        * 3:45 PM 8/23/2021 added extended examples, made a function (adding to 
+        verb-ex2010); added drop of illegal chars (shows up distinctively as spaces in 
+        dname :P); fixed bug in regex ps replace;  
         .DESCRIPTION
         preview-EAPUpdate.ps1 - Code to approximate EmailAddressTemplate-generated email addresses
-        Note: This is a quick & dirty *approximation* of the generated email address. Doesn't support multiple %rxy replaces on mult format codes. Just does the first one; plus any non-replace %d|s|i|m|g's. 
-        Don't rely on this, it's just intended to quickly confirm assigned primarysmtpaddress roughly matches the intended EAP template.
-        If it doesn't, put eyes on it and confirm, don't use this to drive any revision of the email address!
+        Note: This is a quick & dirty *approximation* of the generated email address. 
+        Doesn't support multiple %rxy replaces on mult format codes. Just does the first one; plus any non-replace %d|s|i|m|g's. 
 
-        Latest specs:[Email address policies in Exchange Server | Microsoft Docs - docs.microsoft.com/](https://docs.microsoft.com/en-us/exchange/email-addresses-and-address-books/email-address-policies/email-address-policies?view=exchserver-2019)
+        Don't *rely* on this. It's just intended to quickly confirm assigned primarysmtpaddress roughly matches the intended EAP template.
+        If it doesn't, put eyes on it and *confirm*, don't use this to drive any revision of the email address!
+
+        Latest ref specs:[Email address policies in Exchange Server | Microsoft Docs - docs.microsoft.com/](https://docs.microsoft.com/en-us/exchange/email-addresses-and-address-books/email-address-policies/email-address-policies?view=exchserver-2019)
 
         Address types: SMTP| GWISE| NOTES| X400
         Address format variables:
@@ -81,8 +85,7 @@
         .INPUTS
         None. Does not accepted piped input.(.NET types, can add description)
         .OUTPUTS
-        None. Returns no objects or output (.NET types)
-        System.Boolean
+        System.String
         [| get-member the output to see what .NET obj TypeName is returned, to use here]
         .EXAMPLE
         PS> preview-EAPUpdate  -eap $eaps[16] -Recipient $trcp -verbose ;
