@@ -15,6 +15,7 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    # 10:27 AM 9/14/2021 beefed up echos w 7pswhsplat's pre
     # 3:21 PM 8/17/2021 recoded grabbing outputs, on object creations in EMS, tho' AD object creations generate no proper output. functoinal on current ticket.
     # 4:48 PM 8/16/2021 still wrestling grant fails, switched the *permission -user targets to the dg object.primarysmtpaddr (was adg.samaccountname), if the adg.sama didn't match the alias, that woulda caused failures. Seemd to work better in debugging
     # 1:51 PM 6/30/201:51 PM 6/30/2021 trying to work around sporadic $oSG add-mailboxperm fails, played with -user $osg designator - couldn't use DN, went back to samacctname, but added explicit RETRY echos on failretries (was visible evid at least one retry was in mix) ; hardened up the report gathers - stuck thge get-s in a try/catch ahead of echos, (vs inlines) ; we'll see if the above improve the issue - another option is to build something that can parse the splt echo back into a functional splat, to at least make remediation easier (copy, convert, rerun on fly).
@@ -973,8 +974,11 @@ function add-MailboxAccessGrant {
                 } # try-E
             } Until ($Exit -eq $Retries) # loop-E
 
-            $smsg = "Add-ADPermission -whatif... w`n$(($ADMbxGrantSplat|out-string).trim())" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
+            #$smsg = "Add-ADPermission -whatif... w`n$(($ADMbxGrantSplat|out-string).trim())" ;
+            #if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
+            $smsg = "add-adpermission w`n-identity $($TMbx.Identity)`n$(($ADMbxGrantSplat|out-string).trim())" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
 
             $Exit = 0 ;
             Do {
@@ -1003,8 +1007,9 @@ function add-MailboxAccessGrant {
                 # 11:17 AM 6/22/2015 whatif-only pass
                 write-verbose "SKIPPING EXEC: Whatif-only pass";
             } else {
-                write-host -foregroundcolor red "$((get-date).ToString("HH:mm:ss")):EXEC Add-MailboxPermission...";
-
+                $smsg = "add-mailboxpermission w`n$(($GrantSplat|out-string).trim())" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 $Exit = 0 ;
                 # do loop until up to 4 retries...
                 Do {
@@ -1066,13 +1071,21 @@ function add-MailboxAccessGrant {
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
 
                     if ($tdl = get-DistributionGroup -identity $grpN -domaincontroller $($InputSplat.domaincontroller) ) {
-                        "==Add $($TMbx.name) to $($tdl.alias):" ;
+                        
+                        $pltAddDGM=@{
+                            identity=$tdl.alias ;Member=$TMbx.distinguishedname; domaincontroller=$($InputSplat.domaincontroller) ;whatif=$($whatif);ErrorAction='STOP';
+                        } ; 
 
+                        $smsg = "==Add $($TMbx.name) to $($tdl.alias):" ;
+                        $smsg += "`nadd-DistributionGroupMember w`n$(($pltAddDGM|out-string).trim())" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;                        
                         $Exit = 0 ;
                         # do loop until up to 4 retries...
                         Do {
                             Try {
-                                add-DistributionGroupMember -identity $tdl.alias -Member $TMbx.distinguishedname -domaincontroller $($InputSplat.domaincontroller) -whatif:$($whatif) ;
+                                add-DistributionGroupMember @pltAddDGM ;
+                                #-identity $tdl.alias -Member $TMbx.distinguishedname -domaincontroller $($InputSplat.domaincontroller) -whatif:$($whatif) ;
 
                                 $Exit = $Retries ;
                             } Catch {
