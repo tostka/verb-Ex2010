@@ -15,6 +15,7 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    # 11:36 AM 9/16/2021 string
     # 10:27 AM 9/14/2021 beefed up echos w 7pswhsplat's pre
     # 3:21 PM 8/17/2021 recoded grabbing outputs, on object creations in EMS, tho' AD object creations generate no proper output. functoinal on current ticket.
     # 4:48 PM 8/16/2021 still wrestling grant fails, switched the *permission -user targets to the dg object.primarysmtpaddr (was adg.samaccountname), if the adg.sama didn't match the alias, that woulda caused failures. Seemd to work better in debugging
@@ -155,7 +156,7 @@ function add-MailboxAccessGrant {
     .OUTPUTS
     None. Returns no objects or output.
     .EXAMPLE
-    .\add-MailboxAccessGrant -ticket 123456 -SiteOverride LYN -TargetID lynctest13 -Owner kadrits -PermsDays 999 -members "lynctest16,lynctest18" -showDebug -whatIf ;
+    .\add-MailboxAccessGrant -ticket 123456 -SiteOverride LYN -TargetID lynctest13 -Owner SOMERECIP -PermsDays 999 -members "lynctest16,lynctest18" -showDebug -whatIf ;
     Parameter Whatif test with Debug messages displayed
     .EXAMPLE
     $pltInput=[ordered]@{} ;
@@ -766,7 +767,7 @@ function add-MailboxAccessGrant {
             $SGSplat.ManagedBy = $($InputSplat.Owner);
             $SGSplat.Description = "Email - access to $($Tmbx.displayname)'s mailbox";
             $SGSplat.Server = $($InputSplat.DomainController) ;
-            # build the Notes/Info field as a hashcode: OtherAttributes=@{    info="TargetMbx:kadrits`r`nPermsExpire:6/19/2015"  } ;
+            # build the Notes/Info field as a hashcode: OtherAttributes=@{    info="TargetMbx:SOMERECIP`r`nPermsExpire:6/19/2015"  } ;
             $SGSplat.OtherAttributes = @{info = $($Infostr) } ;
 
 

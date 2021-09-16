@@ -18,6 +18,7 @@ function resolve-RecipientEAP {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 11:21 AM 9/16/2021 string clean
     * 3:27 PM 8/23/2021 revised patched in new preview-EAPUpdate() support; added 
     default EAP cheatsheet output dump to console; suppress get-EAP warning ; 
     revised recipientfilter support to simple ($(existingRcpFltr) -AND (alias -eq $rcp.alias)).
@@ -45,7 +46,7 @@ function resolve-RecipientEAP {
     .OUTPUTS
     System.Management.Automation.PSCustomObject of matching EAP
     .EXAMPLE
-    PS> $matchedEAP = resolve-RecipientEAP -rec todd.kadrie@toro.com -verbose ;
+    PS> $matchedEAP = resolve-RecipientEAP -rec SOMEACCT@DOMAIN.COM -verbose ;
     PS> if($matchedEAP){"User matches $($matchedEAP.name"} else { "user matches *NO* existing EAP! (re-run with -verbose for further details)" } ; 
     .EXAMPLE
     "user1@domain.com","user2@domain.com"|%{resolve-RecipientEAP -rec $_ -verbose} ; 
