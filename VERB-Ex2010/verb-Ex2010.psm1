@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.86.0
+Version     : 1.1.87.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -73,6 +73,7 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    # 11:36 AM 9/16/2021 string
     # 10:27 AM 9/14/2021 beefed up echos w 7pswhsplat's pre
     # 3:21 PM 8/17/2021 recoded grabbing outputs, on object creations in EMS, tho' AD object creations generate no proper output. functoinal on current ticket.
     # 4:48 PM 8/16/2021 still wrestling grant fails, switched the *permission -user targets to the dg object.primarysmtpaddr (was adg.samaccountname), if the adg.sama didn't match the alias, that woulda caused failures. Seemd to work better in debugging
@@ -213,7 +214,7 @@ function add-MailboxAccessGrant {
     .OUTPUTS
     None. Returns no objects or output.
     .EXAMPLE
-    .\add-MailboxAccessGrant -ticket 123456 -SiteOverride LYN -TargetID lynctest13 -Owner kadrits -PermsDays 999 -members "lynctest16,lynctest18" -showDebug -whatIf ;
+    .\add-MailboxAccessGrant -ticket 123456 -SiteOverride LYN -TargetID lynctest13 -Owner SOMERECIP -PermsDays 999 -members "lynctest16,lynctest18" -showDebug -whatIf ;
     Parameter Whatif test with Debug messages displayed
     .EXAMPLE
     $pltInput=[ordered]@{} ;
@@ -824,7 +825,7 @@ function add-MailboxAccessGrant {
             $SGSplat.ManagedBy = $($InputSplat.Owner);
             $SGSplat.Description = "Email - access to $($Tmbx.displayname)'s mailbox";
             $SGSplat.Server = $($InputSplat.DomainController) ;
-            # build the Notes/Info field as a hashcode: OtherAttributes=@{    info="TargetMbx:kadrits`r`nPermsExpire:6/19/2015"  } ;
+            # build the Notes/Info field as a hashcode: OtherAttributes=@{    info="TargetMbx:SOMERECIP`r`nPermsExpire:6/19/2015"  } ;
             $SGSplat.OtherAttributes = @{info = $($Infostr) } ;
 
 
@@ -3622,6 +3623,7 @@ function new-MailboxGenericTOR {
     Github      : https://github.com/tostka/verb-ex2010
     Tags        : Exchange,ExchangeOnPremises,Mailbox,Creation,Maintenance,UserMailbox
     REVISIONS
+    * 11:37 AM 9/16/2021 string
     * 8:55 AM 5/11/2021 functionalized into verb-ex2010 ; ren: internal helper func Cleanup() -> _cleanup() ; subbed some wv -v:v,=> wh (silly to use wv, w force display; should use it solely for optional verbose details
     # 2:35 PM 4/3/2020 genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules
     # 8:48 AM 11/26/2019 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office 
@@ -6292,6 +6294,7 @@ function resolve-RecipientEAP {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 11:21 AM 9/16/2021 string clean
     * 3:27 PM 8/23/2021 revised patched in new preview-EAPUpdate() support; added 
     default EAP cheatsheet output dump to console; suppress get-EAP warning ; 
     revised recipientfilter support to simple ($(existingRcpFltr) -AND (alias -eq $rcp.alias)).
@@ -6319,7 +6322,7 @@ function resolve-RecipientEAP {
     .OUTPUTS
     System.Management.Automation.PSCustomObject of matching EAP
     .EXAMPLE
-    PS> $matchedEAP = resolve-RecipientEAP -rec todd.kadrie@toro.com -verbose ;
+    PS> $matchedEAP = resolve-RecipientEAP -rec SOMEACCT@DOMAIN.COM -verbose ;
     PS> if($matchedEAP){"User matches $($matchedEAP.name"} else { "user matches *NO* existing EAP! (re-run with -verbose for further details)" } ; 
     .EXAMPLE
     "user1@domain.com","user2@domain.com"|%{resolve-RecipientEAP -rec $_ -verbose} ; 
@@ -6824,8 +6827,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUOKZtVNIN0537C8M2+uwfUJST
-# fmOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU/t1i9yY6N2VIyccuAa4vnNBL
+# KL+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -6840,9 +6843,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRQFIpT
-# 4ikVQt53Llr+b1ncnQHoCjANBgkqhkiG9w0BAQEFAASBgH3lOEzra+YLy1Q8LvLU
-# 3dW3a2RIE2lrWUWFWoXhPc4quzuNl4Wx3fsv6Th8BL/TIpBYErEG2jHHZxiIbjnm
-# 7prqqJaW4tnRS6ANYOssoQ6jNg9aKjsjJXWi1lgeioue5nP13j5CR2yoA+tbyYH1
-# v2JjXjeVEOSNGljsQfdpxUVf
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTdRoFU
+# 6Kl2i/MwDLvFm1ImwqbiijANBgkqhkiG9w0BAQEFAASBgCslcIeNkRfsEFh6nN9i
+# Z8++Zsp2JZUA5saxYEsMXs4VcuXCGE4UVWgMuAm7uKOTEkEDgCeq6yqvBi2yroko
+# 2abym2YftjnF5FxfBJUxywa/XkBt+wla4FJEL25E/r+m/fmEf0AAcPeoc7i3KZ1w
+# TxqNVArn4DPP/+Jokc7iZFsS
 # SIG # End signature block
