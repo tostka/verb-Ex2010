@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.88.0
+Version     : 1.1.87.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -125,7 +125,7 @@ function add-MailboxAccessGrant {
     # 1:04 PM 2/24/2017 tweak below
     #12:56 PM 2/24/2017 doesn't run worth a damn LYN-> adl/spb, force it to abort (avoid half-built remote objects that take too long to replicate back to lyn)
     # 12:24 PM 2/24/2017 fixed updated membership report bug - pulled pipe, probably dehydrated object issue sin remote ps
-    # 12:11 PM 2/24/2017 fix vscode/code.exe char set damage: It replaced dashes (-) with "Ã¯Â¿Â½"
+    # 12:11 PM 2/24/2017 fix vscode/code.exe char set damage: It replaced dashes (-) with "ï¿½"
     # fix -join typo/damage
     # 12:44 PM 10/18/2016 update rgx for ticket to accommodate 5-digit (or 6) CW numbers "^\d{6}$"=>^\d{5,6}$
     # 9:11 AM 9/30/2016 added pretest if(get-command -name set-AdServerSettings -ea 0)
@@ -6827,8 +6827,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUJw26FENeyQagKinHJbsgKC0F
-# qNSgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU/t1i9yY6N2VIyccuAa4vnNBL
+# KL+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -6843,9 +6843,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT6Od0b
-# KGDoAMrskL0huhIPudpFCzANBgkqhkiG9w0BAQEFAASBgCCgZOQKkp44bul28c7O
-# Cr7lMQAb+ChZRdnkE64O+f+YAid9of07nN9L2ITNM5R8KstAn97Adwt2sEBKcNLa
-# ZEnWFXBChYQgUNs6osTVacNbmOKXfdBbemlcumoWzlanYdG3atoWQdWTm4D8A60k
-# gfJKA+ft0ZNMaJm48OnvuusJ
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTdRoFU
+# 6Kl2i/MwDLvFm1ImwqbiijANBgkqhkiG9w0BAQEFAASBgCslcIeNkRfsEFh6nN9i
+# Z8++Zsp2JZUA5saxYEsMXs4VcuXCGE4UVWgMuAm7uKOTEkEDgCeq6yqvBi2yroko
+# 2abym2YftjnF5FxfBJUxywa/XkBt+wla4FJEL25E/r+m/fmEf0AAcPeoc7i3KZ1w
+# TxqNVArn4DPP/+Jokc7iZFsS
 # SIG # End signature block
