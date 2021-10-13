@@ -1,7 +1,4 @@
-# add-MbxAccessGrant.ps1
-
-# dbg: TestScriptMbx2247115 dbg: cls ; .\add-MbxAccessGrant-mod.ps1 -ticket 99999  -TargetID TestScriptMbx2247115 -Owner LOGON -PermsDays 999 -members "LOGON" -NoPrompt -showDebug -domaincontroller SERVER -whatIf ;
-
+#*------v add-MbxAccessGrant.ps1 v------
 function add-MbxAccessGrant {
     <#
     .SYNOPSIS
@@ -21,6 +18,7 @@ function add-MbxAccessGrant {
     AddedWebsite: 
     AddedTwitter: 
     REVISIONS
+    # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     * 2:05 PM 4/27/2020 debugged, fully ported to published/installed use
     * 3:57 PM 4/9/2020 genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules
     * 2:30 PM 10/1/2019 fixed 2405 errant duped catch block post merge
@@ -203,7 +201,8 @@ function add-MbxAccessGrant {
         [Parameter(HelpMessage="Comma-delimited string of potential users to be granted access[name,emailaddr,alias]")]
         [string]$Members,
         [Parameter(HelpMessage="Incident number for the change request[[int]nnnnnn]")]
-        [int]$Ticket,
+        # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
+        $Ticket,
         [Parameter(HelpMessage="Suppress YYY confirmation prompts [-NoPrompt]")]
         [switch] $NoPrompt,
         [Parameter(HelpMessage="Option to hardcode a specific DC [-domaincontroller xxxx]")]
@@ -383,9 +382,11 @@ function add-MbxAccessGrant {
     } else { 
         add-MailboxAccessGrant @pltInput
     } ; 
-    _cleanup   ;
+    #_cleanup   ;
     #Exit ;
 
     #*======^ END SUB MAIN ^======
     #endregion SUBMAIN ; # ------
-} #*------^ END Function add-MbxAccessGrant ^------
+}
+
+#*------^ add-MbxAccessGrant.ps1 ^------
