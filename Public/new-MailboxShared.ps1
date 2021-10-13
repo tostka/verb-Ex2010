@@ -18,6 +18,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     # 10:01 AM 9/14/2021 had a random creation bug - but debugged fine in ISE (bad PSS?), beefed up Catch block outputs, captured new-mailbox output & recycled; added 7pswhsplat outputs prior to cmds.
     # 4:37 PM 5/18/2021 fixed broken start-log call (wasn't recycling logspec into logfile & transcrpt)
     # 11:10 AM 5/11/2021 swapped parentpath code for dyn module-support code (moving the new-mailboxgenerictor & add-mbxaccessgrant preproc .ps1's to ex2010 mod functions)
@@ -230,7 +231,8 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         [Parameter(HelpMessage="Optionally specify a 3-letter Site Code o force OU placement to vary from Owner's current site[3-letter Site code]")]
         [string]$SiteOverride,
         [Parameter(Mandatory=$true,HelpMessage="Incident number for the change request[[int]nnnnnn]")]
-        [int]$Ticket,
+        # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
+        $Ticket,
         [Parameter(HelpMessage="Option to hardcode a specific DC [-domaincontroller xxxx]")]
         [string]$domaincontroller,
         [Parameter(HelpMessage="Calling script path (used for log construction)[-ParentPath c:\pathto\script.ps1]")]
