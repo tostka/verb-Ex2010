@@ -1,27 +1,4 @@
-# new-MailboxGenericTOR.ps1
-
-# DEBUG LINES
-# 8:50 AM 11/26/2019 dbg: Clear-Host ; .\new-MailboxGenericTOR.ps1 -Ticket 99999 -DisplayName "TestScriptMbx20200407-1151AM" -MInitial "" -Owner LOGON -NonGeneric $false -SiteOverride SITE -Vscan YES -showDebug -whatif ;
-# 1:20 PM 10/4/2019 passes on new Room/Equip support
-# 12:16 PM 10/4/2019 tryout Room/Equip options:dbg: cls ; .\new-MailboxGenericTOR.ps1 -Ticket 99999 -DisplayName "TestScriptMbxRoom" -MInitial "" -Owner LOGON -NonGeneric $false -Room $true -SiteOverride SITECODE -Vscan YES -showDebug -whatif ;
-# 12:16 PM 10/4/2019 tryout Equip options:dbg: cls ; .\new-MailboxGenericTOR.ps1 -Ticket 99999 -DisplayName "TestScriptMbxEquip" -MInitial "" -Owner LOGON -NonGeneric $false -Equip  $true -SiteOverride SITECODE -Vscan YES -showDebug -whatif ;
-# 1:38 PM 6/13/2019 dbg: cls ; .\new-MailboxGenericTOR.ps1 -Ticket 99999 -DisplayName "TestScriptMbx" -MInitial "" -Owner LOGON -NonGeneric $false -SiteOverride SITECODE -Vscan YES -showDebug -whatif ;
-# 12:51 PM 6/12/2019 dbg: cls ; .\new-MailboxGenericTOR-function.ps1 -Ticket 421023 -DisplayName "General Accounting RedBeam" -MInitial "" -Owner LOGON -NonGeneric $false -SiteOverride SITECODE -Vscan YES -showDebug -whatif ;
-# 12:09 PM 4/1/2019 dbg: cls ; .\new-MailboxGenericTOR.ps1 -Ticket 99999 -DisplayName "Test ?????????L" -MInitial "" -Owner LOGON -NonGeneric $false -SiteOverride SITECODE -Vscan YES -showDebug -whatif ;
-# 10:18 AM 5/21/2018 testing LYNCmonacct1 creation (using -nongeneric for 1st time in a LONG time):
-# cls ; .\new-MailboxGenericTOR.ps1 -Ticket 99999 -DisplayName "LYNCMonAcct99" -MInitial "" -Owner LOGON -NonGeneric $true -SiteOverride SITECODE -Vscan YES -showDebug -whatif ;
-# 10:20 AM 10/5/2017 db cu5 support invoiceit@irritroleurope.com: Clear-Host ; Clear-Host ; .\new-MailboxGenericTOR.ps1 -ticket "171678" -DisplayName "invoiceit"  -MInitial "" -Owner "LOGON" -NonGeneric $false -Vscan YES -CU5 irritroleurope -showDebug -whatIf ;
-# 7:53 AM 6/7/2016 dbg: Clear-Host ; .\new-MailboxGenericTOR.ps1 -ticket "378194" -DisplayName "Sitecore Admin"  -MInitial "" -Owner "LOGON" -NonGeneric $false -Vscan YES -showDebug -whatIf ;
-# tshooting EMS local issues, this is the pre-load of EMS:
-# . 'C:\Program Files\Microsoft\Exchange Server\V14\bin\RemoteExchange.ps1'; Connect-ExchangeServer -auto ; (get-exchangeserver)[1]|out-null;
-# testing remote siteoverride & Vscan spec: clear-host ; .\new-MailboxGenericTOR.ps1 -ticket "999993" -DisplayName "Test NewGeneric7(Todd)"  -MInitial ""  -Owner "LOGON" -NonGeneric $false -Vscan NO -showDebug -whatIf ;
-# testing remote siteoverride & Vscan spec: clear-host ; .\new-MailboxGenericTOR.ps1 -ticket "999993" -DisplayName "Test NewGeneric4(Todd)"  -MInitial ""  -Owner "LOGON" -NonGeneric $false -Vscan NO -showDebug -whatIf ;
-# testing remote siteoverride & Vscan spec: clear-host ; .\new-MailboxGenericTOR.ps1 -ticket "999996" -DisplayName "Test NewGeneric2(Todd)"  -MInitial ""  -Owner "LOGON" -NonGeneric $false -Vscan YES -showDebug -whatIf ;
-# testing remote siteoverride & Vscan spec: clear-host ; .\new-MailboxGenericTOR.ps1 -ticket "999999" -DisplayName "Test NewGeneric(Todd)"  -MInitial ""  -Owner "LOGON" -NonGeneric $false -SiteOverride SITECODE -Vscan NO -showDebug -whatIf ;
-# testing remote siteoverride & Vscan spec: clear-host ; .\new-MailboxGenericTOR.ps1 -ticket "999999" -DisplayName "Test XXXOffboard"  -MInitial ""  -Owner "LOGON" -NonGeneric $false -SiteOverride OEV -Vscan NO -showDebug -whatIf ;
-# testing syntax NO BaseUSer: Clear-Host ; .\new-MailboxGenericTOR-20151006-1234PM.ps1 -ticket "355925" -DisplayName "XXX Confirms"  -MInitial ""  -Owner "LOGON" -showDebug -whatIf ;
-# testing syntax with BaseUSer: Clear-Host ; .\new-MailboxGenericTOR.ps1 -ticket "355925" -DisplayName "XXX Confirms"  -MInitial ""  -Owner "LOGON" -BaseUser "AccountsReceivable" -showDebug -whatIf ;
-
+#*------v new-MailboxGenericTOR.ps1 v------
 function new-MailboxGenericTOR {
 
     <#
@@ -39,6 +16,7 @@ function new-MailboxGenericTOR {
     Github      : https://github.com/tostka/verb-ex2010
     Tags        : Exchange,ExchangeOnPremises,Mailbox,Creation,Maintenance,UserMailbox
     REVISIONS
+    # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     * 11:37 AM 9/16/2021 string
     * 8:55 AM 5/11/2021 functionalized into verb-ex2010 ; ren: internal helper func Cleanup() -> _cleanup() ; subbed some wv -v:v,=> wh (silly to use wv, w force display; should use it solely for optional verbose details
     # 2:35 PM 4/3/2020 genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules
@@ -290,7 +268,8 @@ function new-MailboxGenericTOR {
         [Parameter(HelpMessage="Optionally specify a 3-letter Site Code o force OU placement to vary from Owner's current site[3-letter Site code]")]
         [string]$SiteOverride,
         [Parameter(Mandatory=$true,HelpMessage="Incident number for the change request[[int]nnnnnn]")]
-        [int]$Ticket,
+        # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
+        $Ticket,
         [Parameter(HelpMessage="Option to hardcode a specific DC [-domaincontroller xxxx]")]
         [string]$domaincontroller,
     	[Parameter(Mandatory=$FALSE,HelpMessage="TenantTag value, indicating Tenants to connect to[-TenOrg 'TOL']")]
@@ -521,10 +500,11 @@ function new-MailboxGenericTOR {
         new-MailboxShared @pltInput
     } ; 
     # shift exit work into _cleanup function ;
-    _cleanup ;
+    #_cleanup ;
     #Exit ;
 
     #*======^ END SUB MAIN ^======
     #endregion SUBMAIN ; # ------
-} ;
-#*------^ END Function new-MailboxGenericTOR  ^------
+}
+
+#*------^ new-MailboxGenericTOR.ps1 ^------
