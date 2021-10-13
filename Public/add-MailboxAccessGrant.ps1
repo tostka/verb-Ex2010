@@ -15,6 +15,7 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    # 5:12 PM 10/13/2021 fixed long standing random add-adgroupmember bug (failed to see target sg/dg), by swapping in ADGM ex cmd;  pulled [int] from $ticket , to permit non-numeric & multi-tix
     # 11:36 AM 9/16/2021 string
     # 10:27 AM 9/14/2021 beefed up echos w 7pswhsplat's pre
     # 3:21 PM 8/17/2021 recoded grabbing outputs, on object creations in EMS, tho' AD object creations generate no proper output. functoinal on current ticket.
@@ -208,7 +209,8 @@ function add-MailboxAccessGrant {
         [Parameter(HelpMessage = "Comma-delimited string of potential users to be granted access[name,emailaddr,alias]")]
         [string]$Members,
         [Parameter(HelpMessage = "Incident number for the change request[[int]nnnnnn]")]
-        [int]$Ticket,
+        # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
+        $Ticket,
         [Parameter(HelpMessage = "Suppress YYY confirmation prompts [-NoPrompt]")]
         [switch] $NoPrompt,
         [Parameter(HelpMessage = "Option to hardcode a specific DC [-domaincontroller xxxx]")]
@@ -659,7 +661,8 @@ function add-MailboxAccessGrant {
         $SGSplat.Path = $OU ;
         $smsg = "Checking specified SecGrp Members..." ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-        $SGMembers = ($InputSplat.members.split(",") | ForEach-Object { get-recipient $_ -ea stop })
+        # 3:50 PM 10/13/2021 flip ea stop to continue, we want it to get through, even if it throws error, and continue will complain
+        $SGMembers = ($InputSplat.members.split(",") | ForEach-Object { get-recipient $_ -ea continue | select -expand primarysmtpaddress  | select -unique})
         $smsg = "Checking for existing $($SGSplat.DisplayName)..." ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
 
@@ -841,41 +844,10 @@ function add-MailboxAccessGrant {
 
         $smsg = "`nTesting SecGrp Members Add `nto group: $($oSG.Name)" ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
-        if ($oSG) {
-            $ExistMbrs = @() ;
-            # 11:27 AM 6/23/2017 typo, vari with no leading $
-            $oSG | Get-ADGroupMember -server $($DomainController) | Select-Object -ExpandProperty sAMAccountName | ForEach-Object { $ExistMbrs += $_ } ;
-            # but use the native adg.samaccountname for the ad-related methods
+        if ($oSG -AND $oDG) {
+            
             $DGEnableSplat.Identity = $DGUpdtSplat.Identity = $SGUpdtSplat.Identity = $oSG.samaccountname ;
-            # stack below on one line, ensure they line up.
-            <#$DGEnableSplat.Identity = $oSG.samaccountname ;
-            $DGUpdtSplat.Identity = $oSG.samaccountname ;
-            $GrantSplat.User = $($oSG.SamAccountName); # $osG.Samaccountname: 'ELC-SEC-Email-ToroAgSupport-G'
-            $ADMbxGrantSplat.User = $($oSG.SamAccountName);
-            #>
-            <# 12:30 PM 6/30/2021 sporadic error: 2x retries
-            #-=-=-=-=-=-=-=-=
-            Add-MailboxPermission -whatif w
-            Name                           Value
-            ----                           -----
-            Identity                       ToroAgSupport
-            User                           ELC-SEC-Email-ToroAgSupport-G
-            AccessRights                   FullAccess
-            InheritanceType                All
-            ErrorAction                    STOP
-            DomainController               LYNMS812
-            Couldn't resolve the user or group "ELC-SEC-Email-ToroAgSupport-G." If the user or group is a foreign forest principal,
-            you must have either a two-way trust or an outgoing trust.
-                + CategoryInfo          : InvalidOperation: (:) [Add-MailboxPermission], LocalizedException
-                + FullyQualifiedErrorId : E4BAC784,Microsoft.Exchange.Management.RecipientTasks.AddMailboxPermission
-                + PSComputerName        : bccms650.global.ad.toro.com
-            Couldn't resolve the user or group "ELC-SEC-Email-ToroAgSupport-G." If the user or group is a foreign forest principal, you must have either a two-way trust or an outgoing trust.
-                + CategoryInfo          : InvalidOperation: (:) [Add-MailboxPermission], LocalizedException
-                + FullyQualifiedErrorId : E4BAC784,Microsoft.Exchange.Management.RecipientTasks.AddMailboxPermission
-                + PSComputerName        : bccms650.global.ad.toro.com
-            #-=-=-=-=-=-=-=-=
-            # source call was: $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -prop * -server $($InputSplat.DomainController) -ErrorAction stop;
-            #>
+            
             # we're using the samaccountname for -user spec, 
             # can't use the DN either (won't resolve)
             $SGUpdtSplat.Server = $($InputSplat.DomainController) ;
@@ -886,20 +858,42 @@ function add-MailboxAccessGrant {
             #8:41 AM 10/14/2015 add adp
             $ADMbxGrantSplat.Add("DomainController", $($InputSplat.domaincontroller)) ;
 
+            $ExistMbrs = get-distributiongroupmember -Identity $oSG.samaccountname -DomainController $domaincontroller -ErrorAction 'Stop' | select -expand primarysmtpaddress ; 
+            $pltAddDGM=[ordered]@{
+                identity=$oDG.alias ;
+                #Member= $mbr  ; 
+                BypassSecurityGroupManagerCheck=$true 
+                ErrorAction = 'Stop' ; 
+                whatif=$($whatif) ; 
+                DomainController= $domaincontroller
+            } ;
+            <# with AddDGM, if you're not the explicit owner, you get:
+            You don't have sufficient permissions. This operation can only be performed by a manager of the group.
+            use the -BypassSecurityGroupManagerCheck param to quash the check
+            #>
             if ($whatif) {
                 $smsg = "-Whatif pass, skipping exec." ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
             } else {
-                foreach ($Mbr in $SGMembers) {
-                    If ($ExistMbrs -notcontains $Mbr.sAMAccountName) {
-                        $smsg = "Test ADD:$($mbr.samaccountname)" ;
+                foreach ($Mbr in $SGMembers) { 
+                    if ($ExistMbrs -notcontains $Mbr) {
+                        $smsg = "ADD:$($mbr)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
-                        Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname)  -whatif ;
+                        #Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname)  -whatif ;
+                        <# AAGM keeps throwing
+                            Couldn't resolve the user or group "GROUP DNAME." If the user or group is a foreign forest principal, you must have either a two-way trust or an outgoing trust.
+                            + CategoryInfo          : InvalidOperation: (:) [], LocalizedException
+                            + FullyQualifiedErrorId : 9A7F344F
+                            + PSComputerName        : DC.DOMAIN.COM
+                        #> 
+                        # flip the adds to adgm
+                        Add-DistributionGroupMember @pltAddDGM -member $mbr ; 
                     } else {
                         $smsg = "SKIPPING:$($mbr.samaccountname) is already a member of $($oSG.samaccountname)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                     } ;
                 }  # loop-E ;
+                <# toss out the whole prompted thing, just do it above
                 $smsg = "Continue with Member Addition?...";
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                 if ($NoPrompt) { $bRet = "YYY" } else { $bRet = Read-Host "Enter YYY to continue. Anything else will exit`a" ; } ;
@@ -922,6 +916,7 @@ function add-MailboxAccessGrant {
                         } ;
                     } #  # loop-E;
                 } ;
+                #>
             } # if-E whatif ;
             #$mbxp = $Tmbx | get-mailboxpermission -user ($oSG).Name -domaincontroller $InputSplat.domaincontroller -ea silentlycontinue | 
             $mbxp = $Tmbx | get-mailboxpermission -user $oSG.samaccountname -domaincontroller $InputSplat.domaincontroller  | 
