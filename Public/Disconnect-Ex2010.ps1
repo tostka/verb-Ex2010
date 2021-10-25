@@ -17,6 +17,7 @@ Function Disconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,ExchangeOnline
     REVISIONS   :
+    # 11:12 AM 10/25/2021 added trailing null $Global:E10Sess  (to avoid false conn detects on that test)
     # 9:44 AM 7/27/2021 add -PsTitleBar EMS[ctl] support by dyn gathering range of all 1st & last $Meta.Name[0,2] values
     # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     * 1:14 PM 3/1/2021 added color reset
@@ -86,6 +87,8 @@ Function Disconnect-Ex2010 {
     # kill any broken PSS, self regen's even for L13 leave the original borked and create a new 'Session for implicit remoting module at C:\Users\', toast them, they don't reopen. Same for Ex2010 REMS, identical new PSS, indistinguishable from the L13 regen, except the random tmp_xxxx.psm1 module name. Toast them, it's just a growing stack of broken's
     Disconnect-PssBroken ;
     #[console]::ResetColor()  # reset console colorscheme
+    # null $Global:E10Sess 
+    if($Global:E10Sess){$Global:E10Sess = $null } ; 
 }
 
 #*------^ Disconnect-Ex2010.ps1 ^------

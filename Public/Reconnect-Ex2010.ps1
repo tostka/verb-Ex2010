@@ -17,6 +17,7 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 11:02 AM 10/25/2021 dbl/triple-connecting, fliped $E10Sess -> $global:E10Sess (must not be detecting the preexisting session), added post test of session to E10Sess values, to suppres redund dxo/rxo.
     * 1:17 PM 8/17/2021 added -silent param
     * 4:31 PM 5/18/2l lost $global:credOpTORSID, sub in $global:credTORSID
     * 10:52 AM 4/2/2021 updated cbh
@@ -69,13 +70,21 @@ Function Reconnect-Ex2010 {
     if ($Rems2Broken.count -gt 0){ for ($index = 0 ;$index -lt $Rems2Broken.count ;$index++){Remove-PSSession -session $Rems2Broken[$index]}  };
     if ($Rems2Closed.count -gt 0){for ($index = 0 ;$index -lt $Rems2Closed.count ; $index++){Remove-PSSession -session $Rems2Closed[$index] } } ;
     if ($Rems2WrongOrg.count -gt 0){for ($index = 0 ;$index -lt $Rems2WrongOrg.count ; $index++){Remove-PSSession -session $Rems2WrongOrg[$index] } } ;
-    if(!$E10Sess){
+    if(!$Global:E10Sess){
         if (!$Credential) {
-            Connect-Ex2010
+            Connect-Ex2010 # sets $Global:E10Sess on connect
         } else {
-            Connect-Ex2010 -Credential:$($Credential) ;
+            Connect-Ex2010 -Credential:$($Credential) ; # sets $Global:E10Sess on connect
         } ;
-    } elseif($tSess = get-pssession -id $e10sess.id -ea 0 |?{$_.computername -eq $e10sess.computername -ANd $_.name -eq $e10sess.name}){
+        if($tSess = get-pssession -id $Global:E10Sess.id -ea 0 |?{$_.computername -eq $Global:E10Sess.computername -ANd $_.name -eq $Global:E10Sess.name}){
+            # matches historical session
+            if( $tSess | where-object { ($_.State -eq "Opened") -AND ($_.Availability -eq 'Available') } ){
+                $bExistingREms= $true ;
+            } else {
+                $bExistingREms= $false ;
+            } ;
+        } ;
+    } elseif($tSess = get-pssession -id $Global:E10Sess.id -ea 0 |?{$_.computername -eq $Global:E10Sess.computername -ANd $_.name -eq $Global:E10Sess.name}){
         # matches historical session
         if( $tSess | where-object { ($_.State -eq "Opened") -AND ($_.Availability -eq 'Available') } ){
             $bExistingREms= $true ;
@@ -87,6 +96,7 @@ Function Reconnect-Ex2010 {
         $bExistingREms= $false ;
     } ;
     $propsPss =  'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ;
+    
     if($bExistingREms){
         if($silent){} else { 
             $smsg = "existing connection Open/Available:`n$(($tSess| ft -auto $propsPss |out-string).trim())" ;
