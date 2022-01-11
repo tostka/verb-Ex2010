@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 1.1.87.0
+Version     : 1.1.90.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -73,6 +73,7 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    # 5:12 PM 10/13/2021 fixed long standing random add-adgroupmember bug (failed to see target sg/dg), by swapping in ADGM ex cmd;  pulled [int] from $ticket , to permit non-numeric & multi-tix
     # 11:36 AM 9/16/2021 string
     # 10:27 AM 9/14/2021 beefed up echos w 7pswhsplat's pre
     # 3:21 PM 8/17/2021 recoded grabbing outputs, on object creations in EMS, tho' AD object creations generate no proper output. functoinal on current ticket.
@@ -125,7 +126,7 @@ function add-MailboxAccessGrant {
     # 1:04 PM 2/24/2017 tweak below
     #12:56 PM 2/24/2017 doesn't run worth a damn LYN-> adl/spb, force it to abort (avoid half-built remote objects that take too long to replicate back to lyn)
     # 12:24 PM 2/24/2017 fixed updated membership report bug - pulled pipe, probably dehydrated object issue sin remote ps
-    # 12:11 PM 2/24/2017 fix vscode/code.exe char set damage: It replaced dashes (-) with "ï¿½"
+    # 12:11 PM 2/24/2017 fix vscode/code.exe char set damage: It replaced dashes (-) with "Ã¯Â¿Â½"
     # fix -join typo/damage
     # 12:44 PM 10/18/2016 update rgx for ticket to accommodate 5-digit (or 6) CW numbers "^\d{6}$"=>^\d{5,6}$
     # 9:11 AM 9/30/2016 added pretest if(get-command -name set-AdServerSettings -ea 0)
@@ -266,7 +267,8 @@ function add-MailboxAccessGrant {
         [Parameter(HelpMessage = "Comma-delimited string of potential users to be granted access[name,emailaddr,alias]")]
         [string]$Members,
         [Parameter(HelpMessage = "Incident number for the change request[[int]nnnnnn]")]
-        [int]$Ticket,
+        # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
+        $Ticket,
         [Parameter(HelpMessage = "Suppress YYY confirmation prompts [-NoPrompt]")]
         [switch] $NoPrompt,
         [Parameter(HelpMessage = "Option to hardcode a specific DC [-domaincontroller xxxx]")]
@@ -717,7 +719,8 @@ function add-MailboxAccessGrant {
         $SGSplat.Path = $OU ;
         $smsg = "Checking specified SecGrp Members..." ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-        $SGMembers = ($InputSplat.members.split(",") | ForEach-Object { get-recipient $_ -ea stop })
+        # 3:50 PM 10/13/2021 flip ea stop to continue, we want it to get through, even if it throws error, and continue will complain
+        $SGMembers = ($InputSplat.members.split(",") | ForEach-Object { get-recipient $_ -ea continue | select -expand primarysmtpaddress  | select -unique})
         $smsg = "Checking for existing $($SGSplat.DisplayName)..." ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
 
@@ -899,41 +902,10 @@ function add-MailboxAccessGrant {
 
         $smsg = "`nTesting SecGrp Members Add `nto group: $($oSG.Name)" ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
-        if ($oSG) {
-            $ExistMbrs = @() ;
-            # 11:27 AM 6/23/2017 typo, vari with no leading $
-            $oSG | Get-ADGroupMember -server $($DomainController) | Select-Object -ExpandProperty sAMAccountName | ForEach-Object { $ExistMbrs += $_ } ;
-            # but use the native adg.samaccountname for the ad-related methods
+        if ($oSG -AND $oDG) {
+            
             $DGEnableSplat.Identity = $DGUpdtSplat.Identity = $SGUpdtSplat.Identity = $oSG.samaccountname ;
-            # stack below on one line, ensure they line up.
-            <#$DGEnableSplat.Identity = $oSG.samaccountname ;
-            $DGUpdtSplat.Identity = $oSG.samaccountname ;
-            $GrantSplat.User = $($oSG.SamAccountName); # $osG.Samaccountname: 'ELC-SEC-Email-ToroAgSupport-G'
-            $ADMbxGrantSplat.User = $($oSG.SamAccountName);
-            #>
-            <# 12:30 PM 6/30/2021 sporadic error: 2x retries
-            #-=-=-=-=-=-=-=-=
-            Add-MailboxPermission -whatif w
-            Name                           Value
-            ----                           -----
-            Identity                       ToroAgSupport
-            User                           ELC-SEC-Email-ToroAgSupport-G
-            AccessRights                   FullAccess
-            InheritanceType                All
-            ErrorAction                    STOP
-            DomainController               LYNMS812
-            Couldn't resolve the user or group "ELC-SEC-Email-ToroAgSupport-G." If the user or group is a foreign forest principal,
-            you must have either a two-way trust or an outgoing trust.
-                + CategoryInfo          : InvalidOperation: (:) [Add-MailboxPermission], LocalizedException
-                + FullyQualifiedErrorId : E4BAC784,Microsoft.Exchange.Management.RecipientTasks.AddMailboxPermission
-                + PSComputerName        : bccms650.global.ad.toro.com
-            Couldn't resolve the user or group "ELC-SEC-Email-ToroAgSupport-G." If the user or group is a foreign forest principal, you must have either a two-way trust or an outgoing trust.
-                + CategoryInfo          : InvalidOperation: (:) [Add-MailboxPermission], LocalizedException
-                + FullyQualifiedErrorId : E4BAC784,Microsoft.Exchange.Management.RecipientTasks.AddMailboxPermission
-                + PSComputerName        : bccms650.global.ad.toro.com
-            #-=-=-=-=-=-=-=-=
-            # source call was: $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -prop * -server $($InputSplat.DomainController) -ErrorAction stop;
-            #>
+            
             # we're using the samaccountname for -user spec, 
             # can't use the DN either (won't resolve)
             $SGUpdtSplat.Server = $($InputSplat.DomainController) ;
@@ -944,20 +916,42 @@ function add-MailboxAccessGrant {
             #8:41 AM 10/14/2015 add adp
             $ADMbxGrantSplat.Add("DomainController", $($InputSplat.domaincontroller)) ;
 
+            $ExistMbrs = get-distributiongroupmember -Identity $oSG.samaccountname -DomainController $domaincontroller -ErrorAction 'Stop' | select -expand primarysmtpaddress ; 
+            $pltAddDGM=[ordered]@{
+                identity=$oDG.alias ;
+                #Member= $mbr  ; 
+                BypassSecurityGroupManagerCheck=$true 
+                ErrorAction = 'Stop' ; 
+                whatif=$($whatif) ; 
+                DomainController= $domaincontroller
+            } ;
+            <# with AddDGM, if you're not the explicit owner, you get:
+            You don't have sufficient permissions. This operation can only be performed by a manager of the group.
+            use the -BypassSecurityGroupManagerCheck param to quash the check
+            #>
             if ($whatif) {
                 $smsg = "-Whatif pass, skipping exec." ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
             } else {
-                foreach ($Mbr in $SGMembers) {
-                    If ($ExistMbrs -notcontains $Mbr.sAMAccountName) {
-                        $smsg = "Test ADD:$($mbr.samaccountname)" ;
+                foreach ($Mbr in $SGMembers) { 
+                    if ($ExistMbrs -notcontains $Mbr) {
+                        $smsg = "ADD:$($mbr)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
-                        Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname)  -whatif ;
+                        #Add-ADGroupMember @SGUpdtSplat -members $($mbr.samaccountname)  -whatif ;
+                        <# AAGM keeps throwing
+                            Couldn't resolve the user or group "GROUP DNAME." If the user or group is a foreign forest principal, you must have either a two-way trust or an outgoing trust.
+                            + CategoryInfo          : InvalidOperation: (:) [], LocalizedException
+                            + FullyQualifiedErrorId : 9A7F344F
+                            + PSComputerName        : DC.DOMAIN.COM
+                        #> 
+                        # flip the adds to adgm
+                        Add-DistributionGroupMember @pltAddDGM -member $mbr ; 
                     } else {
                         $smsg = "SKIPPING:$($mbr.samaccountname) is already a member of $($oSG.samaccountname)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                     } ;
                 }  # loop-E ;
+                <# toss out the whole prompted thing, just do it above
                 $smsg = "Continue with Member Addition?...";
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                 if ($NoPrompt) { $bRet = "YYY" } else { $bRet = Read-Host "Enter YYY to continue. Anything else will exit`a" ; } ;
@@ -980,6 +974,7 @@ function add-MailboxAccessGrant {
                         } ;
                     } #  # loop-E;
                 } ;
+                #>
             } # if-E whatif ;
             #$mbxp = $Tmbx | get-mailboxpermission -user ($oSG).Name -domaincontroller $InputSplat.domaincontroller -ea silentlycontinue | 
             $mbxp = $Tmbx | get-mailboxpermission -user $oSG.samaccountname -domaincontroller $InputSplat.domaincontroller  | 
@@ -1276,6 +1271,7 @@ function add-MbxAccessGrant {
     AddedWebsite: 
     AddedTwitter: 
     REVISIONS
+    # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     * 2:05 PM 4/27/2020 debugged, fully ported to published/installed use
     * 3:57 PM 4/9/2020 genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules
     * 2:30 PM 10/1/2019 fixed 2405 errant duped catch block post merge
@@ -1458,7 +1454,8 @@ function add-MbxAccessGrant {
         [Parameter(HelpMessage="Comma-delimited string of potential users to be granted access[name,emailaddr,alias]")]
         [string]$Members,
         [Parameter(HelpMessage="Incident number for the change request[[int]nnnnnn]")]
-        [int]$Ticket,
+        # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
+        $Ticket,
         [Parameter(HelpMessage="Suppress YYY confirmation prompts [-NoPrompt]")]
         [switch] $NoPrompt,
         [Parameter(HelpMessage="Option to hardcode a specific DC [-domaincontroller xxxx]")]
@@ -1638,7 +1635,7 @@ function add-MbxAccessGrant {
     } else { 
         add-MailboxAccessGrant @pltInput
     } ; 
-    _cleanup   ;
+    #_cleanup   ;
     #Exit ;
 
     #*======^ END SUB MAIN ^======
@@ -2386,6 +2383,7 @@ Function Disconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,ExchangeOnline
     REVISIONS   :
+    # 11:12 AM 10/25/2021 added trailing null $Global:E10Sess  (to avoid false conn detects on that test)
     # 9:44 AM 7/27/2021 add -PsTitleBar EMS[ctl] support by dyn gathering range of all 1st & last $Meta.Name[0,2] values
     # 11:20 AM 4/21/2021 fixed/suppressed noisy verbose calls
     * 1:14 PM 3/1/2021 added color reset
@@ -2455,6 +2453,8 @@ Function Disconnect-Ex2010 {
     # kill any broken PSS, self regen's even for L13 leave the original borked and create a new 'Session for implicit remoting module at C:\Users\', toast them, they don't reopen. Same for Ex2010 REMS, identical new PSS, indistinguishable from the L13 regen, except the random tmp_xxxx.psm1 module name. Toast them, it's just a growing stack of broken's
     Disconnect-PssBroken ;
     #[console]::ResetColor()  # reset console colorscheme
+    # null $Global:E10Sess 
+    if($Global:E10Sess){$Global:E10Sess = $null } ; 
 }
 
 #*------^ Disconnect-Ex2010.ps1 ^------
@@ -3623,6 +3623,7 @@ function new-MailboxGenericTOR {
     Github      : https://github.com/tostka/verb-ex2010
     Tags        : Exchange,ExchangeOnPremises,Mailbox,Creation,Maintenance,UserMailbox
     REVISIONS
+    # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     * 11:37 AM 9/16/2021 string
     * 8:55 AM 5/11/2021 functionalized into verb-ex2010 ; ren: internal helper func Cleanup() -> _cleanup() ; subbed some wv -v:v,=> wh (silly to use wv, w force display; should use it solely for optional verbose details
     # 2:35 PM 4/3/2020 genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules
@@ -3874,7 +3875,8 @@ function new-MailboxGenericTOR {
         [Parameter(HelpMessage="Optionally specify a 3-letter Site Code o force OU placement to vary from Owner's current site[3-letter Site code]")]
         [string]$SiteOverride,
         [Parameter(Mandatory=$true,HelpMessage="Incident number for the change request[[int]nnnnnn]")]
-        [int]$Ticket,
+        # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
+        $Ticket,
         [Parameter(HelpMessage="Option to hardcode a specific DC [-domaincontroller xxxx]")]
         [string]$domaincontroller,
     	[Parameter(Mandatory=$FALSE,HelpMessage="TenantTag value, indicating Tenants to connect to[-TenOrg 'TOL']")]
@@ -4105,7 +4107,7 @@ function new-MailboxGenericTOR {
         new-MailboxShared @pltInput
     } ; 
     # shift exit work into _cleanup function ;
-    _cleanup ;
+    #_cleanup ;
     #Exit ;
 
     #*======^ END SUB MAIN ^======
@@ -4134,6 +4136,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     # 10:01 AM 9/14/2021 had a random creation bug - but debugged fine in ISE (bad PSS?), beefed up Catch block outputs, captured new-mailbox output & recycled; added 7pswhsplat outputs prior to cmds.
     # 4:37 PM 5/18/2021 fixed broken start-log call (wasn't recycling logspec into logfile & transcrpt)
     # 11:10 AM 5/11/2021 swapped parentpath code for dyn module-support code (moving the new-mailboxgenerictor & add-mbxaccessgrant preproc .ps1's to ex2010 mod functions)
@@ -4346,7 +4349,8 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         [Parameter(HelpMessage="Optionally specify a 3-letter Site Code o force OU placement to vary from Owner's current site[3-letter Site code]")]
         [string]$SiteOverride,
         [Parameter(Mandatory=$true,HelpMessage="Incident number for the change request[[int]nnnnnn]")]
-        [int]$Ticket,
+        # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
+        $Ticket,
         [Parameter(HelpMessage="Option to hardcode a specific DC [-domaincontroller xxxx]")]
         [string]$domaincontroller,
         [Parameter(HelpMessage="Calling script path (used for log construction)[-ParentPath c:\pathto\script.ps1]")]
@@ -5914,6 +5918,7 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 11:02 AM 10/25/2021 dbl/triple-connecting, fliped $E10Sess -> $global:E10Sess (must not be detecting the preexisting session), added post test of session to E10Sess values, to suppres redund dxo/rxo.
     * 1:17 PM 8/17/2021 added -silent param
     * 4:31 PM 5/18/2l lost $global:credOpTORSID, sub in $global:credTORSID
     * 10:52 AM 4/2/2021 updated cbh
@@ -5966,13 +5971,21 @@ Function Reconnect-Ex2010 {
     if ($Rems2Broken.count -gt 0){ for ($index = 0 ;$index -lt $Rems2Broken.count ;$index++){Remove-PSSession -session $Rems2Broken[$index]}  };
     if ($Rems2Closed.count -gt 0){for ($index = 0 ;$index -lt $Rems2Closed.count ; $index++){Remove-PSSession -session $Rems2Closed[$index] } } ;
     if ($Rems2WrongOrg.count -gt 0){for ($index = 0 ;$index -lt $Rems2WrongOrg.count ; $index++){Remove-PSSession -session $Rems2WrongOrg[$index] } } ;
-    if(!$E10Sess){
+    if(!$Global:E10Sess){
         if (!$Credential) {
-            Connect-Ex2010
+            Connect-Ex2010 # sets $Global:E10Sess on connect
         } else {
-            Connect-Ex2010 -Credential:$($Credential) ;
+            Connect-Ex2010 -Credential:$($Credential) ; # sets $Global:E10Sess on connect
         } ;
-    } elseif($tSess = get-pssession -id $e10sess.id -ea 0 |?{$_.computername -eq $e10sess.computername -ANd $_.name -eq $e10sess.name}){
+        if($tSess = get-pssession -id $Global:E10Sess.id -ea 0 |?{$_.computername -eq $Global:E10Sess.computername -ANd $_.name -eq $Global:E10Sess.name}){
+            # matches historical session
+            if( $tSess | where-object { ($_.State -eq "Opened") -AND ($_.Availability -eq 'Available') } ){
+                $bExistingREms= $true ;
+            } else {
+                $bExistingREms= $false ;
+            } ;
+        } ;
+    } elseif($tSess = get-pssession -id $Global:E10Sess.id -ea 0 |?{$_.computername -eq $Global:E10Sess.computername -ANd $_.name -eq $Global:E10Sess.name}){
         # matches historical session
         if( $tSess | where-object { ($_.State -eq "Opened") -AND ($_.Availability -eq 'Available') } ){
             $bExistingREms= $true ;
@@ -5984,6 +5997,7 @@ Function Reconnect-Ex2010 {
         $bExistingREms= $false ;
     } ;
     $propsPss =  'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ;
+    
     if($bExistingREms){
         if($silent){} else { 
             $smsg = "existing connection Open/Available:`n$(($tSess| ft -auto $propsPss |out-string).trim())" ;
@@ -6827,8 +6841,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU/t1i9yY6N2VIyccuAa4vnNBL
-# KL+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUwtClAI+Ixt/xmb5Dg3dWqR9P
+# v4+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -6843,9 +6857,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTdRoFU
-# 6Kl2i/MwDLvFm1ImwqbiijANBgkqhkiG9w0BAQEFAASBgCslcIeNkRfsEFh6nN9i
-# Z8++Zsp2JZUA5saxYEsMXs4VcuXCGE4UVWgMuAm7uKOTEkEDgCeq6yqvBi2yroko
-# 2abym2YftjnF5FxfBJUxywa/XkBt+wla4FJEL25E/r+m/fmEf0AAcPeoc7i3KZ1w
-# TxqNVArn4DPP/+Jokc7iZFsS
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTb01CD
+# IzQN2HecTaykWqVrNxx91jANBgkqhkiG9w0BAQEFAASBgGBcx3UUFGVIZeLyN/cg
+# TjpdZSqn/hvWrFDSb8nAl+7A9jLdjIkUXFaKfRtCEuWzoClZ4BO5kOIO94KDWzSr
+# 4uBoD2WdGKMFpJ4oC7hyz9+AOMADwkqAA2VeHAlbhfFDQbKOz4y+TxpWaCM2fNwd
+# mNq40tV9pShGhfRVUK7v2h//
 # SIG # End signature block
