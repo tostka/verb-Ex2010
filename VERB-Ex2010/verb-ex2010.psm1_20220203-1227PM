@@ -1,4 +1,4 @@
-# verb-ex2010.psm1
+﻿# verb-ex2010.psm1
 
 
 <#
@@ -126,7 +126,7 @@ function add-MailboxAccessGrant {
     # 1:04 PM 2/24/2017 tweak below
     #12:56 PM 2/24/2017 doesn't run worth a damn LYN-> adl/spb, force it to abort (avoid half-built remote objects that take too long to replicate back to lyn)
     # 12:24 PM 2/24/2017 fixed updated membership report bug - pulled pipe, probably dehydrated object issue sin remote ps
-    # 12:11 PM 2/24/2017 fix vscode/code.exe char set damage: It replaced dashes (-) with "ï¿½"
+    # 12:11 PM 2/24/2017 fix vscode/code.exe char set damage: It replaced dashes (-) with "Ã¯Â¿Â½"
     # fix -join typo/damage
     # 12:44 PM 10/18/2016 update rgx for ticket to accommodate 5-digit (or 6) CW numbers "^\d{6}$"=>^\d{5,6}$
     # 9:11 AM 9/30/2016 added pretest if(get-command -name set-AdServerSettings -ea 0)
@@ -7202,3 +7202,29 @@ PARAM() ;
 
 Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup,Connect-Ex2010,Connect-Ex2010XO,cx10cmw,cx10tol,cx10tor,disable-ForestView,Disconnect-Ex2010,enable-ForestView,Get-ExchangeServerInSite,Get-ExchServerFromExServersGroup,get-ExRootSiteOUs,get-MailboxUseStatus,get-UserMailADSummary,import-EMSLocalModule,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxGenericTOR,_cleanup,new-MailboxShared,preview-EAPUpdate,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,resolve-RecipientEAP,rx10cmw,rx10tol,rx10tor,test-ExOPPSession,toggle-ForestView -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUhR3FJavoaESEt8NvueqS9MqJ
+# WFWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT/YexZ
+# nHOCY7IO1I0xl+yWMUHj7jANBgkqhkiG9w0BAQEFAASBgF9gROrQS3ccJvNVH5Vj
+# ftoHX23LqCTheyTXTRRojizaLzb3ACzJP+lfzbnQ39XN6my/fRNVBTRWL0A+4rzv
+# EpYfcQnhBnSwd6fRl2J+kI43ADERUYSxAvUpDZnNuMo+wH+JmK8rKYQP/0ISzY8J
+# iSyZQWXR5U5xfEtqU8oarbmf
+# SIG # End signature block
