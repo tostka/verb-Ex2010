@@ -30,16 +30,67 @@ TenantTag value, indicating Tenants to connect to[-TenOrg 'TOL']
     ----           -------------------------- ------------------- -------------------
     database2      12.000                     10.000              9.000
     Retrieve local org on-prem MailboxDatabase quotas and assign to a variable, with verbose outputs. Then output the retrieved quotas from the indexed hash returned, for the mailboxdatabase named 'database2'.
+    .EXAMPLE
+    PS> $pltGMDQ=[ordered]@{
+            TenOrg= $TenOrg;
+            verbose=$($VerbosePreference -eq "Continue") ;
+            credential= $pltRXO.credential ;
+            #(Get-Variable -name cred$($tenorg) ).value ;
+        } ;
+    PS> $smsg = "$($tenorg):get-MailboxDatabaseQuotas w`n$(($pltGMDQ|out-string).trim())" ;
+    PS> if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    PS> $objRet = $null ;
+    PS> $objRet = get-MailboxDatabaseQuotas @pltGMDQ ;
+    PS> switch -regex ($objRet.GetType().FullName){
+            "(System.Collections.Hashtable|System.Collections.Specialized.OrderedDictionary)" {
+                if( ($objRet|Measure-Object).count ){
+                    $smsg = "get-MailboxDatabaseQuotas:$($tenorg):returned populated MailboxDatabaseQuotas" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    $mdbquotas = $objRet ;
+                } else {
+                    $smsg = "get-MailboxDatabaseQuotas:$($tenorg):FAILED TO RETURN populated MailboxDatabaseQuotas" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } 
+                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    THROW $SMSG ; 
+                    break ; 
+                } ;
+            }
+            default {
+                $smsg = "get-MailboxDatabaseQuotas:$($tenorg):RETURNED UNDEFINED OBJECT TYPE!" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } 
+                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                Exit ;
+            } ;
+        } ;  
+    PS> $smsg = "$(($mdbquotas|measure).count) quota summaries returned)" ;
+    PS> if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    # given populuated $mbx 'mailbox object', lookup demo:
+    PS> if($mbx.UseDatabaseQuotaDefaults){
+            $MbxProhibitSendQuota = $mdbquotas[$mbx.database].ProhibitSendQuota ;
+            $MbxProhibitSendReceiveQuota = $mdbquotas[$mbx.database].ProhibitSendReceiveQuota ;
+            $MbxIssueWarningQuota = $mdbquotas[$mbx.database].IssueWarningQuota ;
+        } else {
+            write-verbose "(Custom Mbx Quotas configured...)" ;
+            $MbxProhibitSendQuota = $mbx.ProhibitSendQuota ;
+            $MbxProhibitSendReceiveQuota = $mbx.ProhibitSendReceiveQuota ;
+            $MbxIssueWarningQuota = $mbx.IssueWarningQuota ;
+        } ;    
+    Expanded example with testing of returned object, and demoes use of the returned hash against a mailbox spec, steering via .UseDatabaseQuotaDefaults
     .LINK
     https://github.com/tostka/verb-ex2010
     #>
-    #Requires -Modules verb-IO, verb-logging, verb-Text,verb-Ex2010
+    #Requires -Modules verb-IO, verb-logging, verb-Text
     [OutputType('System.Collections.Hashtable')]
     [CmdletBinding()]
     PARAM(
         [Parameter(Mandatory=$FALSE,HelpMessage="TenantTag value, indicating Tenants to connect to[-TenOrg 'TOL']")]
         [ValidateNotNullOrEmpty()]
-        [string]$TenOrg = 'TOR'
+        [string]$TenOrg = 'TOR',
+        [Parameter(HelpMessage="Credential to use for this connection [-credential [credential obj variable]")]
+        [System.Management.Automation.PSCredential]$Credential = $global:credTORSID
     ) ;
     
     ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
@@ -74,25 +125,32 @@ TenantTag value, indicating Tenants to connect to[-TenOrg 'TOL']
         $OPCred=$null ;
         # default to the onprem svc acct
         $pltGHOpCred=@{TenOrg=$TenOrg ;userrole='ESVC','SID'; verbose=$($verbose)} ;
-        if($OPCred=(get-HybridOPCredentials @pltGHOpCred).cred){
-            # make it script scope, so we don't have to predetect & purge before using new-variable
-            if(get-Variable -Name "cred$($tenorg)OP" -scope Script -ea 0 ){ remove-Variable -Name "cred$($tenorg)OP" -scope Script } ;
-            New-Variable -Name "cred$($tenorg)OP" -scope Script -Value $OPCred ;
-            $smsg = "Resolved $($Tenorg) `$OPCred:$($OPCred.username) (assigned to `$cred$($tenorg)OP)" ;
-            if($verbose){
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } ; 
-        } else {
-            $statusdelta = ";ERROR";
-            $script:PassStatus += $statusdelta ;
-            set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta) ;
-            $smsg = "Unable to resolve get-HybridOPCredentials -TenOrg $($TenOrg) -userrole 'ESVC' value!"
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            throw "Unable to resolve $($tenorg) `$OPCred value!`nEXIT!"
-            Break ;
-        } ;
+        if($Credential){
+            $pltGHOpCred.add('Credential',$Credential) ;
+            if(get-Variable -Name "cred$($tenorg)OP" -scope Script -ea 0){
+                set-Variable -Name "cred$($tenorg)OP" -scope Script -Value $Credential ;
+            } else { New-Variable -Name "cred$($tenorg)OP" -scope Script -Value $Credential } ;
+        } else { 
+            if($OPCred=(get-HybridOPCredentials @pltGHOpCred).cred){
+                # make it script scope, so we don't have to predetect & purge before using new-variable
+                if(get-Variable -Name "cred$($tenorg)OP" -scope Script -ea 0 ){ remove-Variable -Name "cred$($tenorg)OP" -scope Script } ;
+                New-Variable -Name "cred$($tenorg)OP" -scope Script -Value $OPCred ;
+                $smsg = "Resolved $($Tenorg) `$OPCred:$($OPCred.username) (assigned to `$cred$($tenorg)OP)" ;
+                if($verbose){
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ; 
+            } else {
+                $statusdelta = ";ERROR";
+                $script:PassStatus += $statusdelta ;
+                set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta) ;
+                $smsg = "Unable to resolve get-HybridOPCredentials -TenOrg $($TenOrg) -userrole 'ESVC' value!"
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                throw "Unable to resolve $($tenorg) `$OPCred value!`nEXIT!"
+                Break ;
+            } ;
+        } ; 
         $smsg= "Using EXOP cred:`$cred$($tenorg)OP:$((Get-Variable -name "cred$($tenorg)OP" ).value.username)" ;
         if($verbose){
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
@@ -133,7 +191,8 @@ TenantTag value, indicating Tenants to connect to[-TenOrg 'TOL']
     } ;
     
     # building a CustObj (actually an indexed hash) with the default quota specs from all db's. The 'index' for each db, is the db's Name (which is also stored as Database on the $mbx)
-    $dbQuotas = @{} ;
+    if($host.version.major -gt 2){$dbQuotas = [ordered]@{} } 
+    else { $dbQuotas = @{} } ;
     
     $smsg = "(querying quotas from all local-org mailboxdatabases)" ; 
     if($verbose){
@@ -143,7 +202,7 @@ TenantTag value, indicating Tenants to connect to[-TenOrg 'TOL']
     
     $error.clear() ;
     TRY {
-        $dbQuotaDefaults=(get-mailboxdatabase -erroraction 'STOP' | select $propsMDB ) ;
+        $dbQuotaDefaults=(get-mailboxdatabase -erroraction 'STOP' | sort server,name | select $propsMDB ) ;
     } CATCH {
         $ErrTrapd=$Error[0] ;
         $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;

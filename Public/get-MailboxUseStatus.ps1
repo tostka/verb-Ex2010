@@ -18,6 +18,9 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 4:28 PM 2/28/2022 debugged, to full pass, added conversion to gb decimal for sizes, and formatted dates on timestmps, added test for EXO-usermailbox-supporting license; 
+        implemented external verb-AAD:get-ExoMailboxLicenses() & verb-EX2010:get-MailboxDatabaseQuotas() & verb-exo:get-ExoMailboxLicenses() to provide the content  ;  
+        validated pipeline -mailboxes functioning find. Probably should implement an xml export, along with csv.
     * 4:57 PM 2/25/2022 WIP: added services mgmt, & cred handling, pulling AADU licenses etc (need to parse end eval if 'Mailbox'-supporting lic assigned), added local EXOP: quotas, server, db, totoalitemsize for mbx, etc.
     * 1:48 PM 1/28/2022 hit a series of mbxs that were onprem in AM, but migrated in PM; also  they've got 2 david.smith@toro.com's onboarded, both with same UPN, shift gmbxstat to DN it's more specific ; expanded added broad range of ADUser.geopoliticals; added calculated SiteOU as well; working
     .DESCRIPTION
@@ -71,6 +74,9 @@ function get-MailboxUseStatus {
     PS> get-MailboxUseStatus -ticket 665437 -mailboxes $NonTermUmbxs -verbose  ; 
     Example processing the specified array, and writing report to CSV, with -verbose output
     .EXAMPLE
+    PS> (get-mailbox -id USER) | get-mailboxusestatus -ticket 999999 -verbose ;
+    Pipeline example
+    .EXAMPLE
     PS> $allExopmbxs | export-clixml .\allExopmbxs-20220128-0945AM.xml ; 
         $allExopmbxs = import-clixml .\allExopmbxs-20220128-0945AM.xml ; 
         $NonTermUmbxs = $allExopmbxs | ?{$_.recipienttypedetails -eq 'UserMailbox' -AND $_.distinguishedname -notmatch ',OU=(Disabled|TERM),' -AND $_.distinguishedname -match ',OU=Users,'} ;
@@ -81,14 +87,8 @@ function get-MailboxUseStatus {
     .LINK
     https://github.com/tostka/verb-ex2010
     #>
-    ##Requires -Version 2.0
     #Requires -Version 3
     #requires -PSEdition Desktop
-    ##requires -PSEdition Core
-    ##Requires -PSSnapin Microsoft.Exchange.Management.PowerShell.E2010
-    ##Requires -Modules ActiveDirectory, AzureAD, MSOnline, ExchangeOnlineManagement, MicrosoftTeams, SkypeOnlineConnector, Lync,  verb-AAD, verb-ADMS, verb-Auth, verb-Azure, VERB-CCMS, verb-Desktop, verb-dev, verb-Ex2010, verb-EXO, verb-IO, verb-logging, verb-Mods, verb-Network, verb-L13, verb-SOL, verb-Teams, verb-Text, verb-logging
-    ##Requires -Modules ActiveDirectory, AzureAD, MSOnline, ExchangeOnlineManagement, verb-AAD, verb-ADMS, verb-Auth, verb-Ex2010, verb-EXO, verb-IO, verb-logging, verb-Network, verb-Text
-    ##Requires -Modules MSOnline, verb-AAD, ActiveDirectory, verb-ADMS, verb-Ex2010, verb-EXO, verb-IO, verb-logging, verb-Network, verb-Text
     #Requires -Modules ActiveDirectory, verb-ADMS, verb-IO, verb-logging, verb-Network, verb-Text
     #Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
@@ -104,7 +104,7 @@ function get-MailboxUseStatus {
         [Parameter(Mandatory=$true,HelpMessage="Ticket number[-Ticket 123456]")]
         [string]$Ticket,
         [Parameter(HelpMessage="Switch to confirm Mail-related license assigned on mailbox(es)[-LicensedMail]")]
-        [switch] $LicensedMail,
+        [switch] $LicensedMail = $true,
         [Parameter(HelpMessage="Number of levels down the SiteOU name appears in the DistinguishedName (Used to calculate SiteOU: counting from right; defaults to 5)[-SiteOUNestingLevel 3]")]
         [int]$SiteOUNestingLevel=5,
         [Parameter(HelpMessage="Object output switch [-outputObject]")]
@@ -114,15 +114,20 @@ function get-MailboxUseStatus {
     BEGIN { 
         ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
         
-        $propsADU = 'employeenumber','createTimeStamp','modifyTimeStamp','City','Company','Country','countryCode','Department','Division','EmployeeNumber','employeeType','GivenName','Office','OfficePhone','Organization','MobilePhone','physicalDeliveryOfficeName','POBox','PostalCode','State','StreetAddress','Surname','Title'  | select -unique ;
+        $propsADU = 'employeenumber','createTimeStamp','modifyTimeStamp','City','Company','Country','countryCode','Department',
+            'Division','EmployeeNumber','employeeType','GivenName','Office','OfficePhone','Organization','MobilePhone',
+            'physicalDeliveryOfficeName','POBox','PostalCode','State','StreetAddress','Surname','Title','proxyAddresses'  | select -unique ;
         # ,'lastLogonTimestamp' ; worthless, only updated every 9-14d, and then only on local dc - is converting to 1600 as year
         $selectADU = 'DistinguishedName','Enabled','GivenName','Name','ObjectClass','ObjectGUID','SamAccountName','SID',
             'Surname','UserPrincipalName','employeenumber','createTimeStamp','modifyTimeStamp' ;
             #, @{n='LastLogon';e={[DateTime]::FromFileTime($_.LastLogon)}}
-        $propsAadu = 'UserPrincipalName','GivenName','Surname','DisplayName','AccountEnabled','Description','PhysicalDeliveryOfficeName','JobTitle','AssignedLicenses','Department','City','State','Mail','MailNickName','LastDirSyncTime','OtherMails','ProxyAddresses' ; 
+        $propsAadu = 'UserPrincipalName','GivenName','Surname','DisplayName','AccountEnabled','Description','PhysicalDeliveryOfficeName',
+            'JobTitle','AssignedLicenses','Department','City','State','Mail','MailNickName','LastDirSyncTime','OtherMails','ProxyAddresses' ; 
         # keep the smtp prefix to tell prim/alias addreses
         #$propsAxDUserSmtpProxyAddr = @{Name="SmtpProxyAddresses";Expression={ ($_.ProxyAddresses.tolower() |?{$_ -match 'smtp:'})  -replace ('smtp:','') } } ;
         $propsAxDUserSmtpProxyAddr = @{Name="SmtpProxyAddresses";Expression={ ($_.ProxyAddresses.tolower() |?{$_ -match 'smtp:'}) } } ;
+        
+        $verbose = ($VerbosePreference -eq "Continue") ;
 
         if(!(get-variable LogPathDrives -ea 0)){$LogPathDrives = 'd','c' };
         foreach($budrv in $LogPathDrives){if(test-path -path "$($budrv):\scripts" -ea 0 ){break} } ;
@@ -451,45 +456,121 @@ function get-MailboxUseStatus {
 
         $1stConn = $false ; 
 
+        #-=-=-=-=-=-=-=-=
         $pltGLPList=[ordered]@{
             TenOrg= $TenOrg;
-            verbose=$($verbose) ;
+            verbose=$($VerbosePreference -eq "Continue") ;
             credential= $pltRXO.credential ;
             #(Get-Variable -name cred$($tenorg) ).value ;
         } ;
         $smsg = "$($tenorg):get-AADlicensePlanList w`n$(($pltGLPList|out-string).trim())" ;
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         $objRet = $null ;
         $objRet = get-AADlicensePlanList @pltGLPList ;
-        switch ($objRet.GetType().FullName){
-            "System.Collections.Hashtable" {
+        switch -regex ($objRet.GetType().FullName){
+            "(System.Collections.Hashtable|System.Collections.Specialized.OrderedDictionary)" {
                 if( ($objRet|Measure-Object).count ){
                     $smsg = "get-AADlicensePlanList:$($tenorg):returned populated LicensePlanList" ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                     else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     $licensePlanListHash = $objRet ;
                 } else {
                     $smsg = "get-AADlicensePlanList:$($tenorg):FAILED TO RETURN populated LicensePlanList" ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } #Error|Warn|Debug
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } 
                     else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    THROW $SMSG ; 
+                    break ; 
                 } ;
             }
             default {
                 $smsg = "get-AADlicensePlanList:$($tenorg):RETURNED UNDEFINED OBJECT TYPE!" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } #Error|Warn|Debug
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } 
                 else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 Exit ;
             } ;
-        } ;  # SWITCH-E
-
+        } ;  
+        #-=-=-=-=-=-=-=-=
+        #-=-=-=-=-=-=-=-=
         $smsg = "get-MailboxDatabaseQuotas:Qry onprem org hashtable of mailboxquotas per mailboxdatabase" ;
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        $mdbquotas = get-MailboxDatabaseQuotas -TenOrg $TenOrg -verbose:$($VerbosePreference -eq "Continue") ;
+
+        $pltGMDQ=[ordered]@{
+            TenOrg= $TenOrg;
+            verbose=$($VerbosePreference -eq "Continue") ;
+            credential= $pltRXO.credential ;
+            #(Get-Variable -name cred$($tenorg) ).value ;
+        } ;
+        $smsg = "$($tenorg):get-MailboxDatabaseQuotas w`n$(($pltGMDQ|out-string).trim())" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $objRet = $null ;
+        $objRet = get-MailboxDatabaseQuotas @pltGMDQ ;
+        switch -regex ($objRet.GetType().FullName){
+            "(System.Collections.Hashtable|System.Collections.Specialized.OrderedDictionary)" {
+                if( ($objRet|Measure-Object).count ){
+                    $smsg = "get-MailboxDatabaseQuotas:$($tenorg):returned populated MailboxDatabaseQuotas" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    $mdbquotas = $objRet ;
+                } else {
+                    $smsg = "get-MailboxDatabaseQuotas:$($tenorg):FAILED TO RETURN populated MailboxDatabaseQuotas" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } 
+                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    THROW $SMSG ; 
+                    break ; 
+                } ;
+            }
+            default {
+                $smsg = "get-MailboxDatabaseQuotas:$($tenorg):RETURNED UNDEFINED OBJECT TYPE!" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } 
+                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                Exit ;
+            } ;
+        } ;  
         $smsg = "$(($mdbquotas|measure).count) quota summaries returned)" ;
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #-=-=-=-=-=-=-=-=
+        #-=-=-=-=-=-=-=-=
+        $pltGXML=[ordered]@{
+            #TenOrg= $TenOrg;
+            verbose=$($VerbosePreference -eq "Continue") ;
+            #credential= $pltRXO.credential ;
+            #(Get-Variable -name cred$($tenorg) ).value ;
+        } ;
+        $smsg = "$($tenorg):get-ExoMailboxLicenses w`n$(($pltGXML|out-string).trim())" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $objRet = $null ;
+        $objRet = get-ExoMailboxLicenses @pltGXML ;
+        switch -regex ($objRet.GetType().FullName){
+            "(System.Collections.Hashtable|System.Collections.Specialized.OrderedDictionary)" {
+                if( ($objRet|Measure-Object).count ){
+                    $smsg = "get-ExoMailboxLicenses:$($tenorg):returned populated ExMbxLicenses" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    $ExMbxLicenses = $objRet ;
+                } else {
+                    $smsg = "get-ExoMailboxLicenses:$($tenorg):FAILED TO RETURN populated ExMbxLicenses" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } 
+                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    THROW $SMSG ; 
+                    break ; 
+                } ;
+            }
+            default {
+                $smsg = "get-ExoMailboxLicenses:$($tenorg):RETURNED UNDEFINED OBJECT TYPE!" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } 
+                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                Exit ;
+            } ;
+        } ;  
+        $smsg = "$(($ExMbxLicenses.Values|measure).count) EXO UserMailbox-supporting License summaries returned)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #-=-=-=-=-=-=-=-=
 
         $Rpt = @() ; 
 
@@ -515,7 +596,7 @@ function get-MailboxUseStatus {
         # which, when a pipeline input is in use, means the foreach only iterates *once* per 
         #   Process{} iteration (as process only brings in a single element of the pipe per pass) 
         
-        $1stConn = $true ; 
+        #$1stConn = $true ; 
         $ttl = ($Mailboxes|measure).count ; $Procd = 0 ; 
         foreach ($mbx in $Mailboxes){
             $adu = $mbxstat = $AADUser = $null;
@@ -560,8 +641,9 @@ function get-MailboxUseStatus {
 
             if(-not $isInvalid){
                 $sBnrS="`n#*------v PROCESSING : ($($Procd)/$($ttl)) $($mbx.UserPrincipalName) v------" ; 
-                write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
-
+                $smsg = "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
 
                 #rx10 ; 
                 #$pltConn=[ordered]@{verbose=$false ; silent=$false} ; 
@@ -594,10 +676,10 @@ function get-MailboxUseStatus {
                         samaccountname = $mbx.samaccountname;
                         MbxServer = $null ; 
                         MbxDatabase = $null ;
-                        MbxProhibitSendQuota = $null ;
-                        MbxProhibitSendReceiveQuota = $null ;
+                        MbxProhibitSendQuotaGB = $null ;
+                        MbxProhibitSendReceiveQuotaGB = $null ;
                         MbxUseDatabaseQuotaDefaults = $null ;
-                        MbxIssueWarningQuota = $null ;                        
+                        MbxIssueWarningQuotaGB = $null ;                        
                         MbxLastLogonTime = $null ;
                         MbxTotalItemSizeGB = $null ; 
                         MbxRetentionPolicy = $null ;
@@ -634,7 +716,7 @@ function get-MailboxUseStatus {
                         AADULastDirSyncTime = $null ; 
                         AADSMTPProxyAddresses = $null ;
                         AADUserPrincipalName = $null ; 
-                         
+                        IsExoLicensed = $null ;
                     } ; 
                     <# $propsAadu = 'UserPrincipalName','GivenName','Surname','DisplayName','AccountEnabled','Description','PhysicalDeliveryOfficeName','JobTitle','AssignedLicenses','Department','City','State','Mail','MailNickName','LastDirSyncTime','OtherMails','ProxyAddresses' ; 
                     #>
@@ -705,8 +787,28 @@ function get-MailboxUseStatus {
                             } ;
                             $hSummary.AADUAssignedLicenses = $userLicenses ; 
                             if($LicensedMail){
+                                $IsExoLicensed = $false ;
                                 # test for presence of a common mailbox-supporting lic, (or (Shared|Room|Equipment)Mailbox recipienttypedetail)
-
+                                foreach($pLic in $hSummary.AADUAssignedLicenses){
+                                    $smsg = "--(LicSku:$($plic): checking EXO UserMailboxSupport)" ; 
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;                                     
+                                    # array contans chk
+                                    #if($ExMbxLicenses.SKU -contains $pLic){
+                                    # indexed hash lookup:
+                                    if($ExMbxLicenses[$plic]){
+                                        $hSummary.IsExoLicensed = $true ;
+                                        $smsg = "$($mbx.userprincipalname) HAS EXO UserMailbox-supporting License:$($ExMbxLicenses[$sku].SKU)|$($ExMbxLicenses[$sku].Label)" ; 
+                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                                        break ; # no sense running whole set, break on 1st mbx-support match
+                                    } ; 
+                                    if(-not $hSummary.IsExoLicensed){
+                                        $smsg = "$($mbx.userprincipalname) WAS FOUND TO HAVE *NO* EXO UserMailbox-supporting License!" ; 
+                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+                                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                                    } ;
+                                } ; 
                             } ; 
                         } ; 
                     } else { 
@@ -719,21 +821,17 @@ function get-MailboxUseStatus {
                     #$hSummary.MbxTotalItemSizeGB = $mbxstat.TotalItemSize ; # dehydraed dbl value, foramt it v
                     $hSummary.MbxTotalItemSizeGB = [decimal]("{0:N2}" -f ($mbxstat.TotalItemSize.tostring().split('(')[1].split(' ')[0].replace(',','')/1GB)) ; 
                     $hSummary.ADEmployeenumber = $adu.Employeenumber ; 
-                    $hSummary.ADcreateTimeStamp = $adu.createTimeStamp ; 
-                    $hSummary.ADmodifyTimeStamp = $adu.modifyTimeStamp ; 
                     $hSummary.ADEnabled = [boolean]($adu.enabled) ; 
                     $hSummary.ADCity = $adu.City ; 
                     $hSummary.ADCompany = $adu.Company ; 
                     $hSummary.ADCountry = $adu.Country ; 
                     $hSummary.ADcountryCode = $adu.countryCode ; 
-                    $hSummary.ADcreateTimeStamp = $adu.createTimeStamp ; 
                     $hSummary.ADDepartment = $adu.Department ; 
                     $hSummary.ADDivision = $adu.Division ; 
                     $hSummary.ADemployeeType = $adu.employeeType ; 
                     $hSummary.ADGivenName = $adu.GivenName ; 
                     $hSummary.ADmailNickname = $adu.mailNickname ;
                     $hSummary.ADMobilePhone = $adu.MobilePhone ; 
-                    $hSummary.ADmodifyTimeStamp = $adu.modifyTimeStamp ; 
                     $hSummary.ADOffice = $adu.Office ; 
                     $hSummary.ADOfficePhone = $adu.OfficePhone ; 
                     $hSummary.ADOrganization = $adu.Organization ; 
@@ -745,19 +843,36 @@ function get-MailboxUseStatus {
                     $hSummary.ADSurname = $adu.Surname ; 
                     $hSummary.ADTitle = $adu.Title ; 
                     #$propsAxDUserSmtpProxyAddr = @{Name="SmtpProxyAddresses";Expression={ ($_.ProxyAddresses.tolower() |?{$_ -match 'smtp:'}) } } ;
-                    $hSummary.ADSMTPProxyAddresses = $adu.proxyaddresses | select $propsAxDUserSmtpProxyAddr  ;
-
-                    #$hSummary.AADUAssignedLicenses = $null ; 
-                    $hsummary.AADUDirSyncEnabled = = $AADUser.DirSyncEnabled ; 
-                    $hSummary.AADULastDirSyncTime = $AADUser.LastDirSyncTime ; 
-                    $hSummary.AADSMTPProxyAddresses = $aaduuser.proxyaddresses | select $propsAxDUserSmtpProxyAddr  ;
+                    $hSummary.ADSMTPProxyAddresses = $adu | select $propsAxDUserSmtpProxyAddr  ;
+                    $hsummary.AADUDirSyncEnabled = $AADUser.DirSyncEnabled ; 
+                    $hSummary.AADSMTPProxyAddresses = $AADUser | select $propsAxDUserSmtpProxyAddr  ;
                     $hSummary.AADUserPrincipalName = $AADUser.UserPrincipalName ; 
 
-                    $hsummary.MbxServer = $mbx.server ;
+                    $hsummary.MbxServer = $mbx.ServerName ;
                     $hsummary.MbxDatabase = $mbx.database ;
-                    $hSummary.MbxRetentionPolicy = $mbx.MbxRetentionPolicy ;
-                    $hSummary.WhenMailboxCreated = $mbx.WhenMailboxCreated ;
+                    $hSummary.MbxRetentionPolicy = $mbx.RetentionPolicy ;
+
                     # for pipeline items, don't process unless there's a value... (err suppress)
+                    if($adu.createTimeStamp){
+                        $hSummary.ADcreateTimeStamp = (get-date $adu.createTimeStamp -format 'MM/dd/yyyy hh:mm tt'); 
+                    } else {
+                        $hSummary.ADcreateTimeStamp = $null ; 
+                    } ; 
+                    if($adu.modifyTimeStamp){
+                        $hSummary.ADmodifyTimeStamp = (get-date $adu.modifyTimeStamp -format 'MM/dd/yyyy hh:mm tt'); 
+                    } else {
+                       $hSummary.ADmodifyTimeStamp = $null ; 
+                    } ; 
+                    if($AADUser.LastDirSyncTime){
+                        $hSummary.AADULastDirSyncTime = (get-date $AADUser.LastDirSyncTime -format 'MM/dd/yyyy hh:mm tt'); 
+                    } else {
+                        $hSummary.AADULastDirSyncTime = $null ; 
+                    } ; 
+                    if($mbx.WhenMailboxCreated){
+                        $hSummary.WhenMailboxCreated = (get-date $mbx.WhenMailboxCreated -format 'MM/dd/yyyy hh:mm tt'); 
+                    } else { 
+                        $hSummary.WhenMailboxCreated = $null ; 
+                    } ; 
                     if($mbxstat.LastLogonTime){
                         $hSummary.MbxLastLogonTime =  (get-date $mbxstat.LastLogonTime -format 'MM/dd/yyyy hh:mm tt'); 
                     } else { 
@@ -769,15 +884,15 @@ function get-MailboxUseStatus {
                         $hSummary.MbxTotalItemSizeGB = $null ; 
                     } ; 
                     $hSummary.MbxUseDatabaseQuotaDefaults = $mbx.MbxUseDatabaseQuotaDefaults ;
-                    if($mbx.MbxUseDatabaseQuotaDefaults){
-                        $hSummary.MbxProhibitSendQuota = $mdbquotas[$mbx.database].ProhibitSendQuota ;
-                        $hSummary.MbxProhibitSendReceiveQuota = $mdbquotas[$mbx.database].ProhibitSendReceiveQuota ;
-                        $hSummary.MbxIssueWarningQuota = $mdbquotas[$mbx.database].IssueWarningQuota ;
+                    if($mbx.UseDatabaseQuotaDefaults){
+                        $hSummary.MbxProhibitSendQuotaGB = $mdbquotas[$mbx.database].ProhibitSendQuotaGB ;
+                        $hSummary.MbxProhibitSendReceiveQuotaGB = $mdbquotas[$mbx.database].ProhibitSendReceiveQuotaGB ;
+                        $hSummary.MbxIssueWarningQuotaGB = $mdbquotas[$mbx.database].IssueWarningQuotaGB ;
                     } else {
                         write-verbose "(Custom Mbx Quotas configured...)" ; 
-                        $hSummary.MbxProhibitSendQuota = $mbx.MbxProhibitSendQuota ;
-                        $hSummary.MbxProhibitSendReceiveQuota = $mbx.MbxProhibitSendReceiveQuota ;
-                        $hSummary.MbxIssueWarningQuota = $mbx.MbxIssueWarningQuota ;
+                        $hSummary.MbxProhibitSendQuotaGB = $mbx.MbxProhibitSendQuota | convert-DehydratedBytesToGB ;  ;
+                        $hSummary.MbxProhibitSendReceiveQuotaGB = $mbx.MbxProhibitSendReceiveQuota | convert-DehydratedBytesToGB ; ;
+                        $hSummary.MbxIssueWarningQuotaGB = $mbx.MbxIssueWarningQuota | convert-DehydratedBytesToGB ; ;
                     } ;
 
                     #$Rpt += [psobject]$hSummary ; 
@@ -798,7 +913,9 @@ function get-MailboxUseStatus {
                     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     CONTINUE #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
                 } ; 
-                write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+                $smsg = "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             } else {
                 $smsg = "Invalid Object Type: Skipping" ; 
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level warn } #Error|Warn|Debug 
@@ -819,7 +936,28 @@ function get-MailboxUseStatus {
                 $smsg = "Exporting summary for $(($Rpt|measure).count) mailboxes to CSV:`n$($ofile)" ; 
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;  
-                $Rpt | export-csv -NoTypeInformation -path $ofile ; 
+                TRY {
+                    $Rpt | export-csv -NoTypeInformation -path $ofile ; 
+                    $ofile = $logfile.replace('-LOG-BATCH','').replace('-log.txt','.XML') ; 
+                    $smsg = "Exporting summary for $(($Rpt|measure).count) mailboxes to XML:`n$($ofile)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;  
+                    $Rpt | Export-Clixml -Depth 100 -path $ofile ; 
+                } CATCH {
+                    $ErrTrapd=$Error[0] ;
+                    $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    #-=-record a STATUSWARN=-=-=-=-=-=-=
+                    $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+                    if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+                    if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+                    #-=-=-=-=-=-=-=-=
+                    $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    CONTINUE #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                } ; 
             } 
         } else {
             $smsg = "(empty aggregator, nothing successfully processed)" ; 
