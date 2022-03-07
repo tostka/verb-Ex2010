@@ -18,6 +18,7 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 4:12 PM 3/7/2022 moved the isExoLicensed test below the lic loop ; fixed a dangling w-v ; 
     * 4:09 PM 3/3/2022 coded in test for adu.memberof matching the $xxxmeta.rgx , to validate that a licensure-grp is in play, to explain the 44% of existing prev profiled users that haven't got an EXO-supporting lic
     * 3:50 PM 3/1/2022 add ADMemberof and parse for lic grp; fixed non-default quota typos ; updated CBH properties returned list; updated the function return tests from switch to simpler [type] tests.
     * 4:28 PM 2/28/2022 debugged, to full pass, added conversion to gb decimal for sizes, and formatted dates on timestmps, added test for EXO-usermailbox-supporting license;
@@ -797,11 +798,12 @@ function get-MailboxUseStatus {
                                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                                         break ; # no sense running whole set, break on 1st mbx-support match
                                     } ;
-                                    if(-not $hSummary.IsExoLicensed){
-                                        $smsg = "$($mbx.userprincipalname) WAS FOUND TO HAVE *NO* EXO UserMailbox-supporting License!" ;
-                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-                                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                    } ;
+                                } ;
+                                # confirm at least one of the assigned lic's chkd is EXO mbx-supporting
+                                if(-not $hSummary.IsExoLicensed){
+                                    $smsg = "$($mbx.userprincipalname) WAS FOUND TO HAVE *NO* EXO UserMailbox-supporting License!" ;
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                                 } ;
                                 <# for unlicensed - or any, nail down if it has a memberof that should license
                                 # use the dn vers LicGrouppDN = $null ; # | ?{$_ -match $tormeta.rgxLicGrpDN}
@@ -910,7 +912,11 @@ function get-MailboxUseStatus {
                         $hSummary.MbxProhibitSendReceiveQuotaGB = $mdbquotas[$mbx.database].ProhibitSendReceiveQuotaGB ;
                         $hSummary.MbxIssueWarningQuotaGB = $mdbquotas[$mbx.database].IssueWarningQuotaGB ;
                     } else {
-                        write-verbose "(Custom Mbx Quotas configured...)" ;
+                        $smsg = "(Custom Mbx Quotas configured...)" ;
+                        if($verbose){
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        } ; 
                         if($mbx.ProhibitSendQuota -eq 'unlimited'){
                             $hSummary.MbxProhibitSendQuotaGB = $mbx.ProhibitSendQuota ;
                         } else { $hSummary.MbxProhibitSendQuotaGB = $mbx.ProhibitSendQuota | convert-DehydratedBytesToGB }
