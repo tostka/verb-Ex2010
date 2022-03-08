@@ -18,6 +18,7 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 2:49 PM 3/8/2022 pull Requires -modules ...verb-ex2010 ref - it's generating nested errors, when ex2010 requires exo requires ex2010 == loop.
     * 4:12 PM 3/7/2022 moved the isExoLicensed test below the lic loop ; fixed a dangling w-v ; 
     * 4:09 PM 3/3/2022 coded in test for adu.memberof matching the $xxxmeta.rgx , to validate that a licensure-grp is in play, to explain the 44% of existing prev profiled users that haven't got an EXO-supporting lic
     * 3:50 PM 3/1/2022 add ADMemberof and parse for lic grp; fixed non-default quota typos ; updated CBH properties returned list; updated the function return tests from switch to simpler [type] tests.
@@ -112,7 +113,7 @@ function get-MailboxUseStatus {
     #>
     #Requires -Version 3
     #requires -PSEdition Desktop
-    #Requires -Modules ActiveDirectory, verb-ADMS, verb-IO, verb-logging, verb-Network, verb-Text, verb-EXO, verb-AAD
+    #Requires -Modules ActiveDirectory, verb-ADMS, verb-IO, verb-logging, verb-Network, verb-Text, verb-AAD
     #Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type

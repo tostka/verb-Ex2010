@@ -18,6 +18,7 @@ function get-UserMailADSummary {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 3:27 PM 3/8/2022 CBH update, pointed link at verb-ex2010 module repo
     * 10:57 AM 8/2/2021 add 'Unresolved' (failed to return an object from 
     get-recipient, normally a 'System.Management.Automation.RemoteException', 
     Exception -match "couldn't\sbe\sfound\son") & 'Failed' (catch failure that 
@@ -65,7 +66,7 @@ function get-UserMailADSummary {
     $rpt.enabled | export-csv -nottype ".\pathto\usersummaries-ENABLEDUSERS-$(get-date -format 'yyyyMMdd-HHmmtt').csv" ;
     Process specified identifiers, and export solely the 'Enabled' users returned to csv. 
     .LINK
-    https://github.com/tostka/verb-exo
+    https://github.com/tostka/verb-ex2010
     .LINK
     #>
     ###Requires -Version 5
