@@ -1,4 +1,4 @@
-#*------v Connect-Ex2010XO.ps1 v------
+﻿#*------v Connect-Ex2010XO.ps1 v------
 Function Connect-Ex2010XO {
     <#
     .SYNOPSIS

@@ -1,4 +1,4 @@
-#*------v rx10tor.ps1 v------
+﻿#*------v rx10tor.ps1 v------
 function rx10tor {
     <#
     .SYNOPSIS

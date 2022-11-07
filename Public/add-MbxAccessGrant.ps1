@@ -1,4 +1,4 @@
-#*------v add-MbxAccessGrant.ps1 v------
+﻿#*------v add-MbxAccessGrant.ps1 v------
 function add-MbxAccessGrant {
     <#
     .SYNOPSIS

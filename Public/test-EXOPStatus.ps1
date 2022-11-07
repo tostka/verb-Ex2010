@@ -1,4 +1,4 @@
-# test-EXOPStatus.ps1
+﻿# test-EXOPStatus.ps1
 #*----------v Function test-EXOPStatus() v----------
 function test-EXOPStatus {
     <#

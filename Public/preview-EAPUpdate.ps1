@@ -1,4 +1,4 @@
-#*----------v Function preview-EAPUpdate() v----------
+﻿#*----------v Function preview-EAPUpdate() v----------
     function preview-EAPUpdate {
         <#
         .SYNOPSIS

@@ -1,4 +1,4 @@
-#*------v add-MailboxAccessGrant.ps1 v------
+﻿#*------v add-MailboxAccessGrant.ps1 v------
 function add-MailboxAccessGrant {
     <#
     .SYNOPSIS

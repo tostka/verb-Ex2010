@@ -1,4 +1,4 @@
-#*------v Reconnect-Ex2010XO.ps1 v------
+﻿#*------v Reconnect-Ex2010XO.ps1 v------
 Function Reconnect-Ex2010XO {
    <#
     .SYNOPSIS
