@@ -18,6 +18,7 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 11:04 AM 11/23/2022 add: xoWP{} and support, refactored the svc conn patterns to try to approx xow order wo running xow itself.
     # 2:49 PM 3/8/2022 pull Requires -modules ...verb-ex2010 ref - it's generating nested errors, when ex2010 requires exo requires ex2010 == loop.
     * 4:12 PM 3/7/2022 moved the isExoLicensed test below the lic loop ; fixed a dangling w-v ; 
     * 4:09 PM 3/3/2022 coded in test for adu.memberof matching the $xxxmeta.rgx , to validate that a licensure-grp is in play, to explain the 44% of existing prev profiled users that haven't got an EXO-supporting lic
@@ -153,6 +154,61 @@ function get-MailboxUseStatus {
         $propsAxDUserSmtpProxyAddr = @{Name="SmtpProxyAddresses";Expression={ ($_.ProxyAddresses.tolower() |?{$_ -match 'smtp:'}) } } ;
 
         $verbose = ($VerbosePreference -eq "Continue") ;
+
+        #*======v FUNCTIONS v======
+        #*------v Function xoW v------
+        # $xrcp = xow {get-xorecipient somealias } -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ; 
+        function xoW  {
+        #Requires -Modules ExchangeOnlineManagement, verb-EXO, AzureAD, verb-AAD
+        PARAM(
+            [Parameter(Position=0)][Alias('cmd')]
+            $command,
+            [Parameter(HelpMessage = "Credential to use for this connection [-credential [credential obj variable]")]
+            [System.Management.Automation.PSCredential]$Credential = $global:credo365TORSID,
+            [Parameter(HelpMessage = 'Credential object')]
+            [System.Management.Automation.PSCredential]$CredentialOP = $credTORSID,
+        ) ; 
+        write-verbose "(confirm EMO load)" ; 
+        $tMod = 'exchangeonlinemanagement' ; 
+        if(-not (get-module $tMod)){ipmo -force $tMod} ; 
+        $xMod = get-module $tMod ; 
+        write-verbose "(check EMO version)" ; 
+        if($xMod.version -gt '2.0.5'){
+            write-warning "$($xMod.Name) v$($xMod.Version.ToString()) is GREATER than v2.0.5:this function is not needed for natively Modern Auth EXO connectivit!" ; 
+            Break ; 
+        } ; 
+        
+        if($Credential){
+            $pltRXO = @{
+                    Credential = (Get-Variable -name cred$($tenorg) ).value ;
+                    #verbose = $($verbose) ;
+                    Verbose = $FALSE ; Silent = $false ; } ;
+        } ;
+        if($CredentialOP){
+            $pltRX10 = @{
+                    Credential = (Get-Variable -name "cred$($tenorg)OP" ).value ;
+                    #verbose = $($verbose) ;
+                    Verbose = $FALSE ; Silent = $false ; } ;
+        } ;
+        write-verbose "(test for test-exoToken())" ; 
+        try{get-command test-exoToken | out-null }catch{dx10 ;  dxo ;  dxo2 ;  daad ;  rxo2 ;  rx10 ;  caad ;} ; 
+        if(-not(test-exotoken)){
+            Disconnect-Ex2010 ;  Disconnect-EXO ;  Disconnect-EXO2 ;  Disconnect-AAD ;  
+            if($pltRXO){
+                Reconnect-EXO2 @pltRXO ;  
+            } else {Reconnect-EXO2 } 
+            if($pltRX10){
+                Reconnect-Ex2010 @pltRX10  ;  
+            } else {Reconnect-Ex2010 } 
+            if($pltRXO){
+                Connect-AAD @pltRXO ;
+            } else {Connect-AAD} ; 
+        } ;
+        invoke-command $command ;
+    } ;
+    #*------^ END Function xoW ^------
+        
+        #*======^ END FUNCTIONS ^======
 
         if(!(get-variable LogPathDrives -ea 0)){$LogPathDrives = 'd','c' };
         foreach($budrv in $LogPathDrives){if(test-path -path "$($budrv):\scripts" -ea 0 ){break} } ;
@@ -372,12 +428,23 @@ function get-MailboxUseStatus {
             # defer cx10/rx10, until just before get-recipients qry
             #endregion GENERIC_EXOP_CREDS_&_SRVR_CONN #*------^ END GENERIC EXOP CREDS & SRVR CONN BP ^------
             # connect to ExOP X10
-            if($pltRX10){
+            <#if($pltRX10){
                 #ReConnect-Ex2010XO @pltRX10 ;
-                ReConnect-Ex2010 @pltRX10 ;
+                #ReConnect-Ex2010 @pltRX10 ;
             } else { Reconnect-Ex2010 ; } ;
+            #>
         } ;  # if-E $useEXOP
 
+        if($pltRX10){
+            if($pltRXO){
+                Disconnect-Ex2010 ;  Disconnect-EXO ;  Disconnect-EXO2 ;  Disconnect-AAD ;  
+                Reconnect-EXO2 @pltRXO ;  
+            } ; 
+            #ReConnect-Ex2010XO @pltRX10 ;
+            #ReConnect-Ex2010 @pltRX10 ;
+            ReConnect-Ex2010 @pltRX10  ;  
+            Connect-AAD @pltRXO ;
+        } else { Reconnect-Ex2010 ; } ;
 
         #region UseOPAD #*------v UseOPAD v------
         if($UseExOP){
@@ -435,8 +502,9 @@ function get-MailboxUseStatus {
             $domaincontroller = get-GCFast
         } ;
         #endregion UseOPAD #*------^ END UseOPAD ^------
-
-        #region MSOL_CONNECTION ; #*------v  MSOL CONNECTION v------
+        
+        # 10:18 AM 11/23/2022 rem-out MSOL, not actually needed and broken wo basicauth.
+        <#region MSOL_CONNECTION ; #*------v  MSOL CONNECTION v------
         $reqMods += "connect-msol".split(";") ;
         if ( !(check-ReqMods $reqMods) ) { write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing function. EXITING." ; Break ; }  ;
         $smsg = "(loading AAD...)" ;
@@ -445,7 +513,7 @@ function get-MailboxUseStatus {
         #connect-msol ;
         connect-msol @pltRXO ;
         #endregion MSOL_CONNECTION ; #*------^  MSOL CONNECTION ^------
-        #
+        #>
 
         #
         #region AZUREAD_CONNECTION ; #*------v AZUREAD CONNECTION v------
@@ -455,7 +523,7 @@ function get-MailboxUseStatus {
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         #connect-msol ;
-        Connect-AAD @pltRXO ;
+        #Connect-AAD @pltRXO ;
         #region AZUREAD_CONNECTION ; #*------^ AZUREAD CONNECTION ^------
         #
 
@@ -518,7 +586,8 @@ function get-MailboxUseStatus {
         $pltGMDQ=[ordered]@{
             TenOrg= $TenOrg;
             verbose=$($VerbosePreference -eq "Continue") ;
-            credential= $pltRXO.credential ;
+            #credential= $pltRXO.credential ;
+            credential= $pltRX10.credential ;
             #(Get-Variable -name cred$($tenorg) ).value ;
         } ;
         $smsg = "$($tenorg):get-MailboxDatabaseQuotas w`n$(($pltGMDQ|out-string).trim())" ;
@@ -550,7 +619,8 @@ function get-MailboxUseStatus {
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         $objRet = $null ;
-        $objRet = get-ExoMailboxLicenses @pltGXML ;
+        #$objRet = get-ExoMailboxLicenses @pltGXML ;
+        $objRet = xoW {get-ExoMailboxLicenses @pltGXML} -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ; ;
         if( ($objRet|Measure-Object).count -AND $objRet.GetType().FullName -match $rgxHashTableTypeName ){
             $smsg = "get-ExoMailboxLicenses:$($tenorg):returned populated ExMbxLicenses" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
@@ -649,15 +719,25 @@ function get-MailboxUseStatus {
                     $pltRX10.silent = $pltRXO.silent =$true ;
                 } ;
                 ReConnect-Ex2010 @pltRX10 ;
-                #rxo @pltConn  ;
+                <#rxo @pltConn  ;
                 if ($script:useEXOv2) { reconnect-eXO2 @pltRXO }
                 else { reconnect-EXO @pltRXO } ;
                 #cmsol @pltConn ;
-                connect-msol @pltRXO ;
+                #connect-msol @pltRXO ;
                 Connect-AAD @pltRXO ;
                 connect-ad -verbose:$false | out-null ;
                 $1stConn = $false ;
-
+                #>
+                if($pltRX10){
+                    if($pltRXO){
+                        Disconnect-Ex2010 ;  Disconnect-EXO ;  Disconnect-EXO2 ;  Disconnect-AAD ;  
+                        Reconnect-EXO2 @pltRXO ;  
+                    } ; 
+                    #ReConnect-Ex2010XO @pltRX10 ;
+                    #ReConnect-Ex2010 @pltRX10 ;
+                    ReConnect-Ex2010 @pltRX10  ;  
+                    Connect-AAD @pltRXO ;
+                } else { Reconnect-Ex2010 ; } ;
 
                 $error.clear() ;
                 TRY {
@@ -741,6 +821,7 @@ function get-MailboxUseStatus {
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     } ;
+                    Reconnect-Ex2010 @pltRX10  ;  
                     $mbxstat = Get-MailboxStatistics @pltGMStat ;
                     <#if($adu.LastLogon){
                         $hSummary.ADLastLogonTime =  (get-date $adu.LastLogon -format 'MM/dd/yyyy hh:mm tt');
