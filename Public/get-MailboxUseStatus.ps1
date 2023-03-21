@@ -18,7 +18,7 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
-    * 1:17 PM 3/21/2023 reworked field order in $prpExportCSV (useful xlsx order)
+    * 4:46 PM 3/21/2023 removed iflv-err'ing '[#]requires -PSEdition Desktop' ;  reworked field order in $prpExportCSV (useful xlsx order)
     * 3:07 PM 11/28/2022 working. CBH example #3 still has issues with example that post-exports csv - not 
     collapsing objects; but native export csv & xml works fine. -outputobject works 
     fine as well, as long as you massage the exports and ensure they properly 
@@ -207,7 +207,6 @@ function get-MailboxUseStatus {
     https://github.com/tostka/verb-ex2010
     #>
     #Requires -Version 3
-    #requires -PSEdition Desktop
     #Requires -Modules ActiveDirectory, verb-ADMS, verb-IO, verb-logging, verb-Network, verb-Text, verb-AAD
     #Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
