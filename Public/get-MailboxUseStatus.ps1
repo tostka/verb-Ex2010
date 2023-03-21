@@ -18,6 +18,7 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 1:17 PM 3/21/2023 reworked field order in $prpExportCSV (useful xlsx order)
     * 3:07 PM 11/28/2022 working. CBH example #3 still has issues with example that post-exports csv - not 
     collapsing objects; but native export csv & xml works fine. -outputobject works 
     fine as well, as long as you massage the exports and ensure they properly 
@@ -245,7 +246,7 @@ function get-MailboxUseStatus {
         # keep the smtp prefix to tell prim/alias addreses
         #$propsAxDUserSmtpProxyAddr = @{Name="SmtpProxyAddresses";Expression={ ($_.ProxyAddresses.tolower() |?{$_ -match 'smtp:'})  -replace ('smtp:','') } } ;
         $prpAxDUserSmtpProxyAddr = @{Name="SmtpProxyAddresses";Expression={ ($_.ProxyAddresses.tolower() |?{$_ -match 'smtp:'}) } } ;
-        $prpExportCSV = @{name="AADUAssignedLicenses";expression={($_.AADUAssignedLicenses) -join ";"}},'AADUDirSyncEnabled','AADULastDirSyncTime',
+        <#$prpExportCSV = @{name="AADUAssignedLicenses";expression={($_.AADUAssignedLicenses) -join ";"}},'AADUDirSyncEnabled','AADULastDirSyncTime',
             'AADUserPrincipalName',@{name="AADUSMTPProxyAddresses";expression={$_.AADUSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},
             'ADCity','ADCompany','ADCountry','ADcountryCode','ADcreateTimeStamp','ADDepartment','ADDivision','ADEmployeenumber','ADemployeeType',
             'ADEnabled','ADGivenName','ADmailNickname',@{name="ADMemberof";expression={$_.ADMemberof -join ";"}},'ADMobilePhone','ADmodifyTimeStamp',
@@ -254,7 +255,18 @@ function get-MailboxUseStatus {
             'MbxIssueWarningQuotaGB','MbxLastLogonTime','MbxProhibitSendQuotaGB','MbxProhibitSendReceiveQuotaGB','MbxRetentionPolicy',
             'MbxServer','MbxTotalItemSizeGB','MbxUseDatabaseQuotaDefaults','Name','ParentOU','samaccountname','SiteOU','UserPrincipalName',
             'WhenChanged','WhenCreated','WhenMailboxCreated' ; 
-
+        #>
+        # 1:10 PM 3/21/2023 rework field order to put usefuls on left/first:
+        $prpExportCSV = 'AADUserPrincipalName','DistinguishedName',@{name="AADUAssignedLicenses";expression={($_.AADUAssignedLicenses) -join ";"}},
+            'ADEnabled','IsExoLicensed','AADUDirSyncEnabled','AADULastDirSyncTime','MbxLastLogonTime','ParentOU','samaccountname',
+            'SiteOU',@{name="AADUSMTPProxyAddresses";expression={$_.AADUSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},
+            'ADCity','ADCompany','ADCountry','ADcountryCode','ADcreateTimeStamp','ADDepartment','ADDivision','ADEmployeenumber','ADemployeeType',
+            'ADGivenName','ADmailNickname',@{name="ADMemberof";expression={$_.ADMemberof -join ";"}},'ADMobilePhone','ADmodifyTimeStamp',
+            'ADOffice','ADOfficePhone','ADOrganization','ADphysicalDeliveryOfficeName','ADPOBox','ADPostalCode',
+            @{name="ADSMTPProxyAddresses";expression={$_.ADSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},'ADState','ADStreetAddress',
+            'ADSurname','ADTitle','LicGrouppDN','MbxDatabase','MbxIssueWarningQuotaGB','MbxProhibitSendQuotaGB',
+            'MbxProhibitSendReceiveQuotaGB','MbxRetentionPolicy','MbxServer','MbxTotalItemSizeGB','MbxUseDatabaseQuotaDefaults',
+            'Name','UserPrincipalName','WhenChanged','WhenCreated','WhenMailboxCreated' ; 
         ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
         $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters ;
         write-verbose -verbose:$verbose "`$PSBoundParameters:`n$(($PSBoundParameters|out-string).trim())" ;
