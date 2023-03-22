@@ -19,6 +19,7 @@ function test-EXOPStatus {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 2:22 PM 3/22/2023 pull ipmo breaking [#]requires -PSEdition Desktop
     * 4:37 PM 3/21/2023 pulled recursive pound-requires v-x10
     * 10:14 AM 5/2/2022 ren'd get-ExoPStatus.ps1 -> test-EXoPStatus, and moved to verb-ex2010
     * 9:21 AM 5/2/2022 init
@@ -45,7 +46,6 @@ function test-EXOPStatus {
     https://github.com/tostka/verb-ex2010
     #>
     #Requires -Version 3
-    #requires -PSEdition Desktop
     #Requires -Modules verb-Auth, verb-IO, verb-logging, verb-Network, verb-Text
     #Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
