@@ -18,7 +18,11 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
-    * 4:46 PM 3/21/2023 removed iflv-err'ing '[#]requires -PSEdition Desktop' ;  reworked field order in $prpExportCSV (useful xlsx order)
+    * 4:20 PM 3/22/2023 typo: $hSummary 'ADLastLogon' -> ADLastLogonTime ;  was drawing blank adu.lastlogon, so added failback to lastlogontimestamp use;  updated adu.lastlogon, compare resolved for blank value; added -ADLastLogon to the script, which enables the get-aduser.lastlogon 
+        collection - only stored on the local DC, so it's going to be spotty, but where 
+        there's no mbxstat.lastlogon, it at least might provide evidence user is logging 
+        into AD, and is active at that level (to avoid deleting unused legit mailboxes)
+    * 1:17 PM 3/21/2023 reworked field order in $prpExportCSV (useful xlsx order)
     * 3:07 PM 11/28/2022 working. CBH example #3 still has issues with example that post-exports csv - not 
     collapsing objects; but native export csv & xml works fine. -outputobject works 
     fine as well, as long as you massage the exports and ensure they properly 
@@ -102,6 +106,8 @@ function get-MailboxUseStatus {
     Ticket number[-Ticket 123456]
     .PARAMETER SiteOUNestingLevel
     Number of levels down the SiteOU name appears in the DistinguishedName (Used to calculate SiteOU: counting from right; defaults to 5)[-SiteOUNestingLevel 3]
+    .PARAMETER ADLastLogon
+    Switch to query for and include - broadly inaccruate (stored single dc logged to) - ADUser.LastLogon spec
     .PARAMETER outputObject
     Object output switch [-outputObject]
     .EXAMPLE
@@ -207,6 +213,7 @@ function get-MailboxUseStatus {
     https://github.com/tostka/verb-ex2010
     #>
     #Requires -Version 3
+    #requires -PSEdition Desktop
     #Requires -Modules ActiveDirectory, verb-ADMS, verb-IO, verb-logging, verb-Network, verb-Text, verb-AAD
     #Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
@@ -223,6 +230,8 @@ function get-MailboxUseStatus {
         [string]$Ticket,
         [Parameter(HelpMessage="Switch to confirm Mail-related license assigned on mailbox(es)[-LicensedMail]")]
         [switch] $LicensedMail = $true,
+        [Parameter(HelpMessage="Switch to query for and include - broadly inaccruate (stored single dc logged to) - ADUser.LastLogon spec[-ADLastLogon]")]
+        [switch] $ADLastLogon,
         [Parameter(HelpMessage="Number of levels down the SiteOU name appears in the DistinguishedName (Used to calculate SiteOU: counting from right; defaults to 5)[-SiteOUNestingLevel 3]")]
         [int]$SiteOUNestingLevel=5,
         [Parameter(HelpMessage="Object output switch [-outputObject]")]
@@ -233,13 +242,18 @@ function get-MailboxUseStatus {
         ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
 
         # 3:47 PM 3/1/2022 added memberof, need to track down that unlic'd aren't even members of lic grps
+        # 3:24 PM 3/22/2023 coming through lastlogon blank, but lastLogonTimestamp present, pull both and fail back
         $prpADU = 'employeenumber','createTimeStamp','modifyTimeStamp','City','Company','Country','countryCode','Department',
             'Division','EmployeeNumber','employeeType','GivenName','Office','OfficePhone','Organization','MobilePhone',
-            'physicalDeliveryOfficeName','POBox','PostalCode','State','StreetAddress','Surname','Title','proxyAddresses','memberof'  | select -unique ;
+            'physicalDeliveryOfficeName','POBox','PostalCode','State','StreetAddress','Surname','Title','proxyAddresses','memberof',
+            'LastLogon','lastLogonTimestamp'  | select -unique ;
         # ,'lastLogonTimestamp' ; worthless, only updated every 9-14d, and then only on local dc - is converting to 1600 as year
-        $selectADU = 'DistinguishedName','Enabled','GivenName','Name','ObjectClass','ObjectGUID','SamAccountName','SID',
-            'Surname','UserPrincipalName','employeenumber','createTimeStamp','modifyTimeStamp' ;
-            #, @{n='LastLogon';e={[DateTime]::FromFileTime($_.LastLogon)}}
+        # 12:55 PM 3/22/2023 need to try somethign on ad.lastlogon
+        # this isn't used, disabled, we're working with raw values assigned into summary
+        <#$selectADU = 'DistinguishedName','Enabled','GivenName','Name','ObjectClass','ObjectGUID','SamAccountName','SID',
+            'Surname','UserPrincipalName','employeenumber','createTimeStamp','modifyTimeStamp', 
+            @{n='LastLogon';e={[DateTime]::FromFileTime($_.LastLogon)}} ; 
+        #>
         $prpAadu = 'UserPrincipalName','GivenName','Surname','DisplayName','AccountEnabled','Description','PhysicalDeliveryOfficeName',
             'JobTitle','AssignedLicenses','Department','City','State','Mail','MailNickName','LastDirSyncTime','OtherMails','ProxyAddresses' ;
         # keep the smtp prefix to tell prim/alias addreses
@@ -256,8 +270,9 @@ function get-MailboxUseStatus {
             'WhenChanged','WhenCreated','WhenMailboxCreated' ; 
         #>
         # 1:10 PM 3/21/2023 rework field order to put usefuls on left/first:
+        # 10:05 AM 3/22/2023 add back ADLastLogon (driven by -ADLastLogon switch)
         $prpExportCSV = 'AADUserPrincipalName','DistinguishedName',@{name="AADUAssignedLicenses";expression={($_.AADUAssignedLicenses) -join ";"}},
-            'ADEnabled','IsExoLicensed','AADUDirSyncEnabled','AADULastDirSyncTime','MbxLastLogonTime','ParentOU','samaccountname',
+            'ADEnabled','IsExoLicensed','AADUDirSyncEnabled','AADULastDirSyncTime','MbxLastLogonTime','ADLastLogonTime','ParentOU','samaccountname',
             'SiteOU',@{name="AADUSMTPProxyAddresses";expression={$_.AADUSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},
             'ADCity','ADCompany','ADCountry','ADcountryCode','ADcreateTimeStamp','ADDepartment','ADDivision','ADEmployeenumber','ADemployeeType',
             'ADGivenName','ADmailNickname',@{name="ADMemberof";expression={$_.ADMemberof -join ";"}},'ADMobilePhone','ADmodifyTimeStamp',
@@ -1068,12 +1083,28 @@ function get-MailboxUseStatus {
                     } ;
                     Reconnect-Ex2010 @pltRX10  ;  
                     $mbxstat = Get-MailboxStatistics @pltGMStat ;
-                    <#if($adu.LastLogon){
-                        $hSummary.ADLastLogonTime =  (get-date $adu.LastLogon -format 'MM/dd/yyyy hh:mm tt');
-                    } else {
-                        $hSummary.ADLastLogonTime = $null ;
-                    } ;
-                    #>
+                    if($ADLastLogon){
+                        # blank comes through as: Sunday, December 31, 1600 6:00:00 PM
+                        # g format (short date), outputs: 10/15/2012 3:13 PM
+                        #$tLastLogon = [datetime]::FromFileTime($adu.LastLogon).ToString('g') ; 
+                        if($adu.LastLogon){
+                            $tLastLogon = [datetime]::FromFileTime($adu.LastLogon) ; 
+                        } elseif($adu.lastLogonTimestamp){
+                            $tLastLogon = [datetime]::FromFileTime($adu.lastLogonTimestamp) ; 
+                        } else { 
+                            $smsg = "(neither adu.LastLogon nor adu.lastLogonTimestamp was populated, to determing ADU.LastLogon)" ; 
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                        } ; 
+                        if($tLastLogon -gt (get-date '12/31/1600')){
+                            $hSummary.ADLastLogonTime =  $tLastLogon.ToString('g');
+                        } else {
+                            $hSummary.ADLastLogonTime = $null ;
+                            write-verbose "(1600 invalid LastLogon resolved date)" ; 
+                        } ;
+                        
+                    } ; 
 
                     # do direct lookup of AADU on specified eml (assumed to be UPN, if it came out of ADC error log)
                     $pltGAADU=[ordered]@{
