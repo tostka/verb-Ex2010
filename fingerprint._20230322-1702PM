@@ -472,7 +472,6 @@ get-MailboxUseStatus:TenOrg
 get-MailboxUseStatus:Mailboxes
 get-MailboxUseStatus:Ticket
 get-MailboxUseStatus:LicensedMail
-get-MailboxUseStatus:ADLastLogon
 get-MailboxUseStatus:SiteOUNestingLevel
 get-MailboxUseStatus:outputObject
 get-MailboxUseStatus:Verbose
