@@ -18,6 +18,9 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 10:08 AM 3/28/2023 added split-brain support (which entailed bringing lagging rxo2/exov2 code into function, and adding xo support to this); add: -useExov2 ; spliced in debugged/latest import-xoW() ;
+        new exported properties in hSummary:MbxExchangeGUID, XoMbxExchangeGUID, XoMbxTotalItemSizeGB, XoMbxLastLogonTime,xoMbxWhenChanged, xoMbxWhenCreated, SplitBrain; 
+        code to get-xomailbox & get-xomailboxstats & identify split-brain state ; 
     * 4:20 PM 3/22/2023 typo: $hSummary 'ADLastLogon' -> ADLastLogonTime ;  was drawing blank adu.lastlogon, so added failback to lastlogontimestamp use;  updated adu.lastlogon, compare resolved for blank value; added -ADLastLogon to the script, which enables the get-aduser.lastlogon 
         collection - only stored on the local DC, so it's going to be spotty, but where 
         there's no mbxstat.lastlogon, it at least might provide evidence user is logging 
@@ -108,6 +111,8 @@ function get-MailboxUseStatus {
     Number of levels down the SiteOU name appears in the DistinguishedName (Used to calculate SiteOU: counting from right; defaults to 5)[-SiteOUNestingLevel 3]
     .PARAMETER ADLastLogon
     Switch to query for and include - broadly inaccruate (stored single dc logged to) - ADUser.LastLogon spec
+    .PARAMETER useEXOv2
+    Use EXOv2 (ExchangeOnlineManagement) over basic auth legacy connection [-useEXOv2]
     .PARAMETER outputObject
     Object output switch [-outputObject]
     .EXAMPLE
@@ -235,7 +240,9 @@ function get-MailboxUseStatus {
         [Parameter(HelpMessage="Number of levels down the SiteOU name appears in the DistinguishedName (Used to calculate SiteOU: counting from right; defaults to 5)[-SiteOUNestingLevel 3]")]
         [int]$SiteOUNestingLevel=5,
         [Parameter(HelpMessage="Object output switch [-outputObject]")]
-        [switch] $outputObject
+        [switch] $outputObject,
+        [Parameter(HelpMessage="Use EXOv2 (ExchangeOnlineManagement) over basic auth legacy connection [-useEXOv2]")]
+        [switch] $useEXOv2=$true
     ) # PARAM BLOCK END
 
     BEGIN {
@@ -347,7 +354,78 @@ function get-MailboxUseStatus {
         write-host $smsg ; 
 
         #*======v FUNCTIONS v======
-                
+        
+        if(-not(get-command invoke-XoWrapper -EA 0 )){
+            write-verbose "need the _func.ps1 to target, gcm doesn't do substrings, wo a wildcard" ; 
+            if(-not($lmod = get-command import-XoW_func.ps1)){
+                write-verbose "found local $($lmod.source), deferring to..." ; 
+                ipmo -fo -verb $lmod ; 
+            } else {
+                #*------v import-XoW v------
+                function import-XoW_func {
+                    <#
+                    .SYNOPSIS
+                    import-XoW - import freestanding local invoke-XOWrapper_func.ps1 (back fill lack of xow support in verb-exo mod)
+                    .NOTES
+                    Version     : 1.0.0.
+                    Author      : Todd Kadrie
+                    Website     : http://www.toddomation.com
+                    Twitter     : @tostka / http://twitter.com/tostka
+                    CreatedDate : 2021-07-13
+                    FileName    : import-XoW_func.ps1
+                    License     : MIT License
+                    Copyright   : (c) 2021 Todd Kadrie
+                    Github      : https://github.com/tostka/verb-XXX
+                    Tags        : Powershell
+                    AddedCredit : REFERENCE
+                    AddedWebsite: URL
+                    AddedTwitter: URL
+                    REVISIONS
+                    * 10:32 AM 3/24/2023 flip wee lxoW into full function call
+                    .DESCRIPTION
+                    import-XoW - import freestanding local invoke-XOWrapper_func.ps1 (back fill lack of xow support in verb-exo mod)
+                    .INPUTS
+                    None. Does not accepted piped input.
+                    .OUTPUTS
+                    None.
+                    .EXAMPLE
+                    PS> import-XoW_func -users 'Test@domain.com','Test2@domain.com' -verbose  ;
+                    Process an array of users, with default 'hunting' -LicenseSkuIds array.
+                    .LINK
+                    https://github.com/tostka/verb-exo
+                    #>
+                    [CmdletBinding()]
+                    [Alias('lxoW')]
+                    PARAM(
+                        [Parameter(Mandatory=$false,HelpMessage="Tenant Tag (3-letter abbrebiation)[-TenOrg 'XYZ']")]
+                        #[ValidateNotNullOrEmpty()]
+                        [string]$ModuleName = 'invoke-XOWrapper_func.ps1'
+                    ) ;
+                    write-verbose "ipmo invoke-XOWrapper/xOW function" ;
+                    if($iflpath = get-command $ModuleName | select -expand source){ 
+                        if(test-path $iflpath){
+                            $tMod = $iflpath ; 
+                        }elseif(test-path (join-path -path 'C:\usr\work\o365\scripts\' -childpath $ModuleName)){
+                            $tMod = (join-path -path 'C:\usr\work\o365\scripts\' -childpath $ModuleName) ;  
+                        } else {throw 'Unable to locate xoW_func.ps1!' ;
+                            break ;
+                        } ;
+                        if($tmod){
+                            write-verbose 'Check for preloaded target function' ; 
+                            if(-not(get-command (split-path $tmod -leaf).replace('_func.ps1',''))){ 
+                                write-verbose "`$tMod:$($tMod)" ;
+                                Import-Module -force -verbose $tMod ;
+                            } else { write-host "($tmod already loaded)" } ;
+                        } else { write-warning "unable to resolve `$tmod!" } ;
+                    } else { 
+                        throw "Unable to locate $()" ; 
+                    } ;  
+                 }
+                 #*------^ import-XoW ^------
+            } ; ;
+            lxoW -verbose ;
+        } ; 
+                    
         #*======^ END FUNCTIONS ^======
 
         if(!(get-variable LogPathDrives -ea 0)){$LogPathDrives = 'd','c' };
@@ -457,7 +535,7 @@ function get-MailboxUseStatus {
         #region SERVICE_CONNECTIONS #*======v SERVICE_CONNECTIONS v======
         #*------v STEERING VARIS v------
         $useO365 = $true ;
-        $useEXO = $false ; 
+        $useEXO = $true ; 
         $UseOP=$true ; 
         $UseExOP=$true ;
         $useForestWide = $true ; # flag to trigger cross-domain/forest-wide code in AD & EXoP
@@ -501,7 +579,7 @@ function get-MailboxUseStatus {
             } else {
                 $statusdelta = ";ERROR";
                 $script:PassStatus += $statusdelta ;
-                set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta) ;
+                set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatettus_$($tenorg)).value + $statusdelta) ;
                 $smsg = "Unable to resolve $($tenorg) `$o365Cred value!"
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
@@ -539,7 +617,7 @@ function get-MailboxUseStatus {
         #region useEXO ; #*------v useEXO v------
         # 1:29 PM 9/15/2022 as of MFA & v205, have to load EXO *before* any EXOP, or gen get-steppablepipeline suffix conflict error
         if($useEXO){
-            if ($script:useEXOv2) { reconnect-eXO2 @pltRXO }
+            if ($script:useEXOv2 -OR $useEXOv2) { reconnect-eXO2 @pltRXO }
             else { reconnect-EXO @pltRXO } ;
         } else {
             $smsg = "(`$useEXO:$($useEXO))" ; 
@@ -824,6 +902,12 @@ function get-MailboxUseStatus {
         #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         #endregion SERVICE_CONNECTIONS #*======^ END SERVICE_CONNECTIONS ^======
 
+        if($useEXO){
+            # splice in xow support
+            #function lxoW { write-verbose "ipmo xOW function" ; if(test-path D:\scripts\xoW_func.ps1){$tMod = 'D:\scripts\xoW_func.ps1'}elseif(test-path C:\usr\work\o365\scripts\xoW_func.ps1){$tMod = 'C:\usr\work\o365\scripts\xoW_func.ps1' } else {throw 'Unable to locate xoW_func.ps1!' ;break ;} ; if($tmod){ if(!(gcm $tmod)){ write-verbose "`$tMod:$($tMod)" ; ipmo -fo -verb $tMod ; } else { write-host "($tmod already loaded)" } ;  } else { \write-warning "unable to resolve `$tmod!" } ;  } ; lxoW -verbose ; 
+            # defers to import-XoW up in functions block
+        } ; 
+
         $1stConn = $false ;
         $rgxHashTableTypeName = "(System.Collections.Hashtable|System.Collections.Specialized.OrderedDictionary)" ;
         #-=-=-=-=-=-=-=-=
@@ -1045,6 +1129,7 @@ function get-MailboxUseStatus {
                         MbxServer = $null ;
                         MbxTotalItemSizeGB = $null ;
                         MbxUseDatabaseQuotaDefaults = $null ;
+                        MbxExchangeGUID = $null ;
                         Name = $mbx.name;
                         ParentOU = (($mbx.distinguishedname.tostring().split(',')) |select -skip 1) -join ',' ;
                         samaccountname = $mbx.samaccountname;
@@ -1053,6 +1138,12 @@ function get-MailboxUseStatus {
                         WhenChanged = $mbx.WhenChanged ;
                         WhenCreated  = $mbx.WhenCreated ;
                         WhenMailboxCreated = $null ;
+                        XoMbxExchangeGUID = $null ; 
+                        XoMbxTotalItemSizeGB = $null ; 
+                        XoMbxLastLogonTime = $null ;
+                        xoMbxWhenChanged = $mbx.WhenChanged ;
+                        xoMbxWhenCreated  = $mbx.WhenCreated ;
+                        SplitBrain = $null ; 
                     } ;
                     <# $prpAadu = 'UserPrincipalName','GivenName','Surname','DisplayName','AccountEnabled','Description','PhysicalDeliveryOfficeName','JobTitle','AssignedLicenses','Department','City','State','Mail','MailNickName','LastDirSyncTime','OtherMails','ProxyAddresses' ;
                     #>
@@ -1083,6 +1174,7 @@ function get-MailboxUseStatus {
                     } ;
                     Reconnect-Ex2010 @pltRX10  ;  
                     $mbxstat = Get-MailboxStatistics @pltGMStat ;
+
                     if($ADLastLogon){
                         # blank comes through as: Sunday, December 31, 1600 6:00:00 PM
                         # g format (short date), outputs: 10/15/2012 3:13 PM
@@ -1198,6 +1290,70 @@ function get-MailboxUseStatus {
                         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     } ;
 
+                    # check splitbrain (op & XO mbx):
+                    $pltGxMbx=[ordered]@{
+                        identity = $mbx.UserPrincipalName ;
+                        ErrorAction = 'SilentlyContinue' ;
+                        verbose = ($VerbosePreference -eq "Continue") ;
+                    } ;
+                    $smsg = "get-xomailbox on UPN:`n$(($pltGxMbx|out-string).trim())" ;
+                    $smsg = $recursetag,$smsg -join '' ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
+                    $objRet = $null ;
+                    #$objRet = get-xomailbox @pltGxMbx ; # $xmbxstat
+                    $objRet = xoW {get-xomailbox @pltGxMbx} -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ;
+                    if( ($objRet|Measure-Object).count -AND $objRet.GetType().FullName -eq 'System.Management.Automation.PSObject' ){
+                        $smsg = "get-xomailbox:$($tenorg):returned populated ExMbx" ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        $xoMbx = $objRet ;
+
+                        $pltGxMStat=[ordered]@{
+                            #identity = $mbx.UserPrincipalName ;
+                            # they've got 2 david.smith@toro.com's onboarded, both with same UPN, shift to DN it's more specific
+                            identity = $xoMbx.UserPrincipalName 
+                            ErrorAction='STOP' ;
+                            verbose = ($VerbosePreference -eq "Continue") ;
+                        } ;
+                        $smsg = "Get-xoMailboxStatistics  w`n$(($pltGxMStat|out-string).trim())" ;
+                        if($verbose){
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        } ;
+                        <# 3:10 PM 3/27/2023 anything using xow *doesn't need pre-rxo2, xow tests and does automatically
+                        if ($script:useEXOv2 -OR $useEXOv2) { reconnect-eXO2 @pltRXO }
+                        else { reconnect-EXO @pltRXO } ;
+                        #>
+                        $objRet = $null ;
+                        $objRet = xoW {Get-xoMailboxStatistics @pltGxMStat} -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ;
+                        if( ($objRet|Measure-Object).count -AND $objRet.GetType().FullName -eq 'System.Management.Automation.PSObject' ){
+                            $smsg = "Get-xoMailboxStatistics:$($tenorg):returned populated mbxstat" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            $xmbxstat = $objRet ;
+                        } else {
+                            $smsg = "Get-xoMailboxStatistics:$($tenorg):FAILED TO RETURN populated 'System.Management.Automation.PSObject' xmbxstat!" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error }
+                            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            THROW $SMSG ;
+                            break ;
+                        } ;
+
+                    } else {
+                        # no issue, no split-brain, nothing returned, and no error
+                        <#$smsg = "get-xoMailbox:$($tenorg):FAILED TO RETURN populated 'System.Management.Automation.PSObject' xoMbx!" ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error }
+                        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        THROW $SMSG ;
+                        break ;
+                        #>
+                        $smsg = "(no xoMbx found matching:$($mbx.userprincipalname)" ; 
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    } ;
+
                     #$hSummary.MbxTotalItemSizeGB = $mbxstat.TotalItemSize ; # dehydraed dbl value, foramt it v
                     if($mbxstat){
                         $hSummary.MbxTotalItemSizeGB = [decimal]("{0:N2}" -f ($mbxstat.TotalItemSize.tostring().split('(')[1].split(' ')[0].replace(',','')/1GB)) ;
@@ -1289,6 +1445,38 @@ function get-MailboxUseStatus {
                             $hSummary.MbxIssueWarningQuotaGB = $mbx.IssueWarningQuota;
                         } else { $hSummary.MbxIssueWarningQuotaGB = $mbx.IssueWarningQuota | convert-DehydratedBytesToGB }
                     } ;
+                    if($xoMbx -AND $mbx){
+                        $smsg = "$($Mbx.UserPrincipalName) HAS SPLIT-BRAIN!" ; 
+                        $smsg +="`nOnPremMbx with ExchangeGuid:$($Mbx.ExchangeGuid)" ; 
+                        $smsg +="`n*AND* XOMbx with ExchangeGuid:$($xoMbx.ExchangeGuid)" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        $hSummary.XoMbxExchangeGUID = $xoMbx.ExchangeGuid ; 
+                        $hSummary.SplitBrain = $true ; 
+                        if($Xmbxstat){
+                            #$hSummary.add('XoMbxTotalItemSizeGB',[decimal]("{0:N2}" -f ($Xmbxstat.TotalItemSize.tostring().split('(')[1].split(' ')[0].replace(',','')/1GB))) ;
+                            $hSummary.XoMbxTotalItemSizeGB = [decimal]("{0:N2}" -f ($Xmbxstat.TotalItemSize.tostring().split('(')[1].split(' ')[0].replace(',','')/1GB)) ;
+                        } else {
+                            $hSummary.XoMbxTotalItemSizeGB = "(No Stats returned: Never logged in?)" ; 
+                        } ;
+                        if($Xmbxstat.LastLogonTime){
+                            $hSummary.XoMbxLastLogonTime = (get-date $Xmbxstat.LastLogonTime -format 'MM/dd/yyyy hh:mm tt');
+                        } else {
+                            $hSummary.XoMbxLastLogonTime,$null ;
+                        } ;
+                        #xoMbxWhenChanged = $XoMbx.WhenChanged ;
+                        if($Xombx.WhenChanged){
+                            $hSummary.XoMbxWhenChanged = (get-date $Xombx.WhenChanged -format 'MM/dd/yyyy hh:mm tt');
+                        } else {
+                            $hSummary.XoMbxWhenChanged = $null ;
+                        } ;
+                        #xoMbxWhenCreated  = $XoMbx.WhenCreated ;
+                        if($Xombx.WhenCreated){
+                            $hSummary.xoMbxWhenCreated = (get-date $Xombx.WhenCreated -format 'MM/dd/yyyy hh:mm tt');
+                        } else {
+                            $hSummary.xoMbxWhenCreated = $null ;
+                        } ;
+                    } ; 
 
                     #$Rpt += [psobject]$hSummary ;
                     # convert the hashtable to object for output to pipeline
