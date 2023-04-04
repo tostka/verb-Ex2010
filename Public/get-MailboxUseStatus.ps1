@@ -18,7 +18,37 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
-    * 10:08 AM 3/28/2023 added split-brain support (which entailed bringing lagging rxo2/exov2 code into function, and adding xo support to this); add: -useExov2 ; spliced in debugged/latest import-xoW() ;
+    * 3:47 PM 4/4/2023 added equate $EOMMinNoWinRMVersion = $MinNoWinRMVersion ; ported over eom module ipmo/test, and version check ; 
+    * 10:00 AM 3/30/2023 updated prpExportCSV to include all hsummary fields, including split brains; added SB#: banner view of ttl split-brains so far in pass.
+    * 4:26 PM 3/29/2023 some splitbrains are false; nulling all working varis loop top, to exclude holdover ; 
+     REN'D $modname => $EOMModName ; $EOMmodname = 'ExchangeOnlineManagement' ;
+    Added code and params to pre-detect native EOMv3 connections and skip the invoke-XOWWrapper use altogether.
+    REN: $MinNoWinRMVersion => $EOMMinNoWinRMVersion
+    * 3:54 PM 3/28/2023 workstation installing latest: ExchangeOnlineManagement 3.1.0: (3.2.0-Preview2 is out, 9d old, 757 dl's, p1 has 1857 30d ago; 3.1.0 has 851k dl's.
+        - [About the Exchange Online PowerShell V2 module and V3 module | Microsoft Learn](https://learn.microsoft.com/en-us/powershell/exchange/exchange-online-powershell-v2?view=exchange-ps#updates-for-version-300-the-exo-v3-module)
+        - [PowerShell Gallery | ExchangeOnlineManagement 3.1.0](https://www.powershellgallery.com/packages/ExchangeOnlineManagement/3.1.0)
+        PS> Install-Module -Name ExchangeOnlineManagement -RequiredVersion 3.1.0 -scope CurrentUser 
+        # update:
+        PS> Get-InstalledModule ExchangeOnlineManagement | Format-List Name,Version,InstalledLocation ; 
+        PS> Update-Module -Name ExchangeOnlineManagement -Scope CurrentUser ; Import-Module ExchangeOnlineManagement; Get-Module ExchangeOnlineManagement ; 
+        This is a General Availability (GA) release of the Exchange Online Powershell V3 module. Exchange Online cmdlets in this module are REST-backed and do not require Basic Authentication to be enabled in WinRM.
+        Please check the documentation here - https://aka.ms/exov3-module.
+        Bug reporting, run log:
+        Connect-ExchangeOnline -EnableErrorReporting -LogDirectoryPath <Path to store log file> -LogLevel All
+        >  Note
+        > Frequent use of the Connect-ExchangeOnline and Disconnect-ExchangeOnline 
+        > cmdlets in a single PowerShell session or script might lead to a memory leak. 
+        > The best way to avoid this issue is to use the CommandName parameter on the 
+        > Connect-ExchangeOnline cmdlet to limit the cmdlets that are used in the session.
+        -> Mem leaks in GA! whatta load of BS!
+        All versions of the module are supported in Windows PowerShell 5.1.
+            PowerShell 7 on Windows requires version 2.0.4 or later.
+            Version 2.0.5 or later of the module requires the Microsoft .NET Framework 
+            4.7.1 or later to connect. Otherwise, you'll get an 
+            System.Runtime.InteropServices.OSPlatform error. This requirement shouldn't be 
+            an issue in current versions of Windows. For more information about versions of 
+            Windows that support the .NET Framework 4.7.1, see this article. 
+        ... added split-brain support (which entailed bringing lagging rxo2/exov2 code into function, and adding xo support to this); add: -useExov2 ; spliced in debugged/latest import-xoW() ;
         new exported properties in hSummary:MbxExchangeGUID, XoMbxExchangeGUID, XoMbxTotalItemSizeGB, XoMbxLastLogonTime,xoMbxWhenChanged, xoMbxWhenCreated, SplitBrain; 
         code to get-xomailbox & get-xomailboxstats & identify split-brain state ; 
     * 4:20 PM 3/22/2023 typo: $hSummary 'ADLastLogon' -> ADLastLogonTime ;  was drawing blank adu.lastlogon, so added failback to lastlogontimestamp use;  updated adu.lastlogon, compare resolved for blank value; added -ADLastLogon to the script, which enables the get-aduser.lastlogon 
@@ -278,16 +308,26 @@ function get-MailboxUseStatus {
         #>
         # 1:10 PM 3/21/2023 rework field order to put usefuls on left/first:
         # 10:05 AM 3/22/2023 add back ADLastLogon (driven by -ADLastLogon switch)
-        $prpExportCSV = 'AADUserPrincipalName','DistinguishedName',@{name="AADUAssignedLicenses";expression={($_.AADUAssignedLicenses) -join ";"}},
-            'ADEnabled','IsExoLicensed','AADUDirSyncEnabled','AADULastDirSyncTime','MbxLastLogonTime','ADLastLogonTime','ParentOU','samaccountname',
-            'SiteOU',@{name="AADUSMTPProxyAddresses";expression={$_.AADUSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},
-            'ADCity','ADCompany','ADCountry','ADcountryCode','ADcreateTimeStamp','ADDepartment','ADDivision','ADEmployeenumber','ADemployeeType',
-            'ADGivenName','ADmailNickname',@{name="ADMemberof";expression={$_.ADMemberof -join ";"}},'ADMobilePhone','ADmodifyTimeStamp',
-            'ADOffice','ADOfficePhone','ADOrganization','ADphysicalDeliveryOfficeName','ADPOBox','ADPostalCode',
-            @{name="ADSMTPProxyAddresses";expression={$_.ADSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},'ADState','ADStreetAddress',
-            'ADSurname','ADTitle','LicGrouppDN','MbxDatabase','MbxIssueWarningQuotaGB','MbxProhibitSendQuotaGB',
-            'MbxProhibitSendReceiveQuotaGB','MbxRetentionPolicy','MbxServer','MbxTotalItemSizeGB','MbxUseDatabaseQuotaDefaults',
-            'Name','UserPrincipalName','WhenChanged','WhenCreated','WhenMailboxCreated' ; 
+        # 4:56 PM 3/29/2023 need split brain etc: output the hsummary and rearranged to pref'd csv field order.
+        $prpExportCSV = 'AADUserPrincipalName','DistinguishedName',
+        @{name="AADUAssignedLicenses";expression={($_.AADUAssignedLicenses) -join ";"}},
+        'ADEnabled','IsExoLicensed','AADUDirSyncEnabled','AADULastDirSyncTime','MbxLastLogonTime',
+        'ADLastLogonTime','ParentOU','SiteOU','samaccountname',
+        @{name="AADUSMTPProxyAddresses";expression={$_.AADUSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},
+        'ADCity','ADCompany','ADCountry','ADcountryCode','ADcreateTimeStamp','ADDepartment','ADDivision',
+        'ADEmployeenumber','ADemployeeType','ADGivenName','ADmailNickname','ADMemberof','ADMobilePhone',
+        'ADmodifyTimeStamp','ADOffice','ADOfficePhone','ADOrganization','ADphysicalDeliveryOfficeName',
+        'ADPOBox','ADPostalCode','ADSMTPProxyAddresses','ADState','ADStreetAddress','ADSurname','ADTitle',
+        'LicGrouppDN','MbxDatabase','MbxIssueWarningQuotaGB','MbxProhibitSendQuotaGB',
+        'MbxProhibitSendReceiveQuotaGB','MbxRetentionPolicy','MbxServer','MbxTotalItemSizeGB',
+        'MbxUseDatabaseQuotaDefaults','MbxExchangeGUID','Name','UserPrincipalName','WhenChanged',
+        'WhenCreated','WhenMailboxCreated','XoMbxExchangeGUID','XoMbxTotalItemSizeGB','XoMbxLastLogonTime',
+        'xoMbxWhenChanged','xoMbxWhenCreated','SplitBrain' ; 
+
+        # EXO V2/3 steering params
+        $EOMModName =  'ExchangeOnlineManagement' ;
+        $EOMMinNoWinRMVersion = $MinNoWinRMVersion = '2.0.6' ; # support both names
+
         ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
         $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters ;
         write-verbose -verbose:$verbose "`$PSBoundParameters:`n$(($PSBoundParameters|out-string).trim())" ;
@@ -605,6 +645,30 @@ function get-MailboxUseStatus {
                 Verbose = $FALSE ; 
                 Silent = $true ;
             } ;
+            #region EOMREV ; #*------v EOMREV Check v------
+            #$EOMmodname = 'ExchangeOnlineManagement' ;
+            $pltIMod = @{Name = $EOMmodname ; ErrorAction = 'Stop' ; verbose=$false} ;
+            if($xmod = Get-Module $EOMmodname -ErrorAction Stop){ } else {
+                $smsg = "Import-Module w`n$(($pltIMod|out-string).trim())" ;
+                if($silent){}elseif($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                Try {
+                    Import-Module @pltIMod | out-null ;
+                    $xmod = Get-Module $EOMmodname -ErrorAction Stop ;
+                } Catch {
+                    $ErrTrapd=$Error[0] ;
+                    $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    $smsg = $ErrTrapd.Exception.Message ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    Break ;
+                } ;
+            } ; # IsImported
+            if([version]$xmod.version -ge $MinNoWinRMVersion){$MinNoWinRMVersion = $xmod.version.tostring() ;}
+            [boolean]$UseConnEXO = [boolean]([version]$xmod.version -ge $MinNoWinRMVersion) ; 
+            #endregion EOMREV ; #*------^ END EOMREV Check  ^------
             #endregion GENERIC_EXO_CREDS_&_SVC_CONN #*------^ END GENERIC EXO CREDS & SVC CONN BP ^------
 
         } else {
@@ -702,6 +766,12 @@ function get-MailboxUseStatus {
                 #Add-PSSnapin -Name 'Microsoft.Exchange.Management.PowerShell.SnapIn'
                 #TK: add: test Exch & AD functional connections
                 TRY{
+                    if(get-command -module (get-module |?{$_.name -like 'tmp_*'}).name -name 'get-OrganizationConfig'){} else {
+                        $smsg = "(mangled Ex10 conn: dx10,rx10...)" ; 
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                        disconnect-ex2010 ; reconnect-ex2010 ; 
+                    } ; 
                     if(-not ($OrgName = ((get-OrganizationConfig).DistinguishedName.split(',') |?{$_ -like 'DC=*'}) -join '.' -replace 'DC=','')){
                         $smsg = "Missing Exchange Connection! (no (Get-OrganizationConfig).name returned)" ; 
                         throw $smsg ; 
@@ -1021,9 +1091,10 @@ function get-MailboxUseStatus {
         #   Process{} iteration (as process only brings in a single element of the pipe per pass)
 
         #$1stConn = $true ;
-        $ttl = ($Mailboxes|measure).count ; $Procd = 0 ;
+        $ttl = ($Mailboxes|measure).count ; $Procd = $SplitBs = 0 ;
         foreach ($mbx in $Mailboxes){
-            $adu = $mbxstat = $AADUser = $null;
+            # null all working varis
+            $adu = $mbxstat = $AADUser = $xoMbx = $xmbxstat = $tLastLogon = $userList = $sku= $LicensedMail = $null;
             $isInvalid=$false ;
             switch ($mbx.GetType().fullname){
                 'System.String' {
@@ -1064,7 +1135,7 @@ function get-MailboxUseStatus {
             $Procd ++ ;
 
             if(-not $isInvalid){
-                $sBnrS="`n#*------v PROCESSING : ($($Procd)/$($ttl)) $($mbx.UserPrincipalName) v------" ;
+                $sBnrS="`n#*------v PROCESSING : ($($Procd)/$($ttl)) $($mbx.UserPrincipalName) (SB#:$($SplitBs)) v------" ;
                 $smsg = "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
@@ -1117,6 +1188,7 @@ function get-MailboxUseStatus {
                         ADStreetAddress = $null ;
                         ADSurname = $null ;
                         ADTitle = $null ;
+                        ADLastLogonTime = $null ; 
                         DistinguishedName = $mbx.DistinguishedName;
                         IsExoLicensed = $null ;
                         LicGrouppDN = $null ; # | ?{$_ -match $xxxmeta.rgxLicGrpDN}
@@ -1159,6 +1231,7 @@ function get-MailboxUseStatus {
                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     } ;
                     $adu = get-aduser @pltGadu
+
                     #| select $selectADU ;
                     $pltGMStat=[ordered]@{
                         #identity = $mbx.UserPrincipalName ;
@@ -1302,12 +1375,17 @@ function get-MailboxUseStatus {
                     else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
 
                     $objRet = $null ;
-                    #$objRet = get-xomailbox @pltGxMbx ; # $xmbxstat
-                    $objRet = xoW {get-xomailbox @pltGxMbx} -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ;
+                    if($UseConnEXO){
+                        $objRet = get-xomailbox @pltGxMbx ; 
+                    } else { 
+                        $objRet = xoW {get-xomailbox @pltGxMbx} -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ;
+                    } ; 
+                    
                     if( ($objRet|Measure-Object).count -AND $objRet.GetType().FullName -eq 'System.Management.Automation.PSObject' ){
-                        $smsg = "get-xomailbox:$($tenorg):returned populated ExMbx" ;
+                        $smsg = "get-xomailbox:$($tenorg):returned populated ExMbx!" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
                         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
                         $xoMbx = $objRet ;
 
                         $pltGxMStat=[ordered]@{
@@ -1326,8 +1404,13 @@ function get-MailboxUseStatus {
                         if ($script:useEXOv2 -OR $useEXOv2) { reconnect-eXO2 @pltRXO }
                         else { reconnect-EXO @pltRXO } ;
                         #>
+
                         $objRet = $null ;
-                        $objRet = xoW {Get-xoMailboxStatistics @pltGxMStat} -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ;
+                        if($UseConnEXO){
+                            $objRet = Get-xoMailboxStatistics @pltGxMStat ;  
+                        } else { 
+                            $objRet = xoW {Get-xoMailboxStatistics @pltGxMStat} -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ;
+                        } ; 
                         if( ($objRet|Measure-Object).count -AND $objRet.GetType().FullName -eq 'System.Management.Automation.PSObject' ){
                             $smsg = "Get-xoMailboxStatistics:$($tenorg):returned populated mbxstat" ;
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
@@ -1451,6 +1534,7 @@ function get-MailboxUseStatus {
                         $smsg +="`n*AND* XOMbx with ExchangeGuid:$($xoMbx.ExchangeGuid)" ; 
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
                         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        $SplitBs ++ ; 
                         $hSummary.XoMbxExchangeGUID = $xoMbx.ExchangeGuid ; 
                         $hSummary.SplitBrain = $true ; 
                         if($Xmbxstat){
