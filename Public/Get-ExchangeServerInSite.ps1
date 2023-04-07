@@ -2,7 +2,7 @@
 Function Get-ExchangeServerInSite {
     <#
     .SYNOPSIS
-    Get-ExchangeServerInSite - Returns the name of an Exchange server in the local AD site.
+    Get-ExchangeServerInSite - Returns a summary of all Exchange servers in the local AD site.
     .NOTES
     Version     : 0.0.
     Author      : Todd Kadrie
@@ -21,7 +21,8 @@ Function Get-ExchangeServerInSite {
     AddedWebsite: http://aka.ms/sammy
     AddedTwitter: URL
     REVISIONS
-    * 4:36 PM 4/6/2023 validated Psv51 & Psv20 ; psadded -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
+    * 10:31 AM 4/7/2023 added CBH expl of postfilter/sorting to draw predictable pattern 
+    * 4:36 PM 4/6/2023 validated Psv51 & Psv20 and Ex10 & 16; added -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
     For backward-compat retain historical output field 'Roles' as the msexchcurrentserverroles summary integer; 
     use RoleNames as the text role array; 
      updated for psv2 compat: flipped hash key lookups into properties, found capizliation differences, (psv2 2was all lower case, wouldn't match); 
@@ -38,17 +39,18 @@ Function Get-ExchangeServerInSite {
     #1:58 PM 9/3/2015 - added pshelp and some docs
     #April 12, 2010 - web version
     .DESCRIPTION
-    Get-ExchangeServerInSite - Returns the summary of an Exchange servers in the local AD site.
+    Get-ExchangeServerInSite - Returns a summary of all Exchange servers in the local AD site.
+
     Uses an ADSI DirectorySearcher to search the current Active Directory site for Exchange on-prem servers.
     Intent is to discover connection points for Powershell, wo the need to preload/pre-connect to Exchange.
 
     Returned object (in array):
-    Name        : Server1
-    FQDN        : Server1.site.sub.domain.com
-    Version     : {Version NN.N (Build nnnnn.n)}
-    Site        : {SITENAME}
-    Roles       : {16439}
-    RoleNames   : {CAS,  HUB,  MBX}
+    Site      : {ADSITENAME}
+    Roles     : {64}
+    Version   : {Version 15.1 (Build 32375.7)}
+    Name      : SERVERNAME
+    RoleNames : EDGE
+    FQDN      : SERVERNAME.DOMAIN.TLD
 
     ... includes the post-filterable Role property ($_.Role -contains 'CAS') which reflects the following
     installed-roles ('msExchCurrentServerRoles') on the discovered servers
@@ -94,6 +96,11 @@ Function Get-ExchangeServerInSite {
     .EXAMPLE
     PS> $ret = get-exchangeserverinsite -RoleNames 'HUB','CAS' -verbose ;
     Demo use of the -RoleNames param, feeding it the array 'HUB','CAS' Role name strings to be filtered against
+    .EXAMPLE
+    PS> $ExchangeServer = get-exchangeserverinsite | sort version,roles,name | ?{$_.rolenames -contains 'CAS'}  | select -last 1 | select -expand fqdn ;
+    Demo post sorting & filtering, to deliver a rule-based predictable pattern for server selection: 
+    Above will always pick the highest Version, 'CAS' RoleName containing, alphabetically last server name (that is pingable). 
+    And should stick to that pattern, until the servers installed change, when it will shift to the next predictable box.
     .LINK
     http://mikepfeiffer.net/2010/04/find-exchange-servers-in-the-local-active-directory-site-using-powershell/
     .LINK
@@ -221,6 +228,7 @@ Function Get-ExchangeServerInSite {
                     } ; 
                 } ; 
             } ; 
+            # hashtable always reads 'populated', so check if it has postive count, and then assign back to $aggr.
             if(($httmp.Values| measure).count -gt 0){
                 $Aggr  = $httmp.Values ; 
             } ; 
