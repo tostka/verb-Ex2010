@@ -18,6 +18,7 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 1:36 PM 4/13/2023 fix: add err suppr: missing -ea 0's on gcm tests, backward compat -silent param test before use in $pltrxo or $pltrx10. Ren use of xow alias with full invoke-xowrapper calls
     * 9:57 AM 4/12/2023 add: emit the outputfiles array to the pipeline, to capture and reuse it for post-procesesing.
     * 4:59 PM 4/11/2023 finally got through a full pass to export on JB; 
     added code to check for dn break (moved/renamed adu), and failback to $oprcp or discovered $adu.dn, upn etc. ; added tests logic for rmbx/migrated user combos; 
@@ -444,7 +445,7 @@ function get-MailboxUseStatus {
         
         if(-not(get-command invoke-XoWrapper -EA 0 )){
             write-verbose "need the _func.ps1 to target, gcm doesn't do substrings, wo a wildcard" ; 
-            if(-not($lmod = get-command import-XoW_func.ps1)){
+            if(-not($lmod = get-command import-XoW_func.ps1 -ea 0)){
                 write-verbose "found local $($lmod.source), deferring to..." ; 
                 ipmo -fo -verb $lmod ; 
             } else {
@@ -499,7 +500,7 @@ function get-MailboxUseStatus {
                         } ;
                         if($tmod){
                             write-verbose 'Check for preloaded target function' ; 
-                            if(-not(get-command (split-path $tmod -leaf).replace('_func.ps1',''))){ 
+                            if(-not(get-command (split-path $tmod -leaf).replace('_func.ps1','') -ea 0)){ 
                                 write-verbose "`$tMod:$($tMod)" ;
                                 Import-Module -force -verbose $tMod ;
                             } else { write-host "($tmod already loaded)" } ;
@@ -510,7 +511,7 @@ function get-MailboxUseStatus {
                  }
                  #*------^ import-XoW ^------
             } ; ;
-            lxoW -verbose ;
+            import-XoW_func -verbose ;
         } ; 
                     
         #*======^ END FUNCTIONS ^======
@@ -707,8 +708,10 @@ function get-MailboxUseStatus {
                 Credential = (Get-Variable -name cred$($tenorg) ).value ;
                 #verbose = $($verbose) ;
                 Verbose = $FALSE ; 
-                Silent = $true ;
             } ;
+            if((gcm Reconnect-EXO2).Parameters.keys -contains 'silent'){
+                $pltRxo.add('Silent',$false) ;
+            } ; 
             #region EOMREV ; #*------v EOMREV Check v------
             #$EOMmodname = 'ExchangeOnlineManagement' ;
             $pltIMod = @{Name = $EOMmodname ; ErrorAction = 'Stop' ; verbose=$false} ;
@@ -808,7 +811,11 @@ function get-MailboxUseStatus {
                 $pltRX10 = @{
                 Credential = (Get-Variable -name "cred$($tenorg)OP" ).value ;
                 #verbose = $($verbose) ;
-                Verbose = $FALSE ; Silent = $true ; } ;
+                Verbose = $FALSE ; 
+            } ;
+            if((gcm Reconnect-Ex2010).Parameters.keys -contains 'silent'){
+                $pltRX10.add('Silent',$false) ;
+            } ;
             Reconnect-Ex2010 @pltRX10 ; # local org conns
             #$pltRx10 creds & .username can also be used for local ADMS connections
             ###>
@@ -816,7 +823,9 @@ function get-MailboxUseStatus {
                 Credential = (Get-Variable -name "cred$($tenorg)OP" ).value ;
                 #verbose = $($verbose) ;
                 Verbose = $FALSE ; 
-                Silent = $true ; 
+            } ;
+            if((gcm Reconnect-Ex2010).Parameters.keys -contains 'silent'){
+                $pltRX10.add('Silent',$false) ;
             } ;
 
             # defer cx10/rx10, until just before get-recipients qry
@@ -1111,7 +1120,7 @@ function get-MailboxUseStatus {
         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         $objRet = $null ;
         $objRet = get-ExoMailboxLicenses @pltGXML ;
-        #$objRet = xoW {get-ExoMailboxLicenses @pltGXML} -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ; ;
+        #$objRet = invoke-XOWrapper {get-ExoMailboxLicenses @pltGXML} -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ; ;
         # ^ not needed get-EXOMailboxLicenses is static text parse, canned material. No queries to XO at all.
         if( ($objRet|Measure-Object).count -AND $objRet.GetType().FullName -match $rgxHashTableTypeName ){
             $smsg = "get-ExoMailboxLicenses:$($tenorg):returned populated ExMbxLicenses" ;
@@ -1858,7 +1867,7 @@ function get-MailboxUseStatus {
                             #CONTINUE #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
                         } ; 
                     } else { 
-                        $objRet = xoW {get-xomailbox @pltGxMbx} -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ;
+                        $objRet = invoke-XOWrapper {get-xomailbox @pltGxMbx} -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ;
                     } ; 
                     
                     if( ($objRet|Measure-Object).count -AND $objRet.GetType().FullName -eq 'System.Management.Automation.PSObject' ){
@@ -1911,7 +1920,7 @@ function get-MailboxUseStatus {
                                 #CONTINUE #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
                             } ; 
                         } else { 
-                            $objRet = xoW {Get-xoMailboxStatistics @pltGxMStat} -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ;
+                            $objRet = invoke-XOWrapper {Get-xoMailboxStatistics @pltGxMStat} -credential $pltRXO.Credential -credentialOP $pltRX10.Credential ;
                         } ; 
                         if( ($objRet|Measure-Object).count -AND $objRet.GetType().FullName -eq 'System.Management.Automation.PSObject' ){
                             $smsg = "Get-xoMailboxStatistics:$($tenorg):returned populated mbxstat" ;

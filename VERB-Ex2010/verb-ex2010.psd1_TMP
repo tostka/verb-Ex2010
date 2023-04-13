@@ -12,7 +12,7 @@
 RootModule = 'VERB-Ex2010.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.4.0'
+ModuleVersion = '3.1.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'Exchange 2010 PS Module-related generic functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('add-MailboxAccessGrant','add-MbxAccessGrant','_cleanup','Connect-Ex2010','Connect-Ex2010XO','cx10cmw','cx10tol','cx10tor','disable-ForestView','Disconnect-Ex2010','enable-ForestView','get-DAGDatabaseCopyStatus','Get-ExchangeServerInSite','Get-ExchServerFromExServersGroup','get-ExRootSiteOUs','get-MailboxDatabaseQuotas','get-MailboxUseStatus','get-UserMailADSummary','import-EMSLocalModule','Invoke-ExchangeCommand','load-EMSLatest','Load-EMSSnap','new-MailboxGenericTOR','_cleanup','new-MailboxShared','preview-EAPUpdate','Reconnect-Ex2010','Reconnect-Ex2010XO','remove-EMSLocalModule','resolve-RecipientEAP','rx10cmw','rx10tol','rx10tor','test-ExOPPSession','test-EXOPStatus','toggle-ForestView')
+FunctionsToExport = @('add-MailboxAccessGrant','add-MbxAccessGrant','_cleanup','Connect-Ex2010','Connect-Ex2010XO','cx10cmw','cx10tol','cx10tor','disable-ForestView','Disconnect-Ex2010','enable-ForestView','get-DAGDatabaseCopyStatus','Get-ExchangeServerInSite','Get-ExchServerFromExServersGroup','get-ExRootSiteOUs','get-MailboxDatabaseQuotas','get-MailboxUseStatus','import-XoW_func','get-UserMailADSummary','import-EMSLocalModule','Invoke-ExchangeCommand','load-EMSLatest','Load-EMSSnap','new-MailboxGenericTOR','_cleanup','new-MailboxShared','preview-EAPUpdate','Reconnect-Ex2010','Reconnect-Ex2010XO','remove-EMSLocalModule','resolve-RecipientEAP','rx10cmw','rx10tol','rx10tor','test-ExOPPSession','test-EXOPConnection','toggle-ForestView')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -148,6 +148,12 @@ PrivateData = @{
 # zPvA+TB0KAarqlT2CzCrDRMJIxe2KYRMRUpWo2CeG09027kCn3ivMWrXiKhM2t9x
 # /9M+u0pCldHX1zz2+gDT62Ia
 # SIG # End signature block
+
+
+
+
+
+
 
 
 

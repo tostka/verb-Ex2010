@@ -379,9 +379,6 @@ get-MailboxUseStatus:Mailboxes
 get-MailboxUseStatus:Ticket
 get-MailboxUseStatus:LicensedMail
 get-MailboxUseStatus:ADLastLogon
-get-MailboxUseStatus:TagYellow
-get-MailboxUseStatus:TagGreen
-get-MailboxUseStatus:TagPurple
 get-MailboxUseStatus:SiteOUNestingLevel
 get-MailboxUseStatus:outputObject
 get-MailboxUseStatus:useEXOv2

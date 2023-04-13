@@ -12,7 +12,7 @@
 RootModule = 'VERB-Ex2010.psm1'
 
 # Version number of this module.
-ModuleVersion = '3.1.0'
+ModuleVersion = '2.0.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'Exchange 2010 PS Module-related generic functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('add-MailboxAccessGrant','add-MbxAccessGrant','_cleanup','Connect-Ex2010','Connect-Ex2010XO','cx10cmw','cx10tol','cx10tor','disable-ForestView','Disconnect-Ex2010','enable-ForestView','get-DAGDatabaseCopyStatus','Get-ExchangeServerInSite','Get-ExchServerFromExServersGroup','get-ExRootSiteOUs','get-MailboxDatabaseQuotas','get-MailboxUseStatus','import-XoW_func','get-UserMailADSummary','import-EMSLocalModule','Invoke-ExchangeCommand','load-EMSLatest','Load-EMSSnap','new-MailboxGenericTOR','_cleanup','new-MailboxShared','preview-EAPUpdate','Reconnect-Ex2010','Reconnect-Ex2010XO','remove-EMSLocalModule','resolve-RecipientEAP','rx10cmw','rx10tol','rx10tor','test-ExOPPSession','test-EXOPConnection','toggle-ForestView')
+FunctionsToExport = @('add-MailboxAccessGrant','add-MbxAccessGrant','_cleanup','Connect-Ex2010','Connect-Ex2010XO','cx10cmw','cx10tol','cx10tor','disable-ForestView','Disconnect-Ex2010','enable-ForestView','get-DAGDatabaseCopyStatus','Get-ExchangeServerInSite','Get-ExchServerFromExServersGroup','get-ExRootSiteOUs','get-MailboxDatabaseQuotas','get-MailboxUseStatus','get-UserMailADSummary','import-EMSLocalModule','Invoke-ExchangeCommand','load-EMSLatest','Load-EMSSnap','new-MailboxGenericTOR','_cleanup','new-MailboxShared','preview-EAPUpdate','Reconnect-Ex2010','Reconnect-Ex2010XO','remove-EMSLocalModule','resolve-RecipientEAP','rx10cmw','rx10tol','rx10tor','test-ExOPPSession','test-EXOPStatus','toggle-ForestView')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUsQNvgCDT9fov2A6dxIZS14jE
-# nQugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUCTCm2X1r/MbjjCAUXRv+gnNL
+# 2qygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS+w/89
-# d2lpRkjXAb9MvdHUrZUIazANBgkqhkiG9w0BAQEFAASBgDKDfevWfU4kOhVjwiFO
-# /tVz87hTnGfxrmyi6WETTy8vrGIeuHqtzNnDTrcCuBz3yq5ImOy2XwkVK0fnoO/E
-# B2mSWUW77yopaT0WlnDBOPvwRsyhD7QMnnakxCC/Zmw0bgXyxv39qlYNumDm5vqf
-# +6ZaFokFbbzRcFRJOdt2vJ/W
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTFkuR/
+# 4xXk/OFPu0dIl6C2uRWZrzANBgkqhkiG9w0BAQEFAASBgJfuSWnwVEglpkGf28EN
+# B0ycejo+Qa9avXXTLxz3gnz1slYIisf3vT7ViSTm8MwtDNy1htlbpX+x77pe2Ffc
+# U1AoN8cxF5r11Yn8O4+bdCtA1rHMjDGKXfuq+PnfjERf02B4x14vjMEYATOOi1sb
+# UH9XXZwxS7LYCNghJ1SVGtyI
 # SIG # End signature block
