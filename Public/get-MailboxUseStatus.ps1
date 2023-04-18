@@ -18,6 +18,7 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 2:02 PM 4/17/2023 rev: $MinNoWinRMVersion from 2.0.6 => 3.0.0.
     * 1:36 PM 4/13/2023 fix: add err suppr: missing -ea 0's on gcm tests, backward compat -silent param test before use in $pltrxo or $pltrx10. Ren use of xow alias with full invoke-xowrapper calls
     * 9:57 AM 4/12/2023 add: emit the outputfiles array to the pipeline, to capture and reuse it for post-procesesing.
     * 4:59 PM 4/11/2023 finally got through a full pass to export on JB; 
@@ -374,7 +375,7 @@ function get-MailboxUseStatus {
 
         # EXO V2/3 steering params
         $EOMModName =  'ExchangeOnlineManagement' ;
-        $EOMMinNoWinRMVersion = $MinNoWinRMVersion = '2.0.6' ; # support both names
+        $EOMMinNoWinRMVersion = $MinNoWinRMVersion = '3.0.0' ; # support both names
 
         ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
         $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters ;
