@@ -15,13 +15,12 @@ function test-EXOPConnection {
     Github      : https://github.com/tostka/verb-EXO
     Tags        : Powershell
     REVISIONS
+    * 2:23 PM 4/17/2023 pulled MinNoWinRMVersion refs (spurious)
     *11:44 AM 9/12/2022 init ; port Test-EXO2Connection to EXOP support
     .DESCRIPTION
     test-EXOPConnection.ps1 - Validate EXOP connection, and that the proper Tenant is connected (as per provided Credential)
     .PARAMETER Credential
     Credential to be used for connection
-    .PARAMETER MinNoWinRMVersion
-    MinimumVersion required for Non-WinRM connections (of ExchangeOnlineManagement module (defaults to '2.0.6')[-MinimumVersion '2.0.6']
     .OUTPUT
     System.Boolean
     .EXAMPLE
@@ -44,9 +43,6 @@ function test-EXOPConnection {
      Param(
         [Parameter(Mandatory=$False,HelpMessage="Credentials [-Credentials [credential object]]")]
         [System.Management.Automation.PSCredential]$Credential = $global:credOpTORSID
-        #,
-        #[Parameter(HelpMessage = "MinimumVersion required for Non-WinRM connections (of ExchangeOnlineManagement module (defaults to '2.0.6')[-MinimumVersion '2.0.6']")]
-        #[version] $MinNoWinRMVersion = '2.0.6'
     )
     BEGIN {
         ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
