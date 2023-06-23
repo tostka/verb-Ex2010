@@ -18,7 +18,8 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
-    * 2:02 PM 4/17/2023 rev: $MinNoWinRMVersion from 2.0.6 => 3.0.0.
+    * 8:46 AM 6/23/2023 put back rolled off 2:02 PM 4/17/2023 rev: $MinNoWinRMVersion from 2.0.6 => 3.0.0.
+    * 12:10 PM 6/21/2023 add: ADUser.Description to datacollection (exported as ADUserDescription)
     * 1:36 PM 4/13/2023 fix: add err suppr: missing -ea 0's on gcm tests, backward compat -silent param test before use in $pltrxo or $pltrx10. Ren use of xow alias with full invoke-xowrapper calls
     * 9:57 AM 4/12/2023 add: emit the outputfiles array to the pipeline, to capture and reuse it for post-procesesing.
     * 4:59 PM 4/11/2023 finally got through a full pass to export on JB; 
@@ -100,6 +101,7 @@ function get-MailboxUseStatus {
         ADCountry
         ADcountryCode
         ADcreateTimeStamp
+        ADDescription
         ADDepartment
         ADDivision
         ADEmployeenumber
@@ -203,7 +205,7 @@ function get-MailboxUseStatus {
     PS>  write-host "Measure ADEnabled users:" ; 
     PS>  $results |?{$_.ADEnabled} |  measure | select -expand count  ;
     PS>  if($results){
-    PS>      $prpExportCSV = @{name="AADUAssignedLicenses";expression={($_.AADUAssignedLicenses) -join ";"}},'AADUDirSyncEnabled','AADULastDirSyncTime','AADUserPrincipalName',@{name="AADUSMTPProxyAddresses";expression={$_.AADUSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},'ADCity','ADCompany','ADCountry','ADcountryCode','ADcreateTimeStamp','ADDepartment','ADDivision','ADEmployeenumber','ADemployeeType','ADEnabled','ADGivenName','ADmailNickname',@{name="ADMemberof";expression={$_.ADMemberof -join ";"}},'ADMobilePhone','ADmodifyTimeStamp','ADOffice','ADOfficePhone','ADOrganization','ADphysicalDeliveryOfficeName','ADPOBox','ADPostalCode',@{name="ADSMTPProxyAddresses";expression={$_.ADSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},'ADState','ADStreetAddress','ADSurname','ADTitle','DistinguishedName','IsExoLicensed','LicGrouppDN','MbxDatabase','MbxIssueWarningQuotaGB','MbxLastLogonTime','MbxProhibitSendQuotaGB','MbxProhibitSendReceiveQuotaGB','MbxRetentionPolicy','MbxServer','MbxTotalItemSizeGB','MbxUseDatabaseQuotaDefaults','Name','ParentOU','samaccountname','SiteOU','UserPrincipalName','WhenChanged','WhenCreated','WhenMailboxCreated' ; 
+    PS>      $prpExportCSV = @{name="AADUAssignedLicenses";expression={($_.AADUAssignedLicenses) -join ";"}},'AADUDirSyncEnabled','AADULastDirSyncTime','AADUserPrincipalName',@{name="AADUSMTPProxyAddresses";expression={$_.AADUSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},'ADCity','ADCompany','ADCountry','ADcountryCode','ADcreateTimeStamp','ADDepartment','ADDivision','ADEmployeenumber','ADemployeeType','ADEnabled','ADGivenName','ADmailNickname',@{name="ADMemberof";expression={$_.ADMemberof -join ";"}},'ADMobilePhone','ADmodifyTimeStamp','ADOffice','ADOfficePhone','ADOrganization','ADphysicalDeliveryOfficeName','ADPOBox','ADPostalCode',@{name="ADSMTPProxyAddresses";expression={$_.ADSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},'ADState','ADStreetAddress','ADSurname','ADTitle','DistinguishedName','IsExoLicensed','LicGrouppDN','MbxDatabase','MbxIssueWarningQuotaGB','MbxLastLogonTime','MbxProhibitSendQuotaGB','MbxProhibitSendReceiveQuotaGB','MbxRetentionPolicy','MbxServer','MbxTotalItemSizeGB','MbxUseDatabaseQuotaDefaults','Name','ParentOU','samaccountname','SiteOU','UserPrincipalName','WhenChanged','WhenCreated','WhenMailboxCreated','Description' ; 
     PS>      $ofile = ".\logs\$($ticket)-get-MailboxUseStatus-Summary-$(get-date -format 'yyyyMMdd-HHmmtt').csv" ;
     PS>      write-host "`$ofile:$($ofile)" ;
     PS>      $results | select $propsExportCSV | export-csv -NoTypeInformation -path $ofile ;
@@ -330,7 +332,7 @@ function get-MailboxUseStatus {
         $prpADU = 'employeenumber','createTimeStamp','modifyTimeStamp','City','Company','Country','countryCode','Department',
             'Division','EmployeeNumber','employeeType','GivenName','Office','OfficePhone','Organization','MobilePhone',
             'physicalDeliveryOfficeName','POBox','PostalCode','State','StreetAddress','Surname','Title','proxyAddresses','memberof',
-            'LastLogon','lastLogonTimestamp'  | select -unique ;
+            'LastLogon','lastLogonTimestamp','Description'  | select -unique ;
         # ,'lastLogonTimestamp' ; worthless, only updated every 9-14d, and then only on local dc - is converting to 1600 as year
         # 12:55 PM 3/22/2023 need to try somethign on ad.lastlogon
         # this isn't used, disabled, we're working with raw values assigned into summary
@@ -361,7 +363,7 @@ function get-MailboxUseStatus {
             @{name="AADUAssignedLicenses";expression={($_.AADUAssignedLicenses) -join ";"}},
             'ADEnabled','IsExoLicensed','MbxRetentionPolicy','MbxTotalItemSizeGB','AADUDirSyncEnabled',
             'OPRecipientType','OPRecipientTypeDetails','AADULastDirSyncTime','MbxLastLogonTime','ADLastLogonTime',
-            'ParentOU','SiteOU','samaccountname',
+            'ParentOU','SiteOU','samaccountname','ADDescription',
             @{name="AADUSMTPProxyAddresses";expression={$_.AADUSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},
             'ADCity','ADCompany','ADCountry','ADcountryCode','ADcreateTimeStamp','ADDepartment','ADDivision',
             'ADEmployeenumber','ADemployeeType','ADGivenName','ADmailNickname','ADMemberof','ADMobilePhone',
@@ -1237,6 +1239,7 @@ function get-MailboxUseStatus {
                         AADULastDirSyncTime = $null ;
                         AADUserPrincipalName = $null ;
                         AADUSMTPProxyAddresses = $null ;
+                        ADDescription = $null ; # 10:30 AM 6/21/2023 add desc
                         ADCity = $null ;
                         ADCompany = $null ;
                         ADCountry = $null ;
@@ -1996,6 +1999,7 @@ function get-MailboxUseStatus {
                         $hSummary.ADStreetAddress = $adu.StreetAddress ;
                         $hSummary.ADSurname = $adu.Surname ;
                         $hSummary.ADTitle = $adu.Title ;
+                        $hSummary.ADDescription  = $adu.Description ;  # add ADU.desc
                         #$prpAxDUserSmtpProxyAddr = @{Name="SmtpProxyAddresses";Expression={ ($_.ProxyAddresses.tolower() |?{$_ -match 'smtp:'}) } } ;
                         $hSummary.ADSMTPProxyAddresses = $adu | select $prpAxDUserSmtpProxyAddr  ;
                         $hSummary.ADMemberof = $adu.memberof ;
@@ -2037,6 +2041,7 @@ function get-MailboxUseStatus {
                         $hSummary.ADMemberof = $null ;
                         $hSummary.ADcreateTimeStamp = $null ;
                         $hSummary.ADmodifyTimeStamp = $null ;
+                        $hSummary.ADDescription  = $null 
                     } ; 
 
                     if($AadUser){
