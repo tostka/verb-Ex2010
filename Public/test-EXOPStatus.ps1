@@ -15,6 +15,7 @@ function test-EXOPConnection {
     Github      : https://github.com/tostka/verb-EXO
     Tags        : Powershell
     REVISIONS
+    * 8:40 AM 6/23/2023 rmvd req's: ps3, just clutters, most mods aren't using a rev req drop it.
     * 2:23 PM 4/17/2023 pulled MinNoWinRMVersion refs (spurious)
     *11:44 AM 9/12/2022 init ; port Test-EXO2Connection to EXOP support
     .DESCRIPTION
@@ -35,9 +36,6 @@ function test-EXOPConnection {
     .LINK
     https://github.com/tostka/verb-EXO
     #>
-    #Requires -Version 3
-    ##Requires -Modules AzureAD, verb-Text
-    ##Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
     [CmdletBinding()]
      Param(
