@@ -1,11 +1,11 @@
-﻿# verb-ex2010.psm1
+﻿# verb-EX2010.psm1
 
 
 <#
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 3.1.0
+Version     : 3.2.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -3430,6 +3430,8 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 8:51 AM 6/23/2023 RMV Reqs Version 3, PSEdition Desktop & RAA; put back rolled off 2:02 PM 4/17/2023 rev: $MinNoWinRMVersion from 2.0.6 => 3.0.0.
+    * 12:10 PM 6/21/2023 add: ADUser.Description to datacollection (exported as ADUserDescription)
     * 1:36 PM 4/13/2023 fix: add err suppr: missing -ea 0's on gcm tests, backward compat -silent param test before use in $pltrxo or $pltrx10. Ren use of xow alias with full invoke-xowrapper calls
     * 9:57 AM 4/12/2023 add: emit the outputfiles array to the pipeline, to capture and reuse it for post-procesesing.
     * 4:59 PM 4/11/2023 finally got through a full pass to export on JB; 
@@ -3447,10 +3449,10 @@ function get-MailboxUseStatus {
      REN'D $modname => $EOMModName ; $EOMmodname = 'ExchangeOnlineManagement' ;
     Added code and params to pre-detect native EOMv3 connections and skip the invoke-XOWWrapper use altogether.
     REN: $MinNoWinRMVersion => $EOMMinNoWinRMVersion
-    * 3:54 PM 3/28/2023 workstation installing latest: ExchangeOnlineManagement 3.1.0: (3.2.0-Preview2 is out, 9d old, 757 dl's, p1 has 1857 30d ago; 3.1.0 has 851k dl's.
+    * 3:54 PM 3/28/2023 workstation installing latest: ExchangeOnlineManagement 3.2.0: (3.2.0-Preview2 is out, 9d old, 757 dl's, p1 has 1857 30d ago; 3.2.0 has 851k dl's.
         - [About the Exchange Online PowerShell V2 module and V3 module | Microsoft Learn](https://learn.microsoft.com/en-us/powershell/exchange/exchange-online-powershell-v2?view=exchange-ps#updates-for-version-300-the-exo-v3-module)
-        - [PowerShell Gallery | ExchangeOnlineManagement 3.1.0](https://www.powershellgallery.com/packages/ExchangeOnlineManagement/3.1.0)
-        PS> Install-Module -Name ExchangeOnlineManagement -RequiredVersion 3.1.0 -scope CurrentUser 
+        - [PowerShell Gallery | ExchangeOnlineManagement 3.2.0](https://www.powershellgallery.com/packages/ExchangeOnlineManagement/3.2.0)
+        PS> Install-Module -Name ExchangeOnlineManagement -RequiredVersion 3.2.0 -scope CurrentUser 
         # update:
         PS> Get-InstalledModule ExchangeOnlineManagement | Format-List Name,Version,InstalledLocation ; 
         PS> Update-Module -Name ExchangeOnlineManagement -Scope CurrentUser ; Import-Module ExchangeOnlineManagement; Get-Module ExchangeOnlineManagement ; 
@@ -3511,6 +3513,7 @@ function get-MailboxUseStatus {
         ADCountry
         ADcountryCode
         ADcreateTimeStamp
+        ADDescription
         ADDepartment
         ADDivision
         ADEmployeenumber
@@ -3614,7 +3617,7 @@ function get-MailboxUseStatus {
     PS>  write-host "Measure ADEnabled users:" ; 
     PS>  $results |?{$_.ADEnabled} |  measure | select -expand count  ;
     PS>  if($results){
-    PS>      $prpExportCSV = @{name="AADUAssignedLicenses";expression={($_.AADUAssignedLicenses) -join ";"}},'AADUDirSyncEnabled','AADULastDirSyncTime','AADUserPrincipalName',@{name="AADUSMTPProxyAddresses";expression={$_.AADUSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},'ADCity','ADCompany','ADCountry','ADcountryCode','ADcreateTimeStamp','ADDepartment','ADDivision','ADEmployeenumber','ADemployeeType','ADEnabled','ADGivenName','ADmailNickname',@{name="ADMemberof";expression={$_.ADMemberof -join ";"}},'ADMobilePhone','ADmodifyTimeStamp','ADOffice','ADOfficePhone','ADOrganization','ADphysicalDeliveryOfficeName','ADPOBox','ADPostalCode',@{name="ADSMTPProxyAddresses";expression={$_.ADSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},'ADState','ADStreetAddress','ADSurname','ADTitle','DistinguishedName','IsExoLicensed','LicGrouppDN','MbxDatabase','MbxIssueWarningQuotaGB','MbxLastLogonTime','MbxProhibitSendQuotaGB','MbxProhibitSendReceiveQuotaGB','MbxRetentionPolicy','MbxServer','MbxTotalItemSizeGB','MbxUseDatabaseQuotaDefaults','Name','ParentOU','samaccountname','SiteOU','UserPrincipalName','WhenChanged','WhenCreated','WhenMailboxCreated' ; 
+    PS>      $prpExportCSV = @{name="AADUAssignedLicenses";expression={($_.AADUAssignedLicenses) -join ";"}},'AADUDirSyncEnabled','AADULastDirSyncTime','AADUserPrincipalName',@{name="AADUSMTPProxyAddresses";expression={$_.AADUSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},'ADCity','ADCompany','ADCountry','ADcountryCode','ADcreateTimeStamp','ADDepartment','ADDivision','ADEmployeenumber','ADemployeeType','ADEnabled','ADGivenName','ADmailNickname',@{name="ADMemberof";expression={$_.ADMemberof -join ";"}},'ADMobilePhone','ADmodifyTimeStamp','ADOffice','ADOfficePhone','ADOrganization','ADphysicalDeliveryOfficeName','ADPOBox','ADPostalCode',@{name="ADSMTPProxyAddresses";expression={$_.ADSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},'ADState','ADStreetAddress','ADSurname','ADTitle','DistinguishedName','IsExoLicensed','LicGrouppDN','MbxDatabase','MbxIssueWarningQuotaGB','MbxLastLogonTime','MbxProhibitSendQuotaGB','MbxProhibitSendReceiveQuotaGB','MbxRetentionPolicy','MbxServer','MbxTotalItemSizeGB','MbxUseDatabaseQuotaDefaults','Name','ParentOU','samaccountname','SiteOU','UserPrincipalName','WhenChanged','WhenCreated','WhenMailboxCreated','Description' ; 
     PS>      $ofile = ".\logs\$($ticket)-get-MailboxUseStatus-Summary-$(get-date -format 'yyyyMMdd-HHmmtt').csv" ;
     PS>      write-host "`$ofile:$($ofile)" ;
     PS>      $results | select $propsExportCSV | export-csv -NoTypeInformation -path $ofile ;
@@ -3699,10 +3702,7 @@ function get-MailboxUseStatus {
     .LINK
     https://github.com/tostka/verb-ex2010
     #>
-    #Requires -Version 3
-    #requires -PSEdition Desktop
     #Requires -Modules ActiveDirectory, verb-ADMS, verb-IO, verb-logging, verb-Network, verb-Text, verb-AAD
-    #Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type
     [CmdletBinding()]
@@ -3741,7 +3741,7 @@ function get-MailboxUseStatus {
         $prpADU = 'employeenumber','createTimeStamp','modifyTimeStamp','City','Company','Country','countryCode','Department',
             'Division','EmployeeNumber','employeeType','GivenName','Office','OfficePhone','Organization','MobilePhone',
             'physicalDeliveryOfficeName','POBox','PostalCode','State','StreetAddress','Surname','Title','proxyAddresses','memberof',
-            'LastLogon','lastLogonTimestamp'  | select -unique ;
+            'LastLogon','lastLogonTimestamp','Description'  | select -unique ;
         # ,'lastLogonTimestamp' ; worthless, only updated every 9-14d, and then only on local dc - is converting to 1600 as year
         # 12:55 PM 3/22/2023 need to try somethign on ad.lastlogon
         # this isn't used, disabled, we're working with raw values assigned into summary
@@ -3772,7 +3772,7 @@ function get-MailboxUseStatus {
             @{name="AADUAssignedLicenses";expression={($_.AADUAssignedLicenses) -join ";"}},
             'ADEnabled','IsExoLicensed','MbxRetentionPolicy','MbxTotalItemSizeGB','AADUDirSyncEnabled',
             'OPRecipientType','OPRecipientTypeDetails','AADULastDirSyncTime','MbxLastLogonTime','ADLastLogonTime',
-            'ParentOU','SiteOU','samaccountname',
+            'ParentOU','SiteOU','samaccountname','ADDescription',
             @{name="AADUSMTPProxyAddresses";expression={$_.AADUSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},
             'ADCity','ADCompany','ADCountry','ADcountryCode','ADcreateTimeStamp','ADDepartment','ADDivision',
             'ADEmployeenumber','ADemployeeType','ADGivenName','ADmailNickname','ADMemberof','ADMobilePhone',
@@ -3786,7 +3786,7 @@ function get-MailboxUseStatus {
 
         # EXO V2/3 steering params
         $EOMModName =  'ExchangeOnlineManagement' ;
-        $EOMMinNoWinRMVersion = $MinNoWinRMVersion = '2.0.6' ; # support both names
+        $EOMMinNoWinRMVersion = $MinNoWinRMVersion = '3.0.0' ; # support both names
 
         ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
         $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters ;
@@ -4648,6 +4648,7 @@ function get-MailboxUseStatus {
                         AADULastDirSyncTime = $null ;
                         AADUserPrincipalName = $null ;
                         AADUSMTPProxyAddresses = $null ;
+                        ADDescription = $null ; # 10:30 AM 6/21/2023 add desc
                         ADCity = $null ;
                         ADCompany = $null ;
                         ADCountry = $null ;
@@ -5407,6 +5408,7 @@ function get-MailboxUseStatus {
                         $hSummary.ADStreetAddress = $adu.StreetAddress ;
                         $hSummary.ADSurname = $adu.Surname ;
                         $hSummary.ADTitle = $adu.Title ;
+                        $hSummary.ADDescription  = $adu.Description ;  # add ADU.desc
                         #$prpAxDUserSmtpProxyAddr = @{Name="SmtpProxyAddresses";Expression={ ($_.ProxyAddresses.tolower() |?{$_ -match 'smtp:'}) } } ;
                         $hSummary.ADSMTPProxyAddresses = $adu | select $prpAxDUserSmtpProxyAddr  ;
                         $hSummary.ADMemberof = $adu.memberof ;
@@ -5448,6 +5450,7 @@ function get-MailboxUseStatus {
                         $hSummary.ADMemberof = $null ;
                         $hSummary.ADcreateTimeStamp = $null ;
                         $hSummary.ADmodifyTimeStamp = $null ;
+                        $hSummary.ADDescription  = $null 
                     } ; 
 
                     if($AadUser){
@@ -9720,13 +9723,13 @@ function test-EXOPConnection {
     Github      : https://github.com/tostka/verb-EXO
     Tags        : Powershell
     REVISIONS
+    * 8:40 AM 6/23/2023 rmvd req's: ps3, just clutters, most mods aren't using a rev req drop it.
+    * 2:23 PM 4/17/2023 pulled MinNoWinRMVersion refs (spurious)
     *11:44 AM 9/12/2022 init ; port Test-EXO2Connection to EXOP support
     .DESCRIPTION
     test-EXOPConnection.ps1 - Validate EXOP connection, and that the proper Tenant is connected (as per provided Credential)
     .PARAMETER Credential
     Credential to be used for connection
-    .PARAMETER MinNoWinRMVersion
-    MinimumVersion required for Non-WinRM connections (of ExchangeOnlineManagement module (defaults to '2.0.6')[-MinimumVersion '2.0.6']
     .OUTPUT
     System.Boolean
     .EXAMPLE
@@ -9741,17 +9744,11 @@ function test-EXOPConnection {
     .LINK
     https://github.com/tostka/verb-EXO
     #>
-    #Requires -Version 3
-    ##Requires -Modules AzureAD, verb-Text
-    ##Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
     [CmdletBinding()]
      Param(
         [Parameter(Mandatory=$False,HelpMessage="Credentials [-Credentials [credential object]]")]
         [System.Management.Automation.PSCredential]$Credential = $global:credOpTORSID
-        #,
-        #[Parameter(HelpMessage = "MinimumVersion required for Non-WinRM connections (of ExchangeOnlineManagement module (defaults to '2.0.6')[-MinimumVersion '2.0.6']")]
-        #[version] $MinNoWinRMVersion = '2.0.6'
     )
     BEGIN {
         ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
