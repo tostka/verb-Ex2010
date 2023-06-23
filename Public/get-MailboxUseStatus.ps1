@@ -18,7 +18,7 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
-    * 8:46 AM 6/23/2023 put back rolled off 2:02 PM 4/17/2023 rev: $MinNoWinRMVersion from 2.0.6 => 3.0.0.
+    * 8:51 AM 6/23/2023 RMV Reqs Version 3, PSEdition Desktop & RAA; put back rolled off 2:02 PM 4/17/2023 rev: $MinNoWinRMVersion from 2.0.6 => 3.0.0.
     * 12:10 PM 6/21/2023 add: ADUser.Description to datacollection (exported as ADUserDescription)
     * 1:36 PM 4/13/2023 fix: add err suppr: missing -ea 0's on gcm tests, backward compat -silent param test before use in $pltrxo or $pltrx10. Ren use of xow alias with full invoke-xowrapper calls
     * 9:57 AM 4/12/2023 add: emit the outputfiles array to the pipeline, to capture and reuse it for post-procesesing.
@@ -290,10 +290,7 @@ function get-MailboxUseStatus {
     .LINK
     https://github.com/tostka/verb-ex2010
     #>
-    #Requires -Version 3
-    #requires -PSEdition Desktop
     #Requires -Modules ActiveDirectory, verb-ADMS, verb-IO, verb-logging, verb-Network, verb-Text, verb-AAD
-    #Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type
     [CmdletBinding()]
