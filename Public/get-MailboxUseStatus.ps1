@@ -18,6 +18,7 @@ function get-MailboxUseStatus {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 9:19 AM 7/10/2023 updated CBH expls: simplified to functional quick summarize scriptblock, and ftac output to console, UserMailbox ADEnables, Non-UserMailbox, and Deletion Targets from profileing.
     * 8:51 AM 6/23/2023 RMV Reqs Version 3, PSEdition Desktop & RAA; put back rolled off 2:02 PM 4/17/2023 rev: $MinNoWinRMVersion from 2.0.6 => 3.0.0.
     * 12:10 PM 6/21/2023 add: ADUser.Description to datacollection (exported as ADUserDescription)
     * 1:36 PM 4/13/2023 fix: add err suppr: missing -ea 0's on gcm tests, backward compat -silent param test before use in $pltrxo or $pltrx10. Ren use of xow alias with full invoke-xowrapper calls
@@ -172,95 +173,38 @@ function get-MailboxUseStatus {
     PS> (get-mailbox -id USER) | get-mailboxusestatus -ticket 999999 -verbose ;
     Pipeline example
     .EXAMPLE
-    PS>  $ticket = '123456' ; 
-    PS>  write-host "Profile specified list of users (pre-filtered for recipienttypedetails & not stored in term-related OUs), and below Users OUs)Then postfilter and count the number actually ADEnabled" ; 
-    PS>  write-host "get-mailbox -ResultSize unlimited..." ; 
-    PS>  $sw = [Diagnostics.Stopwatch]::StartNew();
-    PS>  $allExopmbxs = get-mailbox -ResultSize unlimited ;
-    PS>  $sw.Stop() ; write-host ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ; 
-    PS>  $sw = [Diagnostics.Stopwatch]::StartNew();
-    PS>  $of = ".\logs\allExopmbxs-$(get-date -format 'yyyyMMdd-HHmmtt').xml" ; 
-    PS>  touch $of ; $of = (resolve-path $of).path ; 
-    PS>  write-host "export/import xml:$($of)" ; 
-    PS>  write-host "`$allExopmbxs | export-clixml:$($of)" ;
-    PS>  $allExopmbxs | export-clixml -path $of -depth 100 -f;
-    PS>  $allExopmbxs = import-clixml -path $of ;
-    PS>  write-host "`$allExopmbxs.count:$(($allExopmbxs|  measure | select -expand count |out-string).trim())" ; 
-    PS>  $sw.Stop() ;write-host ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ; 
-    PS>  write-host "post filter for NonTermUMbxs..." ; 
-    PS>  $sw = [Diagnostics.Stopwatch]::StartNew();
-    PS>  $NonTermUmbxs = $allExopmbxs | ?{$_.recipienttypedetails -eq 'UserMailbox' -AND $_.distinguishedname -notmatch ',OU=(Disabled|TERM),' -AND $_.distinguishedname -match ',OU=Users,'} ;
-    PS>  $sw.Stop() ; write-host ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ; 
-    PS>  $of = $of.replace('allExopmbxs-','NonTermUmbxs-') ; 
-    PS>  touch $of ; $of = (resolve-path $of).path ; 
-    PS>  write-host "`$NonTermUmbxs | export-clixml:$(resolve-path $of.replace('allExopmbxs-','NonTermUmbxs-'))" ; 
-    PS>  $NonTermUmbxs | export-clixml -path $of -depth 100 -f ;
-    PS>  $NonTermUmbxs = import-clixml -path $of ; 
-    PS>  write-host "`$NonTermUmbxs.count:$(($NonTermUmbxs|  measure | select -expand count |out-string).trim())" ; 
-    PS>  write-host "Run `$NonTermUmbxs through get-MailboxUseStatus" ; 
-    PS>  $sw = [Diagnostics.Stopwatch]::StartNew();
-    PS>  $Results = get-MailboxUseStatus -ticket $ticket -mailboxes $NonTermUmbxs -outputObject ;
-    PS>  $sw.Stop() ;write-host ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ; 
-    PS>  $sw = [Diagnostics.Stopwatch]::StartNew();
-    PS>  write-host "Measure ADEnabled users:" ; 
-    PS>  $results |?{$_.ADEnabled} |  measure | select -expand count  ;
-    PS>  if($results){
-    PS>      $prpExportCSV = @{name="AADUAssignedLicenses";expression={($_.AADUAssignedLicenses) -join ";"}},'AADUDirSyncEnabled','AADULastDirSyncTime','AADUserPrincipalName',@{name="AADUSMTPProxyAddresses";expression={$_.AADUSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},'ADCity','ADCompany','ADCountry','ADcountryCode','ADcreateTimeStamp','ADDepartment','ADDivision','ADEmployeenumber','ADemployeeType','ADEnabled','ADGivenName','ADmailNickname',@{name="ADMemberof";expression={$_.ADMemberof -join ";"}},'ADMobilePhone','ADmodifyTimeStamp','ADOffice','ADOfficePhone','ADOrganization','ADphysicalDeliveryOfficeName','ADPOBox','ADPostalCode',@{name="ADSMTPProxyAddresses";expression={$_.ADSMTPProxyAddresses.SmtpProxyAddresses -join ";"}},'ADState','ADStreetAddress','ADSurname','ADTitle','DistinguishedName','IsExoLicensed','LicGrouppDN','MbxDatabase','MbxIssueWarningQuotaGB','MbxLastLogonTime','MbxProhibitSendQuotaGB','MbxProhibitSendReceiveQuotaGB','MbxRetentionPolicy','MbxServer','MbxTotalItemSizeGB','MbxUseDatabaseQuotaDefaults','Name','ParentOU','samaccountname','SiteOU','UserPrincipalName','WhenChanged','WhenCreated','WhenMailboxCreated','Description' ; 
-    PS>      $ofile = ".\logs\$($ticket)-get-MailboxUseStatus-Summary-$(get-date -format 'yyyyMMdd-HHmmtt').csv" ;
-    PS>      write-host "`$ofile:$($ofile)" ;
-    PS>      $results | select $propsExportCSV | export-csv -NoTypeInformation -path $ofile ;
-    PS>      $ofile = $ofile.replace('.csv','.xml') ; 
-    PS>      write-host "`$ofile:$($ofile)" ;
-    PS>      $results | export-clixml -depth 100 -path $ofile ;
-    PS>  } ;
-    PS>  $sw.Stop() ;write-host ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ; 
-    Profile specified list of users (pre-filtered for recipienttypedetails & not stored in term-related OUs, and below Users OUs)
-    Capture returned output object, and postfilter and count the number actually ADEnabled. Then manually export the results to csv & xml.
-    Issue above: function works fine, but the post object export above still coming through as objects in csv (unusable). Native non-'-outputobject' csv exports just fine...
-    .EXAMPLE
-    PS>  $ticket = '123456' ;
-    PS>  write-host "Profile specified list of users (pre-filtered for recipienttypedetails & not stored in term-related OUs), and below Users OUs)Then postfilter and count the number actually ADEnabled" ;
-    PS>  write-host "get-mailbox -ResultSize unlimited..." ;
-    PS>  $sw = [Diagnostics.Stopwatch]::StartNew();
-    PS>  $allExopmbxs = get-mailbox -ResultSize unlimited ;
-    PS>  $sw.Stop() ;
-    PS>   write-host ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ;
-    PS>  $sw = [Diagnostics.Stopwatch]::StartNew();
-    PS>  $of = ".\logs\allExopmbxs-$(get-date -format 'yyyyMMdd-HHmmtt').xml" ;
-    PS>  touch $of ;
-    PS>   $of = (resolve-path $of).path ;
-    PS>  write-host "export/import xml:$($of)" ;
-    PS>  write-host "$allExopmbxs | export-clixml:$($of)" ;
-    PS>  $allExopmbxs | export-clixml -path $of -depth 100 -f;
-    PS>  $allExopmbxs = import-clixml -path $of ;
-    PS>  write-host "$allExopmbxs.count:$(($allExopmbxs|  measure | select -expand count |out-string).trim())" ;
-    PS>  $sw.Stop() ;
-    PS>  write-host ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ;
-    PS>  write-host "post filter for NonTermUMbxs..." ;
-    PS>  $sw = [Diagnostics.Stopwatch]::StartNew();
-    PS>  $NonTermUmbxs = $allExopmbxs | ?{$_.recipienttypedetails -eq 'UserMailbox' -AND $_.distinguishedname -notmatch ',OU=(Disabled|TERM),' -AND $_.distinguishedname -match ',OU=Users,'} ;
-    PS>  $sw.Stop() ;
-    PS>   write-host ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ;
-    PS>  $of = $of.replace('allExopmbxs-','NonTermUmbxs-') ;
-    PS>  touch $of ;
-    PS>   $of = (resolve-path $of).path ;
-    PS>  write-host "$NonTermUmbxs | export-clixml:$(resolve-path $of.replace('allExopmbxs-','NonTermUmbxs-'))" ;
-    PS>  $NonTermUmbxs | export-clixml -path $of -depth 100 -f ;
-    PS>  $NonTermUmbxs = import-clixml -path $of ;
-    PS>  write-host "$NonTermUmbxs.count:$(($NonTermUmbxs|  measure | select -expand count |out-string).trim())" ;
-    PS>  write-host "Run $NonTermUmbxs through get-MailboxUseStatus" ;
-    PS>  $sw = [Diagnostics.Stopwatch]::StartNew();
-    PS>  get-MailboxUseStatus -ticket $ticket -mailboxes $NonTermUmbxs  ;
-    PS>  $sw.Stop() ;
-    PS>  write-host ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ;
-    PS>  $sw = [Diagnostics.Stopwatch]::StartNew();
-    PS>  write-host "Measure ADEnabled users:" ;
-    PS>  $Results = import-clixml -path '.\path-to\123456-get-MailboxUseStatus-EXEC-yyyymmdd-hhmmPM.XML ;
-    PS>  $results |?{$_.ADEnabled} |  measure | select -expand count  ;
-    PS>  $sw.Stop() ;
-    PS>  write-host ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ;
-    Above - working - Profile specified list of users (pre-filtered for recipienttypedetails & not stored in term-related OUs, and below Users OUs)
-    does *not* use -outputobject, which has the script output native .csv & .xml files (full functioning), then count the number actually ADEnabled.
+    PS> $ticket = '123456' ; 
+    PS> $prpFTA = 'UserPrincipalName','ADEnabled','MbxLastLogonTime','MbxTotalItemSizeGB','OPRecipientTypeDetails','AADUAssignedLicenses','ParentOU' ;
+    PS> $prpAmbx = 'UserPrincipalName','RecipientTypeDetails','OrganizationalUnit','PrimarySmtpAddress','DisplayName' ; 
+    PS> write-host "Gathering all onprem mailboxes to `$allExopmbxs ..." ; 
+    PS> $allExopmbxs = get-mailbox -resultsize unlimited ; 
+    PS> $sw.Stop() ; write-host ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ; 
+    PS> $of = ".\allExopmbxs-$(get-date -format 'yyyyMMdd-HHmmtt').xml" ;
+    PS> $sw = [Diagnostics.Stopwatch]::StartNew();
+    PS> write-host "Exporting `$allExopmbxs to $($of) & .csv" ; 
+    PS> $sw = [Diagnostics.Stopwatch]::StartNew();
+    PS> $allExopmbxs | export-clixml $of -verbose ;
+    PS> $allExopmbxs | export-csv $of.replace('.xml','.csv') -notype -verbose ;
+    PS> $sw.Stop() ; write-host ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ; 
+    PS> $of = resolve-path $of ; 
+    PS> $allExopmbxs = import-clixml $of -verbose ;
+    PS> $NonTermUmbxs = $allExopmbxs | ?{$_.recipienttypedetails -eq 'UserMailbox' -AND $_.distinguishedname -notmatch ',OU=(Disabled|TERM),' -AND $_.distinguishedname -match ',OU=Users,'} ;
+    PS> $NonTermUmbxs |  measure | select -expand count ; 
+    PS> write-host "Profiling UserMailboxes Non-Terms:$($NonTermUmbxs| measure | select -expand count )..." ; 
+    PS> $summaryfile = get-MailboxUseStatus -ticket $ticket -mailboxes $NonTermUmbxs -verbose ;
+    PS> $results = import-clixml ($SUMMARYFILE | ?{$_ -match '.xml$'} | select -first 1) -verbose ;
+    PS> if($results){
+    PS>     write-host -fore yellow "`n===UserMailbox & ADUser.Enabled count: ($($results |?{$_.ADEnabled} |  measure | select -expand count)) : Summarized`n:$(($results |?{$_.ADEnabled} | sort ADEnabled,UserPrincipalname | ft -a $prpFTA |out-string).trim())`n" ;     
+    PS> } ; 
+    PS> $smsg = "`n===NON-UserMailbox types remaining: ($($allExopmbxs | ?{$_.recipienttypedetails -ne 'usermailbox'} |  measure | select -expand count))" 
+    PS> $smsg += "`n`nGrouped RecipientTypeDetails:`n$(($allExopmbxs | group recipienttypedetails |  ft -a count,name |out-string).trim())" ; 
+    PS> $smsg += "`n`n$(($allExopmbxs | ?{$_.recipienttypedetails -ne 'usermailbox'} | sort RecipientTypeDetails,UserPrincipalName | ft -a $prpAmbx |out-string).trim())" ; 
+    PS> write-host -fore White $smsg ;
+    PS> if($results){
+    PS>     write-host -fore red "`n===UserMailbox *DELETE TARGETS* (ADEnabled:false) count: ($($results |?{$_.ADEnabled -eq $false} |  measure | select -expand count)) : `nSummarized`n:$(($results |?{$_.ADEnabled -eq $false} | sort ADEnabled,UserPrincipalname | ft -a $prpFTA |out-string).trim())`n" ;     
+    PS> } ; 
+    Retreive all onprem Exchange mailboxes; Profile filtered non-term users (pre-filtered for recipienttypedetails & not stored in term-related OUs, and below Users OUs)
+    Capture returned output object, and postfilter and Summarize ADEnabled UserMailbox types; non-UserMailbox-type (specs from raw get-mailbox pass); and then output UserMailbox deletion targets summary. 
     .EXAMPLE
     PS>  $results = 'USER1@DOMAIN.com','USER2@DOMAIN.com' | get-mailbox | get-MailboxUseStatus -ticket 123456 -outputObject ;
     Feed a list of UPNs through get-mailbox and then through the script, via pipeline
