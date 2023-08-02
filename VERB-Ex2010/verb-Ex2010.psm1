@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 4.0.0
+Version     : 5.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -3815,7 +3815,7 @@ function Invoke-ExchangeCommand{
     System.String RootSDDL                                       O:NSG:BAD:P(A;;GA;;;BA)(A;;GR;;;IU)S:P(AU;FA;GA;;;WD)(A...
     System.String MaxConcurrentOperations                        4294967295
     System.String MaxConcurrentOperationsPerUser                 1500
-    System.String EnumerationTimeoutms                           240000
+    System.String EnumerationTimeoutms                           25.0.0
     System.String MaxConnections                                 300
     System.String MaxPacketRetrievalTimeSeconds                  120
     System.String AllowUnencrypted                               false
@@ -3936,7 +3936,7 @@ function Invoke-ExchangeCommand{
         RootSDDL = O:NSG:BAD:P(A;;GA;;;BA)(A;;GR;;;IU)S:P(AU;FA;GA;;;WD)(AU;SA;GXGW;;;WD)
         MaxConcurrentOperations = 4294967295
         MaxConcurrentOperationsPerUser = 1500
-        EnumerationTimeoutms = 240000
+        EnumerationTimeoutms = 25.0.0
         MaxConnections = 300
         MaxPacketRetrievalTimeSeconds = 120
         AllowUnencrypted = true
@@ -3978,7 +3978,7 @@ function Invoke-ExchangeCommand{
     System.String RootSDDL                                       O:NSG:BAD:P(A;;GA;;;BA)(A;;GR;;;IU)S:P(AU;FA;GA;;;WD)(A...
     System.String MaxConcurrentOperations                        4294967295
     System.String MaxConcurrentOperationsPerUser                 1500
-    System.String EnumerationTimeoutms                           240000
+    System.String EnumerationTimeoutms                           25.0.0
     System.String MaxConnections                                 300
     System.String MaxPacketRetrievalTimeSeconds                  120
     System.String AllowUnencrypted                               true
@@ -4786,7 +4786,7 @@ function new-MailboxShared {
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
     CreatedDate : 2020-
-    FileName    :
+    FileName    : new-MailboxShared.ps1
     License     : MIT License
     Copyright   : (c) 2020 Todd Kadrie
     Github      : https://github.com/tostka
@@ -4795,6 +4795,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 2:36 PM 8/2/2023 have to bump up password complexity - revised policy., it does support fname.lname naming & email addreses, just have to pass in dname with period. but the dname will also come out with the same period (which if they specified the eml, implies they don't mind if the name has it)
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     # 10:01 AM 9/14/2021 had a random creation bug - but debugged fine in ISE (bad PSS?), beefed up Catch block outputs, captured new-mailbox output & recycled; added 7pswhsplat outputs prior to cmds.
     # 4:37 PM 5/18/2021 fixed broken start-log call (wasn't recycling logspec into logfile & transcrpt)
@@ -5599,9 +5600,11 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             # *** BREAKPOINT ;
             $InputSplat.Add("Title","") ;
 
-            #region passwordgen #-----------
+             #region passwordgen #-----------
             # need to test complex, and if failed, pull another: (above doesn't consistently deliver Ad complexity req's)
-            Do { $password = $([System.Web.Security.Membership]::GeneratePassword(8,2)) } Until (Validate-Password -pwd $password ) ;
+            # 2:16 PM 8/2/2023 revised pol, don't need complex, but will pass with it, but leng is bumped; until rebuild, can push up default with explicit -minLen param
+            # # method: GeneratePassword(int length, int numberOfNonAlphanumericCharacters)
+            Do { $password = $([System.Web.Security.Membership]::GeneratePassword(14,2)) } Until (Validate-Password -pwd $password -minLen 14) ;
             $InputSplat.Add("pass",$($password));
             #region passwordgen #-----------
 
@@ -7670,8 +7673,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvDmsmFFAxlOoJ48A8v7Ip7bu
-# hZ+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUcG9mA0XZJgzvbar9uR6rRPUy
+# /lSgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -7686,9 +7689,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSF5Z6J
-# 0QVaDF4A9AajHVRTRPpr2DANBgkqhkiG9w0BAQEFAASBgEaB03Jhi0qjeJZ8KojN
-# h758UQuUDwyovqNN1DtiCX82EMYqf1dFbPFvqeTIydvFvFKqR98cPbwoNnKQt35b
-# N5DMD+XFltHSDZRreQmXROI1XoVFe8gkwOIzxoItAb5bqk37QitQf+iymtx83Va+
-# Km5kCIpYPoBOeRHEGbtt7QvW
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRQZMyy
+# nrKdHp2ybQ23iUbjmXxgujANBgkqhkiG9w0BAQEFAASBgEpK6pYdHbJMrYrphS39
+# PbZ74XrjSeR48iFLSOZ+arADqDQDGLXMFarcUHlaJ7kSPxmXSMrflg5k3RRZ2xX0
+# eKdPWg6auG5eEQ+NK+OByjh7JoWqqXnD9//oOxLatQ+GTygvIIDHeGXrj25AQhdj
+# tToSgo7dqcpYMGYfu4g+4n6N
 # SIG # End signature block

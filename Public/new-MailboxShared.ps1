@@ -9,7 +9,7 @@ function new-MailboxShared {
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
     CreatedDate : 2020-
-    FileName    :
+    FileName    : new-MailboxShared.ps1
     License     : MIT License
     Copyright   : (c) 2020 Todd Kadrie
     Github      : https://github.com/tostka
@@ -18,6 +18,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 2:36 PM 8/2/2023 have to bump up password complexity - revised policy., it does support fname.lname naming & email addreses, just have to pass in dname with period. but the dname will also come out with the same period (which if they specified the eml, implies they don't mind if the name has it)
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     # 10:01 AM 9/14/2021 had a random creation bug - but debugged fine in ISE (bad PSS?), beefed up Catch block outputs, captured new-mailbox output & recycled; added 7pswhsplat outputs prior to cmds.
     # 4:37 PM 5/18/2021 fixed broken start-log call (wasn't recycling logspec into logfile & transcrpt)
@@ -822,9 +823,11 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             # *** BREAKPOINT ;
             $InputSplat.Add("Title","") ;
 
-            #region passwordgen #-----------
+             #region passwordgen #-----------
             # need to test complex, and if failed, pull another: (above doesn't consistently deliver Ad complexity req's)
-            Do { $password = $([System.Web.Security.Membership]::GeneratePassword(8,2)) } Until (Validate-Password -pwd $password ) ;
+            # 2:16 PM 8/2/2023 revised pol, don't need complex, but will pass with it, but leng is bumped; until rebuild, can push up default with explicit -minLen param
+            # # method: GeneratePassword(int length, int numberOfNonAlphanumericCharacters)
+            Do { $password = $([System.Web.Security.Membership]::GeneratePassword(14,2)) } Until (Validate-Password -pwd $password -minLen 14) ;
             $InputSplat.Add("pass",$($password));
             #region passwordgen #-----------
 

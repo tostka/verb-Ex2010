@@ -12,7 +12,7 @@
 RootModule = 'VERB-Ex2010.psm1'
 
 # Version number of this module.
-ModuleVersion = '4.0.0'
+ModuleVersion = '5.0.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -148,6 +148,8 @@ PrivateData = @{
 # zPvA+TB0KAarqlT2CzCrDRMJIxe2KYRMRUpWo2CeG09027kCn3ivMWrXiKhM2t9x
 # /9M+u0pCldHX1zz2+gDT62Ia
 # SIG # End signature block
+
+
 
 
 
