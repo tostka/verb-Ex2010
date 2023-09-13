@@ -16,6 +16,7 @@ function new-MailboxGenericTOR {
     Github      : https://github.com/tostka/verb-ex2010
     Tags        : Exchange,ExchangeOnPremises,Mailbox,Creation,Maintenance,UserMailbox
     REVISIONS
+    # 1:15 PM 9/6/2023 updated CBH, pulled in expls from 7PSnMbxG/psb-PSnewMbxG.cbp. Works with current cba auth etc. 
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     * 11:37 AM 9/16/2021 string
     * 8:55 AM 5/11/2021 functionalized into verb-ex2010 ; ren: internal helper func Cleanup() -> _cleanup() ; subbed some wv -v:v,=> wh (silly to use wv, w force display; should use it solely for optional verbose details
@@ -109,7 +110,6 @@ function new-MailboxGenericTOR {
     * 2:48 PM 10/2/2015 updated Catch blocks to be specific on crash
     * 10:23 AM 10/2/2015 initial port from add-mbxaccessgrant & bp code
 
-
     .DESCRIPTION 
     new-MailboxGenericTOR.ps1 - Wrapper/pre-processor function to create New shared Mbx (leverages new-MailboxShared generic function)
     No service connectivity or module dependancies: Preprocesses the specified inputs into values suitable for the service-specific functions
@@ -122,7 +122,9 @@ function new-MailboxGenericTOR {
     IsContractor=$false;
     NonGeneric=$true
 
+    # splat entries
     ticket "355925";  DisplayName "XXX Confirms" ;  MInitial "" ;  Owner "LOGON";  BaseUser "AccountsReceivable";  IsContractor $false;  NonGeneric $true
+    # equiv params use:
     -ticket "355925" -DisplayName "XXX Confirms"  -MInitial ""  -Owner "LOGON" -BaseUser "AccountsReceivable" -NonGeneric
 
     .PARAMETER DisplayName
@@ -170,64 +172,141 @@ function new-MailboxGenericTOR {
     .OUTPUTS
     None. Returns no objects or output.
     .EXAMPLE 
+    write-verbose "==SPLAT-DRIVEN, CREATE & IMMED GRANT & MIGRATE WRAPPER==" ; 
+    write-verbose "For CU5 support, add to `$spltINPUTS hash: CU5='Exmark'" 
+    write-verbose "CU5 OPTIONS: Exmark|Irritrol|IrritrolEurope|Lawn-boy|Lawngenie|Toro.be|TheToroCompany|Hayter|Toroused|EZLinkSupport|TheToroCo|Torodistributor|Dripirrigation|Toro.hu|Toro.co.uk|Torohosted|Uniquelighting|ToroExmark|RainMaster|Boss|perrotde|perrotpl"
     $whatIf=$true ;
-    $insplat=@{  ticket="TICKET" ;
-      DisplayName="DNAME"  ;
-      MInitial="" ;
-      Owner="OWNER" ;
-      showDebug=$true ;
-      PermsDays=999 ;
-      members="GRANTEE1,GRANTEE2";
-      } ;
+    $spltINPUTS=@{
+        ticket="TICKET" ;
+        DisplayName="DNAME"  ;
+        MInitial="" ;
+        Owner="OWNER" ;
+        showDebug=$true ;
+        PermsDays=999 ;
+        members="GRANTEE1,GRANTEE2";
+    } ;
     if(!$dc){$dc=get-gcfast} ;
     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):using common `$dc:$($dc)" ;
-    $pltNmbx=[ordered]@{  ticket=$insplat.ticket ;
-      DisplayName=$insplat.DisplayName  ;
-      MInitial="" ;
-      Owner=$insplat.Owner ;
-      NonGeneric=$false  ;
-      Vscan="YES" ;
-      domaincontroller=$dc ;
-      showDebug=$true ;
-     whatIf=$($whatif) ;
-    } ;
-    if($insplat.Cu5){$pltNmbx.add("CU5",$insplat.CU5)} ;
-    write-host -foregroundcolor green "`n$((get-date).ToString('HH:mm:ss')):`$insplat:`n$(($insplat|out-string).trim())" ;
-    write-host -foregroundcolor green "`n$((get-date).ToString('HH:mm:ss')):new-MailboxGenericTOR.ps1 w`n$(($pltNmbx|out-string).trim())" ;
-    new-MailboxGenericTOR.ps1 @pltNmbx;
-    if(!$whatif){    Do {write-host "." -NoNewLine;
-        Start-Sleep -m (1000 * 5)} Until (($tmbx = get-mailbox $insplat.DisplayName -domaincontroller $dc )) ;
-        if($tmbx){               $pltGrant=[ordered]@{  ticket=$insplat.ticket  ;
-      TargetID=$tmbx.samaccountname ;
-      Owner=$insplat.Owner ;
-      PermsDays=$insplat.PermsDays ;
-      members=$insplat.members ;
-      domaincontroller=$dc ;
-      showDebug=$true ;
-      whatIf=$whatif ;
-    } ;
-        write-host -foregroundcolor green "n$((get-date).ToString('HH:mm:ss')):add-MbxAccessGrant.ps1 w`n$(($pltGrant|out-string).trim())" ;
-        add-MbxAccessGrant.ps1 @pltGrant ;
-          cmsol ;
-     write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):PREPARING DAWDLE LOOP!($($tmbx.PrimarySmtpAddress))`nMsolLastSync:`n$((get-MsolLastSync| ft -a TimeGMT,TimeLocal|out-string).trim())" ;
-          Do {rxo ;
-     write-host "." -NoNewLine;
-    Start-Sleep -s 30} Until ((get-exorecipient $tmbx.PrimarySmtpAddress -EA 0)) ;
-     write-host "`n*READY TO MOVE*!`a" ;
-     sleep -s 1 ;
-     write-host "*READY TO MOVE*!`a" ;
-     sleep -s 1 ;
-      write-host "*READY TO MOVE*!`a`n" ;
-          write-host -foregroundcolor green "`n$((get-date).ToString('HH:mm:ss')):Running:`nmove-EXOmailboxNow.ps1 -TargetMailboxes $($tmbx.ALIAS) -showDebug -whatIf`n`n" ;
-          . move-EXOmailboxNow.ps1 -TargetMailboxes $tmbx.ALIAS -showDebug -whatIf ;
-          $strMoveCmd="move-EXOmailboxNow.ps1 -TargetMailboxes $($tmbx.ALIAS) -showDebug -NoTEST -whatIf:`$false" ;
-          write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Move Command (copied to cb):`n`n$($strMoveCmd)`n" ;
-          $strMoveCmd | out-clipboard ;
-          $strCleanCmd="get-exomoverequest -BatchName ExoMoves-* | ?{`$_.status -eq 'Completed'} | Remove-exoMoveRequest -whatif" ;
-          write-host -foregroundcolor green "`n$((get-date).ToString('HH:mm:ss')):Post-completion Cleanup Command :`n`n$($strCleanCmd)`n" ;
-        } else { write-warning "No mbx found matching $($insplat.DisplayName). ABORTING"} ;
+    $pltNmbx=[ordered]@{ ticket=$pltINPUTS.ticket ; DisplayName=$pltINPUTS.DisplayName  ; MInitial="" ; Owner=$pltINPUTS.Owner ; NonGeneric=$false  ; Vscan="YES" ; domaincontroller=$dc ; showDebug=$true ; whatIf=$($whatif) ; } ;
+    if($pltINPUTS.Cu5){$pltNmbx.add("CU5",$pltINPUTS.CU5)} ;
+    write-host -foregroundcolor green "`n$((get-date).ToString('HH:mm:ss')):`$pltINPUTS:`n$(($pltINPUTS|out-string).trim())" ;
+    write-host -foregroundcolor green "`n$((get-date).ToString('HH:mm:ss')):new-MailboxGenericTOR w`n$(($pltNmbx|out-string).trim())" ;
+    new-MailboxGenericTOR @pltNmbx;
+    if(!$whatif){
+        Do {write-host "." -NoNewLine; Start-Sleep -m (1000 * 5)} Until (($tmbx = get-mailbox $pltINPUTS.DisplayName -domaincontroller $dc )) ;
+        if($tmbx){
+            $pltGrant=[ordered]@{ ticket=$pltINPUTS.ticket  ; TargetID=$tmbx.samaccountname ; Owner=$pltINPUTS.Owner ; PermsDays=$pltINPUTS.PermsDays ; members=$pltINPUTS.members ; domaincontroller=$dc ; showDebug=$true ; whatIf=$whatif ; } ;
+            write-host -foregroundcolor green "n$((get-date).ToString('HH:mm:ss')):add-MbxAccessGrant w`n$(($pltGrant|out-string).trim())" ;
+            add-MbxAccessGrant @pltGrant ;
+            caad ;
+            write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):PREPARING DAWDLE LOOP!($($tmbx.PrimarySmtpAddress))`nAADLastSync:`n$((get-AADLastSync| ft -a TimeGMT,TimeLocal|out-string).trim())" ;
+            Do {rxo ;  write-host "." -NoNewLine;  Start-Sleep -s 30} Until ((get-xorecipient $tmbx.PrimarySmtpAddress -EA 0)) ;
+            write-host "`n*READY TO MOVE*!`a" ; sleep -s 1 ; write-host "*READY TO MOVE*!`a" ; sleep -s 1 ; write-host "*READY TO MOVE*!`a`n" ;
+            write-host -foregroundcolor green "`n$((get-date).ToString('HH:mm:ss')):Running:`nmove-EXOmailboxNow.ps1 -TargetMailboxes $($tmbx.ALIAS) -showDebug -whatIf`n`n" ;
+            . move-EXOmailboxNow.ps1 -TargetMailboxes $tmbx.ALIAS -showDebug -whatIf ;
+            $strMoveCmd="move-EXOmailboxNow.ps1 -TargetMailboxes $($tmbx.ALIAS) -showDebug -NoTEST -whatIf:`$false" ;
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Move Command (copied to cb):`n`n$($strMoveCmd)`n" ;
+            $strMoveCmd | out-clipboard ;
+            $strCleanCmd="get-xomoverequest -BatchName ExoMoves-* | ?{`$_.status -eq 'Completed'} | Remove-xoMoveRequest -whatif" ;
+            write-host -foregroundcolor green "`n$((get-date).ToString('HH:mm:ss')):Post-completion Cleanup Command :`n`n$($strCleanCmd)`n" ;
+        } else { write-warning "No mbx found matching $($pltINPUTS.DisplayName). ABORTING"} ;
     } else { write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(WHATIF skipping AMPG & move)" } ;
-    BP Scriptblock that pre-parses basic $insplat inputs and feeds new-MailboxGenericTOR.ps1, add-MbxAccessGrant.ps1 & move-EXOmailboxNow.ps1 (unwrap for use, normally stored in psb-PSnewMbxG.cbp)
+    BP Scriptblock that pre-parses basic $spltINPUTS inputs and feeds new-MailboxGenericTOR.ps1, add-MbxAccessGrant.ps1 & move-EXOmailboxNow.ps1 (normally stored in psb-PSnewMbxG.cbp)
+    .EXAMPLE
+    write-verbose "==BULK CREATE WITH CU5 SUPPORT + MBPG==" ; 
+    write-verbose "- For dnames from email address: use '!' where you want a space to appear (is collapsed out for emailaddr, expanded to space for dname)" ; 
+    write-verbose "- Also where any Capitals appear in email addr, it will trigger replacement of any ! with space, and it will use the address dirname _as Capitalized_, for the final Dname.
+    write-verbose "   Otherwise it replaces all underscores & periods in the dname with spaces, and converts to TitleCase, to create final Dname"; 
+    write-verbose "- If put period (.) in dname, this will use it in new-sharedmailbox to split fname/lname to drive requested address (where explicitly asked for an email w a fname.lname period).
+    write-verbose "    Other wise, the displayname is pushed into the LName of the mailbox" ; 
+    write-verbose "`$mbxs specs an array of semicolon-delim'd data PER NEW MAILBOX: [email@domain.com];[FwdContactAddr];[CU5Spec];[OWNERUPN];[COMMA-DELIM'D GRANTEE ADDRESSES]"  ; 
+    write-verbose "Note: The FWDCONTACTADDR value ISN'T USED IN INITIAL MBX CREATE (CAN BE USED MANUALLY IF RECYCLING THE SAME SAME ARRAY TO LATER CREATE MAILCONTACTS)" ; 
+    $whatif=$true ;
+    [array]$mbxs="ADDR1@toro.com; NOFWD@NOTHING.COM; TORO; OWNER1; GRANTEE1A@toro.com,GRANTEE1B@toro.com" ;
+    $mbxs+="ADDR2@toro.com; NOFWD@NOTHING.COM; TORO; OWNER2; GRANTEE2A@toro.com,GRANTEE2B@toro.com" ;
+    $ticket="TICKETNO" ;
+    $SiteOverride="LYN" ;
+    if(!$dc){$dc=get-gcfast} ;
+    $moveTargets=@() ;
+    $sQot = [char]34 ;
+    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):using common `$dc:$($dc)" ;
+    $cultTxt=$((Get-Culture).TextInfo) ;
+    $ttl = ($mbxs|measure).count ;
+    $Procd=0 ;
+    foreach($mbx in $mbxs) {
+        $dname,$fwd,$cu5,$owner,$grantees= $mbx.split(';').trim() ;
+        write-verbose "detect periods, go into email address" ;
+        if($dname.split('@')[0].contains('.')){
+            write-host "Dname contains periods, preserving for inclusion in new-MailboxShared as period-delimtied email addr" ;
+            write-verbose "if Dname (emladdr) contains any caps: Split at @ & take 1st half as Dname, replacing any ! with a space (no other capitalization chgs are made to the specified emladdr string" ; 
+            write-verbose "if Dname (emladdr) does *not* contain any caps, split at @, take 1st half as Dname, and recapitalize as TitleCase (Fname Lname)" ; 
+            if($dname -cmatch '([A-Z])'){$dname = $dname.split("@")[0].replace('!',' ')} else {  $dname =  $cultTxt.ToTitleCase(($dname.split("@")[0].replace("_"," ").toLower())) } ;
+        }else{ ;
+            if($dname -cmatch '([A-Z])'){$dname = $dname.split("@")[0].replace('!',' ')} else {  $dname =  $cultTxt.ToTitleCase(($dname.split("@")[0].replace("_"," ").replace("."," ").toLower()))} ;
+        } ;
+        $sBnr="#*======v ($($Procd)/$($ttl)):$($dname) v======" ;
+        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnr)" ;
+        $pltNmbx=[ordered]@{  ticket=$ticket ; DisplayName="$($dname)"  ; MInitial="" ; Owner=$owner ; SiteOverride=$SiteOverride ; NonGeneric=$false  ; Vscan="YES" ; NoPrompt=$true ; domaincontroller=$dc ; showDebug=$true ; whatIf=$($whatif) ; } ;
+        if($cu5 -AND ($cu5 -ne "toro")){
+            write-host -fore yellow "CU5:$($cu5): CUSTOM DOMAIN SPEC" ;
+            $pltNmbx.add("CU5",$CU5) ;
+        } ;
+        write-host -foregroundcolor green "`n$((get-date).ToString('HH:mm:ss')):new-MailboxGenericTOR w`n$(($pltNmbx|out-string).trim())" ;
+        new-MailboxGenericTOR @pltNmbx ;
+        if(!($whatif)){
+            write-host "waiting 10 secs..." ;
+            start-sleep -seconds 10 ;
+            Do {write-host "." -NoNewLine; Start-Sleep -m (1000 * 5)} Until (($tmbx = get-mailbox "$($dname)" -domaincontroller $dc -ea 0)) ;
+            $pltGrant=[ordered]@{  ticket=$ticket  ; TargetID=$tmbx.samaccountname ; Owner=$owner ; PermsDays=999 ; members=$grantees ; NoPrompt=$true ; domaincontroller=$dc ; showDebug=$true  ; whatIf=$whatif ; } ;
+            write-host -foregroundcolor green "n$((get-date).ToString('HH:mm:ss')):===add-MbxAccessGrant w`n$(($pltGrant|out-string).trim())" ;
+            add-MbxAccessGrant @pltGrant ;
+            $moveTargets+= $tmbx.alias ;
+        } else {write-host -foregroundcolor green "(-whatif, skipping acc grant)" };
+        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnr.replace('=v','=^').replace('v=','^='))" ;
+    } ;
+    if(!($whatif)){
+        write-host -foregroundcolor green "===$((get-date).ToString('HH:mm:ss')):CONFIRMING PERMISSIONS:" ;
+        foreach($movetarget in $movetargets) {
+            write-host -foregroundcolor green "`n$((get-date).ToString('HH:mm:ss')):`Alias:$($movetarget):" ;
+            get-mailboxpermission -identity "$($movetarget)" |?{$_.user -like 'toro*'}| select user;
+        } ;
+    } ;
+    if(!($whatif) -AND $tmbx){
+        caad ;
+        write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):PREPARING DAWDLE LOOP!($($tmbx.PrimarySmtpAddress))`nAADLastSync:`n$((get-AADLastSync| ft -a TimeGMT,TimeLocal|out-string).trim())" ;
+        Do {rxo ; write-host "." -NoNewLine; Start-Sleep -s 30} Until ((get-xorecipient $tmbx.PrimarySmtpAddress -EA 0)) ;
+        write-host "`n*READY TO MOVE*!`a" ; sleep -s 1 ; write-host "*READY TO MOVE*!`a" ; sleep -s 1 ; write-host "*READY TO MOVE*!`a`n" ;
+        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Running:`n`nmove-EXOmailboxNow.ps1 -TargetMailboxes $($sQot + ($moveTargets -join '","') + $sQot) -showDebug -whatIf`n`n" ;
+        . move-EXOmailboxNow.ps1 -TargetMailboxes $moveTargets -showDebug -whatIf ;
+        $strMoveCmd="move-EXOmailboxNow.ps1 -TargetMailboxes `$moveTargets -showDebug -NoTEST  -whatIf:`$false" ;
+        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Move Command (copied to cb):`n`n$($strMoveCmd)`n" ;
+        $strMoveCmd | out-clipboard ;
+        $strCleanCmd="get-xomoverequest -BatchName ExoMoves-* | ?{`$_.status -eq 'Completed'} | Remove-xoMoveRequest -whatif" ;
+        write-host -foregroundcolor green "`n$((get-date).ToString('HH:mm:ss')):Post-completion Cleanup Command :`n`n$($strCleanCmd)`n" ;
+    } else { write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):(WHATIF skipping AMPG & move)" } ;
+    BP Scriptblock that permits bulk creation of a series of mailboxes, with explicit email addresses. DisplayName is generated as a variant of the email address (see verbose comments above for details). As per the prior expl, also waits for ADC repliction to complete, and then mocks up mailbox move to cloud.
+    .EXAMPLE
+    write-verbose "==MAILBOXES ARRAY AD-HOC REPORT (runs for each address in the $tmbxs array)==" ; 
+    $tmbxs="MBX1@toro.com","MBX2@toro.com" ;
+    foreach($tmbx in $tmbxs){
+        write-host  "==$($tmbx)" ;
+        $mbxo = get-mailbox -Identity $tmbx  ;
+        $cmbxo= Get-CASMailbox -Identity $mbxo.samaccountname ;
+        $aduprops="GivenName,Surname,Manager,Company,Office,Title,StreetAddress,City,StateOrProvince,c,co,countryCode,PostalCode,Phone,Fax,Description" ;
+        $ADu = get-ADuser -Identity $mbxo.samaccountname-properties * | select *;
+        write-host -foregroundcolor green "User Email:`t$(($mbxo.WindowsEmailAddress.tostring()).trim())" ;
+        write-host -foregroundcolor green "Mailbox Information:" ;
+        write-host -foregroundcolor green "$(($mbxo | select @{Name='LogonName';
+        Expression={$_.SamAccountName }},Name,DisplayName,Alias,database,UserPrincipalName,RetentionPolicy,CustomAttribute5,CustomAttribute9,RecipientType,RecipientTypeDetails | out-string).trim())" ;
+        write-host -foregroundcolor green "$(($Adu | select GivenName,Surname,Manager,Company,Office,Title,StreetAddress,City,StateOrProvince,c,co,countryCode,PostalCode,Phone,Fax,Description | out-string).trim())";
+        write-host -foregroundcolor green "ActiveSyncMailboxPolicy:$($cmbxo.ActiveSyncMailboxPolicy.tostring())" ;
+        write-host -foregroundcolor green "Description: $($Adu.Description.tostring())";
+        write-host -foregroundcolor green "Info: $($Adu.info.tostring())";
+        write-host -foregroundcolor green "Initial Password: $(($pltINPUTS.pass | out-string).trim())" ;
+        $tmbx=$mbxo=$cmbxo=$aduprops=$ADu=$null;
+        write-host "===========" ;
+    } ;
+    BP Scriptblock that outputs a summary report for each mailbox in the array (output resembles the output for the new-MailboxGenericTOR function)
     .EXAMPLE
     .\new-MailboxGenericTOR.ps1 -ticket "355925" -DisplayName "XXX Confirms"  -MInitial ""  -Owner "LOGON" -NonGeneric $true -showDebug -whatIf ;
     Testing syntax with explicit BaseUSer specified, Whatif test & Debug messages displayed:
