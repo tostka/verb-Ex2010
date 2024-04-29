@@ -18,6 +18,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 10:56 AM 4/12/2024 fix: echo typo 889:FIRSTNAME -> LASTNAME
     # 2:36 PM 8/2/2023 have to bump up password complexity - revised policy., it does support fname.lname naming & email addreses, just have to pass in dname with period. but the dname will also come out with the same period (which if they specified the eml, implies they don't mind if the name has it)
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     # 10:01 AM 9/14/2021 had a random creation bug - but debugged fine in ISE (bad PSS?), beefed up Catch block outputs, captured new-mailbox output & recycled; added 7pswhsplat outputs prior to cmds.
@@ -886,7 +887,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             };
             $MbxSplat.Initials=$null;
             if($InputSplat.LastName.length -gt 64){
-                $smsg= "`n **** NOTE TRUNCATING FIRSTNAME, -GT 64 CHARS!  ****`N" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
+                $smsg= "`n **** NOTE TRUNCATING LASTNAME, -GT 64 CHARS!  ****`N" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                 $MbxSplat.LastName=$InputSplat.LastName.Substring(0,63) ;
             } else {
                 $MbxSplat.LastName=$InputSplat.LastName;
