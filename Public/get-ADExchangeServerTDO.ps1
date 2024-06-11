@@ -1,11 +1,13 @@
-﻿#*------v Function get-ADExchangeServerTDO v------
-#if(-not (get-command get-ADExchangeServerTDO -ea 0)){
+﻿# get-ADExchangeServerTDO.ps1
+
+#*------v Function get-ADExchangeServerTDO v------
+#if(-not(get-command get-ADExchangeServerTDO -ea)){
     Function get-ADExchangeServerTDO {
         <#
         .SYNOPSIS
         get-ADExchangeServerTDO.ps1 - Returns Exchangeserver summary(s) from AD records
         .NOTES
-        Version     : 3.0.0
+        Version     : 3.0.1
         Author      : Todd Kadrie
         Website     : http://www.toddomation.com
         Twitter     : @tostka / http://twitter.com/tostka
@@ -25,10 +27,10 @@
         AddedWebsite: https://codeandkeep.com/
         AddedTwitter: URL
         REVISIONS
+        * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
         * 2:05 PM 8/28/2023 REN -> Get-ExchangeServerInSite -> get-ADExchangeServerTDO (aliased orig); to better steer profile-level options - including in cmw org, added -TenOrg, and default Site to constructed vari, targeting new profile $XXX_ADSiteDefault vari; Defaulted -Roles to HUB,CAS as well.
         * 3:42 PM 8/24/2023 spliced together combo of my long-standing, and some of the interesting ideas BF's version had. Functional prod:
             - completely removed ActiveDirectory module dependancies from BF's code, and reimplemented in raw ADSI calls. Makes it fully portable, even into areas like Edge DMZ roles, where ADMS would never be installed.
-
         * 3:17 PM 8/23/2023 post Edge testing: some logic fixes; add: -Names param to filter on server names; -Site & supporting code, to permit lookup against sites *not* local to the local machine (and bypass lookup on the local machine) ; 
             ren $Ex10siteDN -> $ExOPsiteDN; ren $Ex10configNC -> $ExopconfigNC
         * 1:03 PM 8/22/2023 minor cleanup
@@ -199,127 +201,94 @@
                 [int]$SpeedThreshold=100,
             [Parameter(Mandatory=$FALSE,HelpMessage="Tenant Tag (3-letter abbrebiation - defaults to global:o365_TenOrgDefault if present)[-TenOrg 'XYZ']")]
                 [ValidateNotNullOrEmpty()]
-                #[ValidatePattern("^\w{3}$")]
                 [string]$TenOrg = $global:o365_TenOrgDefault,
             [Parameter(Mandatory = $false, HelpMessage = "Use specific Credentials[-Credentials [credential object]]")]
                 [System.Management.Automation.PSCredential]$Credential
-        ) ; 
+        ) ;
         BEGIN{
             ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
             $Verbose = ($VerbosePreference -eq 'Continue') ;
-            #region BANNER ; #*------v BANNER v------
-            $sBnr="#*======v $(${CmdletName}): v======" ;
-            $smsg = $sBnr ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } #Error|Warn|Debug
+            $_sBnr="#*======v $(${CmdletName}): v======" ;
+            $smsg = $_sBnr ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 }
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            #endregion BANNER ; #*------^ END BANNER ^------
-        } ;  # BEG-E
+        } ;
         PROCESS{
             TRY{
-                <# BF's original ACtiveDirectory-module -based code
-                #region ADMS_ExServers_resolve ; #*------v ADMS_ExServers_resolve v------
-                $adParameters=@{
-                ErrorAction='Stop';
-                } ; 
-                $adExchProperties=@(
-                    'msExchCurrentServerRoles',
-                    'networkAddress',
-                    'serialNumber',
-                    'msExchServerSite'
-                ) ; 
-                $filter="objectCategory -eq 'msExchExchangeServer'" ; 
-                if($PSBoundParameters.ContainsKey('credential')){
-                    $adParameters.Add('Credential',$credential) ; 
-                } ; 
-                if($PSBoundParameters.ContainsKey('server')){
-                    $adParameters.Add('Server',$Server) ; 
-                } ; 
-                $rootDse=Get-ADRootDse @adParameters ; 
-                $adParameters.Add('SearchBase',$rootDse.ConfigurationNamingContext) ; 
-
-                if($PSBoundParameters.ContainsKey('siteName')){
-                    Write-Verbose "Getting Site: $siteName" ; 
-                    $site=Get-ADObject @adParameters -Filter "ObjectClass -eq 'site' -and Name -eq '$siteName'" ; 
-                    if(!$site){
-                        Write-Error "Site not found: [$siteName]" -ErrorAction Stop ; 
-                    } ; 
-                    $filter="$filter -and msExchServerSite -eq '$($site.DistinguishedName)'" ; 
-                } ; 
-                $adParameters.Add('Filter',$filter) ; 
-
-                $exchServers=Get-ADObject @adParameters -Properties $adExchProperties ; 
-                #endregion ADMS_ExServers_resolve ; #*------^ END ADMS_ExServers_resolve  ^------
-                #>
-
-                #region ADSIS_ExServers_resolve ; #*------v ADSIS_ExServers_resolve v------
-                $configNC = ([ADSI]"LDAP://RootDse").configurationNamingContext ; 
+                $configNC = ([ADSI]"LDAP://RootDse").configurationNamingContext ;
                 $search = new-object DirectoryServices.DirectorySearcher([ADSI]"LDAP://$configNC") ;
-
-                #if($PSBoundParameters.ContainsKey('siteName')){ # only hits if it's explicit param, if you assign default param value, doesn't hit this
+                $bLocalEdge = $false ; 
+                if($Sitename -eq $env:COMPUTERNAME){
+                    $smsg = "`$SiteName -eq `$env:COMPUTERNAME:$($SiteName):$($env:COMPUTERNAME)" ; 
+                    $smsg += "`nThis computer appears to be an EdgeRole system (non-ADConnected)" ; 
+                    $smsg += "`n(Blanking `$sitename and continuing discovery)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    #$bLocalEdge = $true ; 
+                    $SiteName = $null ; 
+                    
+                } ; 
                 If($siteName){
-                    $smsg = "WVGetting Site: $siteName" ; 
-                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-                    $objectClass = "objectClass=site" ; 
+                    $smsg = "WVGetting Site: $siteName" ;
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                    $objectClass = "objectClass=site" ;
                     $objectName = "name=$siteName" ;
                     $search.Filter = "(&($objectClass)($objectName))" ;
                     $site = ($search.Findall()) ;
                     $siteDN = ($site | select -expand properties).distinguishedname  ;
-                } else { 
-                    $smsg = "(No -Site specified, resolving site from local machine domain-connection...)" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Prompt } 
-                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                } else {
+                    $smsg = "(No -Site specified, resolving site from local machine domain-connection...)" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Prompt }
+                    else{ write-host -foregroundcolor green "$($smsg)" } ;
                     TRY{$siteDN = [System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().GetDirectoryEntry().distinguishedName}
                     CATCH [System.Management.Automation.MethodInvocationException]{
                         $ErrTrapd=$Error[0] ;
                         if(($ErrTrapd.Exception -match 'The computer is not in a site.') -AND $env:ExchangeInstallPath){
-                            $smsg = "$($env:computername) is non-ADdomain-connected" ; 
-                            $smsg += "`nand has `$env:ExchangeInstalled populated: Likely Edge Server" ; 
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Prompt } 
+                            $smsg = "$($env:computername) is non-ADdomain-connected" ;
+                            $smsg += "`nand has `$env:ExchangeInstalled populated: Likely Edge Server" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Prompt }
                             else{ write-host -foregroundcolor YELLOW "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                            # mock up a return, wo the AD backend:
-                             $props = @{
+                            $vers = (get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe").VersionInfo.FileVersionRaw ; 
+                            $props = @{
                                 Name=$env:computername;
-                                FQDN = $fqdn;
-                                Version = $exServer.serialNumber[0];
-                                Roles = [System.Object[]]64 ; 
+                                FQDN = ([System.Net.Dns]::gethostentry($env:computername)).hostname;
+                                Version = "Version $($vers.major).$($vers.minor) (Build $($vers.Build).$($vers.Revision))" ; 
+                                #"$($vers.major).$($vers.minor)" ; 
+                                #$exServer.serialNumber[0];
+                                Roles = [System.Object[]]64 ;
                                 RoleNames = @('EDGE');
                                 DistinguishedName =  "CN=$($env:computername),CN=Servers,CN=Exchange Administrative Group (FYDIBOHF23SPDLT),CN=Administrative Groups,CN=First Organization,CN=Microsoft Exchange,CN=Services,CN=Configuration,CN={nnnnnnnn-FAKE-GUID-nnnn-nnnnnnnnnnnn}" ;
                                 Site = [System.Object[]]'NOSITE'
                                 ResponseTime = if($rsp){$rsp.ResponseTime} else { 0} ;
-                                NOTE = "This summary object, returned for a non-AD-connected EDGE server, *approximates* what would be returned on an AD-connected server" ; 
-                            } ; 
-                            if($NoTest){
-                                $smsg = "(-NoTest:Defaulting Fast:`$true)" ; 
-                                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-                                $props.add('Fast',$true) ;
-                            }else {
-                                $props.add('Fast',[boolean]($rsp.ResponseTime -le $SpeedThreshold)) ;
-                            };
-                            #$Aggr += New-Object -TypeName PsObject -Property $props ; 
-                            return (New-Object -TypeName PsObject -Property $props) ; 
+                                NOTE = "This summary object, returned for a non-AD-connected EDGE server, *approximates* what would be returned on an AD-connected server" ;
+                            } ;
+                            
+                            $smsg = "(-NoTest:Defaulting Fast:`$true)" ;
+                            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            $props.add('Fast',$true) ;
+                            
+                            return (New-Object -TypeName PsObject -Property $props) ;
                         }elseif(-not $env:ExchangeInstallPath){
-                            $smsg = "Non-Domain Joined machine, with NO ExchangeInstallPath e-vari: `nExchange is not installed locally: local computer resolution fails:`nPlease specify an explicit -Server, or -SiteName" ; 
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                            $false | write-output ; 
+                            $smsg = "Non-Domain Joined machine, with NO ExchangeInstallPath e-vari: `nExchange is not installed locally: local computer resolution fails:`nPlease specify an explicit -Server, or -SiteName" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            $false | write-output ;
                         } else {
-                            $smsg = "$($env:computername) is both NON-Domain-joined -AND lacks an Exchange install (NO ExchangeInstallPath e-vari)`nPlease specify an explicit -Server, or -SiteName" ; 
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                            $false | write-output ; 
-                        }; 
+                            $smsg = "$($env:computername) is both NON-Domain-joined -AND lacks an Exchange install (NO ExchangeInstallPath e-vari)`nPlease specify an explicit -Server, or -SiteName" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            $false | write-output ;
+                        };
                     } CATCH {
-                        $siteDN =$ExOPsiteDN # [infra] returns DN to : cn=[SITENAME],cn=sites,cn=configuration,dc=ad,dc=[DOMAIN],dc=com
+                        $siteDN =$ExOPsiteDN ;
                         write-warning "`$siteDN lookup FAILED, deferring to hardcoded `$ExOPsiteDN string in infra file!" ;
                     } ;
                 } ;
-                $smsg = "Getting Exservers in Site:$($siteDN)" ; 
-                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                $smsg = "Getting Exservers in Site:$($siteDN)" ;
+                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
                 $search = new-object DirectoryServices.DirectorySearcher([ADSI]"LDAP://$configNC") ;
                 $objectClass = "objectClass=msExchExchangeServer" ;
                 $version = "versionNumber>=1937801568" ;
@@ -330,131 +299,95 @@
                 [void] $search.PropertiesToLoad.Add("msexchcurrentserverroles") ;
                 [void] $search.PropertiesToLoad.Add("networkaddress") ;
                 [void] $search.PropertiesToLoad.Add("msExchServerSite") ;
-                # unused properties avail:
-                #[void] $search.PropertiesToLoad.Add("objectcategory") ;
-                #[void] $search.PropertiesToLoad.Add("objectClass") ;
-                #[void] $search.PropertiesToLoad.Add("msExchVersion") ;
-                #[void] $search.PropertiesToLoad.Add("msExchMinAdminVersion") ;
                 [void] $search.PropertiesToLoad.Add("serialNumber") ;
-                [void] $search.PropertiesToLoad.Add("DistinguishedName") ; # missing
-                $exchServers = $search.FindAll() ; 
-                #endregion ADSIS_ExServers_resolve ; #*------^ END ADSIS_ExServers_resolve ^------
-
-                $Aggr = @() ; 
+                [void] $search.PropertiesToLoad.Add("DistinguishedName") ;
+                $exchServers = $search.FindAll() ;
+                $Aggr = @() ;
                 foreach($exServer in $exchServers){
                     $fqdn = ($exServer.Properties.networkaddress |
                         Where-Object{$_ -match '^ncacn_ip_tcp:'}).split(':')[1] ;
-                    if($NoTest){} else { 
-                        <# the .net client includes a timeout
-                        $TCPClient = New-Object System.Net.Sockets.TCPClient ; # Create a new TcpClient object
-                        $Connect = $TCPClient.BeginConnect($fqdn,80,$null,$null) ; # Try connecting to port 80 
-                        $Wait = $Connect.AsyncWaitHandle.WaitOne($SpeedThreshold,$False) ; # use $SpeedThreshold (100ms)
-                        if ($TCPClient.Connected) {
-                            # Add the FQDN of the DC to the array & Close the TcpClient connection
-                            $PotentialDCs += $LocalDC.Name ;
-                            $Null = $TCPClient.Close() ;
-                        } # if-E
-                        #>
-                        $rsp = test-connection $fqdn -count 1 -ea 0 ; 
-                        #If(test-connection $exserver.Properties.FQDN -count 1 -ea 0) {
-                        <#if($rsp.ResponseTime -lt $SpeedThreshold){
-                            #$Aggr += [pscustomobject]$_ ; 
-                            #$Aggr += New-Object -TypeName PsObject -Property $props ; 
-                        } else {} 
-                        #>
-                    } ; 
-
+                    if($NoTest){} else {
+                        $rsp = test-connection $fqdn -count 1 -ea 0 ;
+                    } ;
                     $props = @{
                         Name = $exServer.Properties.name[0]
                         FQDN=$fqdn;
                         Version = $exServer.Properties.serialnumber
-                        #Roles=$exserver.Properties.msexchcurrentserverroles ; 
                         Roles = $exserver.Properties.msexchcurrentserverroles
-                        RoleNames = $null ; 
+                        RoleNames = $null ;
                         DistinguishedName = $exserver.Properties.distinguishedname;
-                        #Site = $exserver.Properties.msexchserversite
-                        Site = @("$($exserver.Properties.msexchserversite -Replace '^CN=|,.*$')") ; 
+                        Site = @("$($exserver.Properties.msexchserversite -Replace '^CN=|,.*$')") ;
                         ResponseTime = if($rsp){$rsp.ResponseTime} else { 0} ;
-                    } ; 
+                    } ;
                     $props.RoleNames = switch ($exserver.Properties.msexchcurrentserverroles){
-                        2       {"MBX"} # Ex10
+                        2       {"MBX"}
                         4       {"CAS"}
                         16      {"UM"}
-                        20      {"CAS;UM".split(';')} 
+                        20      {"CAS;UM".split(';')}
                         32      {"HUB"}
                         36      {"CAS;HUB".split(';')}
                         38      {"CAS;HUB;MBX".split(';')}
-                        54      {"MBX"} # Ex13+
+                        54      {"MBX"}
                         64      {"EDGE"}
-                        16385   {"CAS"} # Ex13+
-                        16439   {"CAS;HUB;MBX".split(';')} # Ex13+
+                        16385   {"CAS"}
+                        16439   {"CAS;HUB;MBX".split(';')}
                     }
-                        
                     if($NoTest){
-                        $smsg = "(-NoTest:Defaulting Fast:`$true)" ; 
-                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                        $smsg = "(-NoTest:Defaulting Fast:`$true)" ;
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
                         $props.add('Fast',$true) ;
                     }else {
                         $props.add('Fast',[boolean]($rsp.ResponseTime -le $SpeedThreshold)) ;
                     };
-                    $Aggr += New-Object -TypeName PsObject -Property $props ; 
-                } ; 
-                # use indexed hash to self-limit dupe addition (faster than -contains as well)
-                $httmp = @{} ; 
+                    $Aggr += New-Object -TypeName PsObject -Property $props ;
+                } ;
+                $httmp = @{} ;
                 if($Roles){
-                    # can match the roles integer w a regex OR'd on the values
                     [regex]$rgxRoles = ('(' + (($roles |%{[regex]::escape($_)}) -join '|') + ')') ;
-                    $matched =  @( $aggr | ?{$_.Roles -match $rgxRoles}) ; 
+                    $matched =  @( $aggr | ?{$_.Roles -match $rgxRoles}) ;
                     foreach($m in $matched){
-                        if($httmp[$m.name]){} else { 
-                            $httmp[$m.name] = $m ; 
-                        } ; 
-                    } ; 
-                } ; 
+                        if($httmp[$m.name]){} else {
+                            $httmp[$m.name] = $m ;
+                        } ;
+                    } ;
+                } ;
                 if($RoleNames){
-                    # to do multivalue -contains, you need to -OR the combo ($x -contains 'value' -OR $x -contains 'other'), 
-                    # or loop the compares and add per pass (using index hash to exclude dupe adds)
                     foreach ($RoleName in $RoleNames){
-                        $matched = @($Aggr | ?{$_.RoleNames -contains $RoleName} ) ; 
+                        $matched = @($Aggr | ?{$_.RoleNames -contains $RoleName} ) ;
                         foreach($m in $matched){
-                            if($httmp[$m.name]){} else { 
-                                $httmp[$m.name] = $m ; 
-                            } ; 
-                        } ; 
-                    } ; 
-                } ; 
-                # 12:10 PM 8/23/2023 ADD internal name filtering: $Server
+                            if($httmp[$m.name]){} else {
+                                $httmp[$m.name] = $m ;
+                            } ;
+                        } ;
+                    } ;
+                } ;
                 if($Server){
-                    # to do multivalue -contains, you need to -OR the combo ($x -contains 'value' -OR $x -contains 'other'), 
-                    # or loop the compares and add per pass (using index hash to exclude dupe adds)
                     foreach ($Name in $Server){
-                        $matched = @($Aggr | ?{$_.Name -eq $Name} ) ; 
+                        $matched = @($Aggr | ?{$_.Name -eq $Name} ) ;
                         foreach($m in $matched){
-                            if($httmp[$m.name]){} else { 
-                                $httmp[$m.name] = $m ; 
-                            } ; 
-                        } ; 
-                    } ; 
-                } ; 
-                # hashtable always reads 'populated', so check if it has postive count, and then assign back to $aggr.
+                            if($httmp[$m.name]){} else {
+                                $httmp[$m.name] = $m ;
+                            } ;
+                        } ;
+                    } ;
+                } ;
                 if(($httmp.Values| measure).count -gt 0){
-                    $Aggr  = $httmp.Values ; 
-                } ; 
-                $smsg = "Returning $((($Aggr|measure).count|out-string).trim()) match summaries to pipeline..." ; 
-                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-                $Aggr | write-output ; 
-
+                    $Aggr  = $httmp.Values ;
+                } ;
+                $smsg = "Returning $((($Aggr|measure).count|out-string).trim()) match summaries to pipeline..." ;
+                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                $Aggr | write-output ;
             }CATCH{
-                Write-Error $_ ; 
-            } ; 
-        } ;  # PROC-E
+                Write-Error $_ ;
+            } ;
+        } ;
         END{
-            $smsg = "$($sBnr.replace('=v','=^').replace('v=','^='))" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } #Error|Warn|Debug
+            $smsg = "$($_sBnr.replace('=v','=^').replace('v=','^='))" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 }
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        } ; 
-    } ; 
-#} ;
-#*------^ END Function get-ADExchangeServerTDO ^------
+        } ;
+    } ;
+#}
+write-verbose "#*------^ END Function get-ADExchangeServerTDO ^------" ;
