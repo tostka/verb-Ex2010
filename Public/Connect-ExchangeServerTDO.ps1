@@ -1,7 +1,7 @@
 # Connect-ExchangeServerTDO.ps1
 
 #*------v Function Connect-ExchangeServerTDO v------
-#if(-not(get-command Connect-ExchangeServerTDO -ea)){
+#if(-not(get-command Connect-ExchangeServerTDO -ea SilentlyContinue)){
     Function Connect-ExchangeServerTDO {
         <#
         .SYNOPSIS
@@ -22,20 +22,26 @@
         AddedCredit : Brian Farnsworth
         AddedWebsite: https://codeandkeep.com/
         AddedTwitter: URL
+        AddedCredit : David Paulson
+        AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
+        AddedTwitter: URL
         REVISIONS
-        * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
+        * 12:49 PM 6/21/2024 flipped PSS Name to Exchange$($ExchVers[dd])
+        * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; 
+            copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
+            includes local snapin detect & load for edge role (simplest EMS load option for Edge role, from David Paulson's original code; no longer published with Ex2010 compat)
         * 11:28 AM 5/30/2024 fixed failure to recognize existing functional PSSession; Made substantial update in logic, validate works fine with other orgs, and in our local orgs.
         * 4:02 PM 8/28/2023 debuged, updated CBH, renamed connect-ExchangeSErver -> Connect-ExchangeServerTDO (avoid name clashes, pretty common verb-noun combo).
         * 12:36 PM 8/24/2023 init
 
         .DESCRIPTION
         Connect-ExchangeServerTDO.ps1 - Dependancy-less Function that, fed an Exchange server name, or AD SiteName, and optional RoleNames array, 
-        will obtain a list of Exchange servers from AD (in the specified scope), and then run the list attempting to PowershellREmote (REMS) connect to each server, 
+        will obtain a list of Exchange servers from AD (in the specified scope), and then run the list attempting to PowershellRemote (REMS) connect to each server, 
         stopping at the first successful connection.
 
         Relies upon/requires get-ADExchangeServerTDO(), to return a descriptive summary of the Exchange server(s) revision etc, for connectivity logic.
         Supports Exchange 2010 through 2019, as implemented.
-        
+    
         Intent, as contrasted with verb-EXOP/Ex2010 is to have no local module dependancies, when running EXOP into other connected orgs, where syncing profile & supporting modules code can be problematic. 
         This uses native ADSI calls, which are supported by Windows itself, without need for external ActiveDirectory module etc.
 
@@ -68,8 +74,16 @@
         .EXAMPLE
         PS> $PSSession = Connect-ExchangeServerTDO -siteName SITENAME -RoleNames @('HUB','CAS') -verbose 
         Demo's connecting to a functional Hub or CAS server in the SITENAME site with verbose outputs, the `PSSession variable will contain information about the successful connection. Makes automatic Exchangeserver discovery calls into AD (using ADSI) leveraging the separate get-ADExchangeServerTDO()
+        .EXAMPLE
+        PS> TRY{$Site=[System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name}CATCH{$Site=$env:COMPUTERNAME} ;
+        PS> $PSSession = Connect-ExchangeServerTDO -siteName $Site -RoleNames @('HUB','CAS') -verbose ; 
+        Demo including support for EdgeRole, which is detected on it's lack of AD Site specification (which gets fed through to call, by setting the Site to the machine itself).
         .LINK
         https://codeandkeep.com/PowerShell-ActiveDirectory-Exchange-Part1/
+        .LINK
+        https://github.com/Lucifer1993/PLtools/blob/main/HealthChecker.ps1
+        .LINK
+        https://microsoft.github.io/CSS-Exchange/Diagnostics/HealthChecker/
         .LINK
         https://bitbucket.org/tostka/powershell/
         .LINK
@@ -131,9 +145,12 @@
                 } ;
                 if($Server.RoleNames -eq 'EDGE'){
                     if(($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\Setup')) -or
-    ($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup')) -or
-    $ByPassLocalExchangeServerTest){
-                        if((Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\EdgeTransportRole') -or (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole')){
+                        ($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup')) -or
+                        $ByPassLocalExchangeServerTest)
+                    {
+                        if((Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\EdgeTransportRole') -or
+                             (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole'))
+                        {
                             write-verbose ("We are on Exchange Edge Transport Server")
                             $IsEdgeTransport = $true
                         }
@@ -147,6 +164,7 @@
                                 write-host  "Loading Exchange PowerShell Module..."
                                 TRY{
                                     if($IsEdgeTransport){
+                                        # implement local snapins access on edge role: Only way to get access to EMS commands.
                                         [xml]$PSSnapIns = Get-Content -Path "$env:ExchangeInstallPath\Bin\exshell.psc1" -ErrorAction Stop
                                         ForEach($PSSnapIn in $PSSnapIns.PSConsoleFile.PSSnapIns.PSSnapIn){
                                             write-verbose ("Trying to add PSSnapIn: {0}" -f $PSSnapIn.Name)
@@ -171,9 +189,9 @@
                                     }else{
                                         $Global:ExInstall = (Get-ItemProperty HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup).MsiInstallPath
                                     }
-        
+    
                                     $Global:ExBin = $Global:ExInstall + "\Bin"
-        
+    
                                     write-verbose ("Set ExInstall: {0}" -f $Global:ExInstall)
                                     write-verbose ("Set ExBin: {0}" -f $Global:ExBin)
                                 }
@@ -217,7 +235,8 @@
                         } ;
                     } ; 
                 } else {
-                    $pltNPSS=@{ConnectionURI="http://$($Server.FQDN)/powershell"; ConfigurationName='Microsoft.Exchange' ; name='Exchange2010'} ;
+                    $pltNPSS=@{ConnectionURI="http://$($Server.FQDN)/powershell"; ConfigurationName='Microsoft.Exchange' ; name="Exchange$($ExVersNum.tostring())"} ;
+                    # use ExVersUnm dd instead of hardcoded (Exchange2010)
                     if($ExVersNum -ge 15){
                         write-verbose "EXOP.15+:Adding -Authentication Kerberos" ;
                         $pltNPSS.add('Authentication',"Kerberos") ;
