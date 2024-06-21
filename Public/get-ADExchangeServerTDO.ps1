@@ -1,7 +1,7 @@
 ﻿# get-ADExchangeServerTDO.ps1
 
 #*------v Function get-ADExchangeServerTDO v------
-#if(-not(get-command get-ADExchangeServerTDO -ea)){
+#if(-not(get-command get-ADExchangeServerTDO -ea SilentlyContinue)){
     Function get-ADExchangeServerTDO {
         <#
         .SYNOPSIS
@@ -31,6 +31,7 @@
         * 2:05 PM 8/28/2023 REN -> Get-ExchangeServerInSite -> get-ADExchangeServerTDO (aliased orig); to better steer profile-level options - including in cmw org, added -TenOrg, and default Site to constructed vari, targeting new profile $XXX_ADSiteDefault vari; Defaulted -Roles to HUB,CAS as well.
         * 3:42 PM 8/24/2023 spliced together combo of my long-standing, and some of the interesting ideas BF's version had. Functional prod:
             - completely removed ActiveDirectory module dependancies from BF's code, and reimplemented in raw ADSI calls. Makes it fully portable, even into areas like Edge DMZ roles, where ADMS would never be installed.
+
         * 3:17 PM 8/23/2023 post Edge testing: some logic fixes; add: -Names param to filter on server names; -Site & supporting code, to permit lookup against sites *not* local to the local machine (and bypass lookup on the local machine) ; 
             ren $Ex10siteDN -> $ExOPsiteDN; ren $Ex10configNC -> $ExopconfigNC
         * 1:03 PM 8/22/2023 minor cleanup
@@ -95,6 +96,7 @@
                     64  {"EDGE"}
                     16385   {"CAS"} # Ex13+
                     16439   {"CAS, HUB, MBX"  -split ","} # Ex13+
+
         .PARAMETER Roles
         Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38,16385)]
         .PARAMETER RoleNames
@@ -226,7 +228,7 @@
                     else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
                     #$bLocalEdge = $true ; 
                     $SiteName = $null ; 
-                    
+                
                 } ; 
                 If($siteName){
                     $smsg = "WVGetting Site: $siteName" ;
@@ -263,12 +265,12 @@
                                 ResponseTime = if($rsp){$rsp.ResponseTime} else { 0} ;
                                 NOTE = "This summary object, returned for a non-AD-connected EDGE server, *approximates* what would be returned on an AD-connected server" ;
                             } ;
-                            
+                        
                             $smsg = "(-NoTest:Defaulting Fast:`$true)" ;
                             if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
                             else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
                             $props.add('Fast',$true) ;
-                            
+                        
                             return (New-Object -TypeName PsObject -Property $props) ;
                         }elseif(-not $env:ExchangeInstallPath){
                             $smsg = "Non-Domain Joined machine, with NO ExchangeInstallPath e-vari: `nExchange is not installed locally: local computer resolution fails:`nPlease specify an explicit -Server, or -SiteName" ;
@@ -389,5 +391,5 @@
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         } ;
     } ;
-#}
-write-verbose "#*------^ END Function get-ADExchangeServerTDO ^------" ;
+#} ; 
+#*------^ END Function get-ADExchangeServerTDO ^------ ;
