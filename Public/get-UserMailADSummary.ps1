@@ -18,6 +18,7 @@ function get-UserMailADSummary {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection
     * 3:27 PM 3/8/2022 CBH update, pointed link at verb-ex2010 module repo
     * 10:57 AM 8/2/2021 add 'Unresolved' (failed to return an object from 
     get-recipient, normally a 'System.Management.Automation.RemoteException', 
@@ -71,7 +72,7 @@ function get-UserMailADSummary {
     #>
     ###Requires -Version 5
     #Requires -Modules ActiveDirectory, MSOnline, AzureAD, ExchangeOnlineManagement, verb-AAD, verb-ADMS
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type
     [CmdletBinding()]

@@ -18,6 +18,7 @@
         AddedWebsite: URL
         AddedTwitter: URL
         REVISIONS
+        * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection
         * 3:45 PM 8/23/2021 added extended examples, made a function (adding to 
         verb-ex2010); added drop of illegal chars (shows up distinctively as spaces in 
         dname :P); fixed bug in regex ps replace;  
@@ -126,7 +127,7 @@
         #>
         ###Requires -Version 5
         ###Requires -Modules verb-Ex2010 - disabled, moving into the module
-        #Requires -RunasAdministrator
+        ##Requires -RunasAdministrator
         # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
         ## [OutputType('bool')] # optional specified output type
         [CmdletBinding(DefaultParameterSetName='EAP')]

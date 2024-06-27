@@ -18,6 +18,7 @@ function resolve-RecipientEAP {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection 
     * 11:21 AM 9/16/2021 string clean
     * 3:27 PM 8/23/2021 revised patched in new preview-EAPUpdate() support; added 
     default EAP cheatsheet output dump to console; suppress get-EAP warning ; 
@@ -56,7 +57,7 @@ function resolve-RecipientEAP {
     #>
     ###Requires -Version 5
     ###Requires -Modules verb-Ex2010 - disabled, moving into the module
-    #Requires -RunasAdministrator
+    ##Requires -RunasAdministrator
     # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("USEA","GBMK","AUSYD")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)][ValidateCount(1,3)]
     ## [OutputType('bool')] # optional specified output type
     [CmdletBinding()]
