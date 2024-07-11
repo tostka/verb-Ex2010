@@ -13,12 +13,13 @@ function resolve-ExchangeServerVersionTDO {
     FileName    : resolve-ExchangeServerVersionTDO
     License     : (none asserted)
     Copyright   : (none asserted)
-    Github      : https://github.com/tostka/verb-dev
+    Github      : https://github.com/tostka/verb-Ex2010
     Tags        : Powershell,ExchangeServer,Version
     AddedCredit : Bruno Lopes (brunokktro )
     AddedWebsite: https://www.linkedin.com/in/blopesinfo
     AddedTwitter: @brunokktro / https://twitter.com/brunokktro
     REVISIONS
+    * 1:47 PM 7/9/2024 CBA github field correction
     * 1:22 PM 5/22/2024init
     .DESCRIPTION
     resolve-ExchangeServerVersionTDO - Resolves the ExchangeVersion details from a returned get-ExchangeServer, whether local undehydrated ('Microsoft.Exchange.Data.Directory.Management.ExchangeServer') or remote EMS ('System.Management.Automation.PSObject')

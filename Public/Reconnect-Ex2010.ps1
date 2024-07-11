@@ -17,6 +17,7 @@ Function Reconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 10:47 AM 7/11/2024 cleared debugging NoSuch etc meta tests
     * 1:34 PM 6/21/2024 ren $Global:E10Sess -> $Global:EXOPSess ;updated $rgxRemsPSSName = "^(Session\d|Exchange\d{4}|Exchange\d{2}((\.\d+)*))$" ;
     * 11:02 AM 10/25/2021 dbl/triple-connecting, fliped $E10Sess -> $global:E10Sess (must not be detecting the preexisting session), added post test of session to E10Sess values, to suppres redund dxo/rxo.
     * 1:17 PM 8/17/2021 added -silent param
@@ -58,7 +59,7 @@ Function Reconnect-Ex2010 {
 
         #region CHKPREREQ ; #*------v CHKPREREQ v------
         # critical dependancy Meta variables
-        $MetaNames = ,'TOR','CMW','TOL','NOSUCH' ; 
+        $MetaNames = ,'TOR','CMW','TOL' #,'NOSUCH' ; 
         # critical dependancy Meta variable properties
         $MetaProps = 'OP_rgxEMSComputerName','DOESNTEXIST' ; 
         # critical dependancy parameters

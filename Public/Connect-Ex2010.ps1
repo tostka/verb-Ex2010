@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 10:47 AM 7/11/2024 cleared debugging NoSuch etc meta tests
     * 1:34 PM 6/21/2024 ren $Global:E10Sess -> $Global:EXOPSess ; add: prereq checks, and $isBased support, to devert into most connect-exchangeServerTDO, get-ADExchangeServerTDO 100% generic fall back support (including buffering in the pair of funcs)
     # 9:43 AM 7/27/2021 revised -PSTitleBar to support suffix EMS[ctl]
     # 1:31 PM 7/21/2021 revised Add-PSTitleBar $sTitleBarTag with TenOrg spec (for prompt designators)
@@ -126,7 +127,7 @@ Function Connect-Ex2010 {
        
         #region CHKPREREQ ; #*------v CHKPREREQ v------
         # critical dependancy Meta variables
-        $MetaNames = ,'TOR','CMW','TOL','NOSUCH' ; 
+        $MetaNames = ,'TOR','CMW','TOL' #,'NOSUCH' ; 
         # critical dependancy Meta variable properties
         $MetaProps = 'Ex10Server','Ex10WebPoolVariant','ExRevision','ExViewForest','ExOPAccessFromToro','legacyDomain','DOESNTEXIST' ; 
         # critical dependancy parameters

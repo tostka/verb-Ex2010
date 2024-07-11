@@ -17,6 +17,7 @@ Function Disconnect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,ExchangeOnline
     REVISIONS   :
+    * 10:47 AM 7/11/2024 cleared debugging NoSuch etc meta tests
     * 1:34 PM 6/21/2024 ren $Global:E10Sess -> $Global:EXOPSess ; add: prereq checks, and $isBased support, to devert into most connect-exchangeServerTDO, get-ADExchangeServerTDO 100% generic fall back support; sketched in Ex2013 disconnect support
     # 11:12 AM 10/25/2021 added trailing null $Global:E10Sess  (to avoid false conn detects on that test)
     # 9:44 AM 7/27/2021 add -PsTitleBar EMS[ctl] support by dyn gathering range of all 1st & last $Meta.Name[0,2] values
@@ -49,7 +50,7 @@ Function Disconnect-Ex2010 {
         
         #region CHKPREREQ ; #*------v CHKPREREQ v------
         # critical dependancy Meta variables
-        $MetaNames = ,'TOR','CMW','TOL','NOSUCH' ; 
+        $MetaNames = ,'TOR','CMW','TOL' #,'NOSUCH' ; 
         # critical dependancy Meta variable properties
         $MetaProps = '' ; #'OP_rgxEMSComputerName','DOESNTEXIST' ; 
         # critical dependancy parameters
