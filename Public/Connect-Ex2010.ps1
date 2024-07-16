@@ -17,6 +17,7 @@ Function Connect-Ex2010 {
     Github      : https://github.com/tostka
     Tags        : Powershell
     REVISIONS   :
+    * 3:11 PM 7/15/2024 needed to change CHKPREREQ to check for presence of prop, not that it had a value (which fails as $false); hadn't cleared $MetaProps = ...,'DOESNTEXIST' ; confirmed cxo working non-based
     * 10:47 AM 7/11/2024 cleared debugging NoSuch etc meta tests
     * 1:34 PM 6/21/2024 ren $Global:E10Sess -> $Global:EXOPSess ; add: prereq checks, and $isBased support, to devert into most connect-exchangeServerTDO, get-ADExchangeServerTDO 100% generic fall back support (including buffering in the pair of funcs)
     # 9:43 AM 7/27/2021 revised -PSTitleBar to support suffix EMS[ctl]
@@ -129,7 +130,7 @@ Function Connect-Ex2010 {
         # critical dependancy Meta variables
         $MetaNames = ,'TOR','CMW','TOL' #,'NOSUCH' ; 
         # critical dependancy Meta variable properties
-        $MetaProps = 'Ex10Server','Ex10WebPoolVariant','ExRevision','ExViewForest','ExOPAccessFromToro','legacyDomain','DOESNTEXIST' ; 
+        $MetaProps = 'Ex10Server','Ex10WebPoolVariant','ExRevision','ExViewForest','ExOPAccessFromToro','legacyDomain' #,'DOESNTEXIST' ; 
         # critical dependancy parameters
         $gvNames = 'Credential' 
         $isBased = $true ; $gvMiss = @() ; $ppMiss = @() ; 
@@ -139,7 +140,10 @@ Function Connect-Ex2010 {
             if($MetaProps){
                 foreach($mp in $MetaProps){
                     write-verbose "chk:`$$($met)Meta.$($mp)" ; 
-                    if(-not (gv -name "$($met)Meta" -ea 0).value[$mp]){$isBased = $false; $ppMiss += "$($met)Meta.$($mp)" } ; 
+                    #if(-not (gv -name "$($met)Meta" -ea 0).value[$mp]){
+                    if(-not (gv -name "$($met)Meta" -ea 0).value.keys -contains $mp){
+                        $isBased = $false; $ppMiss += "$($met)Meta.$($mp)" 
+                    } ; 
                 } ; 
             } ; 
         } ; 

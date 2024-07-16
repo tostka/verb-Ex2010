@@ -87,7 +87,7 @@ AliasesToExport = '*'
 # ModuleList = @()
 
 # List of all files packaged with this module
-FileList = @('Quick-Start-Installation-and-Example.md','CHANGELOG.md','LICENSE.txt','README.md')
+FileList = @('Quick-Start-Installation-and-Example.md','CHANGELOG.md','README.md','LICENSE.txt')
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU+tbkGidvbpehSASQvCL7UiMy
-# dVOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUSEioqBSCIPUSFlMotm0JAsIh
+# bAOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT9uzrr
-# nudu1IztkZQ1wHdlAGft1zANBgkqhkiG9w0BAQEFAASBgABU9AGd5PjxKh3Dvw9Y
-# pQ/z/5V6NxohEAAejWFr4B9jk8lU9+oA59JVECoKenDaKuA1M9jYBUXi3Op610Ex
-# +SsD58/VZNXbaPveJFNOb/A39Yk+kzu1BdRZWg/BGfychXmEqdneNLZKA4dPpXjs
-# 88YYCcopjRLac5oKmbjJhk1c
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQ8FUet
+# lX3xyRIItsZMHlRiNrBAejANBgkqhkiG9w0BAQEFAASBgJFlRUF3traoJuhrNgjR
+# lmFEGhkUWReOy4BcysUQRvK7ByeTtIFzG7vwykC0yNhw+9T6s0HsuiLjaWzmFeKR
+# b/QCuCAsJUjt/h028Pt8Jzicscmox6GjlaMune1whBTh0NevcdREZIAbXvlOEj1U
+# 91VhePHn+5H+p6UbXhbEmrMP
 # SIG # End signature block
