@@ -26,6 +26,7 @@
         AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
         AddedTwitter: URL
         REVISIONS
+        * 1:30 PM 9/5/2024 added  update-SecurityProtocolTDO() SB to begin
         * 12:49 PM 6/21/2024 flipped PSS Name to Exchange$($ExchVers[dd])
         * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; 
             copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
@@ -109,6 +110,23 @@
         ) ;
         BEGIN{
             $Verbose = ($VerbosePreference -eq 'Continue') ;
+			$CurrentVersionTlsLabel = [Net.ServicePointManager]::SecurityProtocol ; # Tls, Tls11, Tls12 ('Tls' == TLS1.0)  ;
+			write-verbose "PRE: `$CurrentVersionTlsLabel : $($CurrentVersionTlsLabel )" ;
+			# psv6+ already covers, test via the SslProtocol parameter presense
+			if ('SslProtocol' -notin (Get-Command Invoke-RestMethod).Parameters.Keys) {
+				$currentMaxTlsValue = [Math]::Max([Net.ServicePointManager]::SecurityProtocol.value__,[Net.SecurityProtocolType]::Tls.value__) ;
+				write-verbose "`$currentMaxTlsValue : $($currentMaxTlsValue )" ;
+				$newerTlsTypeEnums = [enum]::GetValues('Net.SecurityProtocolType') | Where-Object { $_ -gt $currentMaxTlsValue }
+				if($newerTlsTypeEnums){
+					write-verbose "Appending upgraded/missing TLS `$enums:`n$(($newerTlsTypeEnums -join ','|out-string).trim())" ;
+				} else {
+					write-verbose "Current TLS `$enums are up to date with max rev available on this machine" ;
+				};
+				$newerTlsTypeEnums | ForEach-Object {
+					[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
+				} ;
+			} ;
+        
             write-verbose "#*------v Function _connect-ExOP v------" ;
             function _connect-ExOP{
                 [CmdletBinding()]
