@@ -5,7 +5,7 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 6.1.2
+Version     : 6.2.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -5105,6 +5105,7 @@ function Get-MessageTrackingLogTDO {
     Github      : https://github.com/tostka/verb-XXX
     Tags        : Powershell,Exchange,MessageTracking,Get-MessageTrackingLog,ActiveDirectory
     REVISIONS
+    * 5:03 PM 11/22/2024 add delimters to echos, to space more, readability ;  fixed typo in eventid histo output
     * 3:16 PM 11/21/2024 working: added back Connectorid (postfiltered from results); add: $DaysLimit = 30 ; added: MsgsFail, MsgsDefer, MsgsFailRcpStat; 
     * 2:00 PM 11/20/2024 rounded out to iflv level, no dbg yet
     * 5:00 PM 10/14/2024 at this point roughed in ported updates from get-exomsgtracedetailed, no debugging/testing yet; updated params & cbh to semi- match vso\get-exomsgtracedetailed(); convert to a function (from ps1)
@@ -7451,10 +7452,7 @@ function Get-MessageTrackingLogTDO {
 
             $hReports.add('MTMessages',$msgs) ; 
 
-            $smsg = "EventID Distrib:" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-            else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-            $smsg = "`n#*------v EventID DISTRIB v------" ;
+            $smsg = "`n`n#*------v EventID DISTRIB v------`n`n" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
             else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
 
@@ -7462,14 +7460,14 @@ function Get-MessageTrackingLogTDO {
                 $hReports.add('EventIDHisto',($Msgs | select -expand EventID | group | sort count,count -desc | select count,name)) ;
 
                 #$smsg = "$(($Msgs | select -expand EventID | group | sort count,count -desc | select count,name|out-string).trim())" ;
-                $smsg = "`n$($hReports.EventIDHisto|out-string).trim())" ;
+                $smsg = "`n$(($hReports.EventIDHisto|out-string).trim())" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                $smsg = "`n#*------^ EventID DISTRIB ^------" ;
+                $smsg = "`n`n#*------^ EventID DISTRIB ^------`n`n" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
 
-                $smsg = "`n#*------v MOST RECENT MATCH v------" ;
+                $smsg = "`n`n#*------v MOST RECENT MATCH v------`n`n" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host -foregroundcolor white "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
 
@@ -7479,7 +7477,7 @@ function Get-MessageTrackingLogTDO {
                 $smsg = "`n$(($hReports.MsgLast |out-string).trim())";
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                $smsg = "`n#*------^ MOST RECENT MATCH ^------" ;
+                $smsg = "`n`n#*------^ MOST RECENT MATCH ^------`n`n" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host -foregroundcolor white "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
 
@@ -7559,17 +7557,10 @@ function Get-MessageTrackingLogTDO {
                     else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
                 } ;
 
-
             } ;
-            
-            <# ---
-            write-host -foregroundcolor green "# BAD ADDRESS FAILS: (EventID:'FAIL' & Source:'ROUTING'):`t$(($msgs|?{$_.EventID -eq 'FAIL' -AND $_.Source -eq 'ROUTING'}|measure).count)" ;
-            write-host -foregroundcolor green "# REJECTED BY RECIPIENT SERVER : (EventID:'FAIL' & Source:'SMTP'):`t$(($msgs|?{$_.EventID -eq 'FAIL' -AND $_.Source -eq 'SMTP'}|measure).count)" ;
-            write-host -foregroundcolor green "# BAD DOMAIN : (EventID:'FAIL' & Source:'DNS'):`t$(($msgs|?{$_.EventID -eq 'FAIL' -AND $_.Source -eq 'DNS'}|measure).count)" ;
-            #---
-            #>
+
             if($mDefers = $msgs|?{$_.EventID -eq 'DEFER'}){
-                $smsg = "`n#*------v DEFER's Distribution v------" ;
+                $smsg = "`n`n#*------v DEFER's Distribution v------`n`n" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
 
@@ -7579,7 +7570,7 @@ function Get-MessageTrackingLogTDO {
                 $smsg = "`n$(($mDefers | select -expand RecipientStatus | group | sort count -desc | ft -auto count,name|out-string).trim())";
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                $smsg = "`n#*------^ DEFER's Distribution ^------" ;
+                $smsg = "`n`n#*------^ DEFER's Distribution ^------`n`n" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
 
@@ -7592,7 +7583,7 @@ function Get-MessageTrackingLogTDO {
 
             
             if($mFails){
-                $smsg = "`n#*------v FAIL's RecipientStatus Distribution v------" ;
+                $smsg = "`n`n#*------v FAIL's RecipientStatus Distribution v------`n`n" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
 
@@ -7602,17 +7593,17 @@ function Get-MessageTrackingLogTDO {
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
 
-                $smsg = "`n#*------^ FAIL's RecipientStatus Distribution ^------" ;
+                $smsg = "`n`n#*------^ FAIL's RecipientStatus Distribution ^------`n`n" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 if(($msgs|?{$_.EventID -eq 'FAIL'}).count -lt 20){
-                    $smsg = "`n#*------v FAIL Details v------" ;
+                    $smsg = "`n`n#*------v FAIL Details v------`n`n" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                     else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     $smsg = "$(($msgs|?{$_.EventID -eq 'FAIL'} | fl $prpMTFailFL|out-string).trim())";
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                     else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    $smsg = "`n#*------^ FAIL Details ^------" ;
+                    $smsg = "`n`n#*------^ FAIL Details ^------`n`n" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                     else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 } else {
@@ -7674,7 +7665,6 @@ function Get-MessageTrackingLogTDO {
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                 else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 
-
                 TRY{
                     New-Object -TypeName PsObject -Property $hReports | write-output ; 
                     # export the entire return object into xml
