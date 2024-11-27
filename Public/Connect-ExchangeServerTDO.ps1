@@ -1,7 +1,7 @@
-# Connect-ExchangeServerTDO.ps1
+﻿# Connect-ExchangeServerTDO.ps1
 
 #*------v Function Connect-ExchangeServerTDO v------
-#if(-not(get-command Connect-ExchangeServerTDO -ea SilentlyContinue)){
+if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
     Function Connect-ExchangeServerTDO {
         <#
         .SYNOPSIS
@@ -26,11 +26,12 @@
         AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
         AddedTwitter: URL
         REVISIONS
-        * 1:30 PM 9/5/2024 added  update-SecurityProtocolTDO() SB to begin
-        * 12:49 PM 6/21/2024 flipped PSS Name to Exchange$($ExchVers[dd])
+        * 3:54 PM 11/26/2024 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
         * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; 
             copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
             includes local snapin detect & load for edge role (simplest EMS load option for Edge role, from David Paulson's original code; no longer published with Ex2010 compat)
+        * 1:30 PM 9/5/2024 added  update-SecurityProtocolTDO() SB to begin
+        * 12:49 PM 6/21/2024 flipped PSS Name to Exchange$($ExchVers[dd])
         * 11:28 AM 5/30/2024 fixed failure to recognize existing functional PSSession; Made substantial update in logic, validate works fine with other orgs, and in our local orgs.
         * 4:02 PM 8/28/2023 debuged, updated CBH, renamed connect-ExchangeSErver -> Connect-ExchangeServerTDO (avoid name clashes, pretty common verb-noun combo).
         * 12:36 PM 8/24/2023 init
@@ -42,14 +43,14 @@
 
         Relies upon/requires get-ADExchangeServerTDO(), to return a descriptive summary of the Exchange server(s) revision etc, for connectivity logic.
         Supports Exchange 2010 through 2019, as implemented.
-    
+        
         Intent, as contrasted with verb-EXOP/Ex2010 is to have no local module dependancies, when running EXOP into other connected orgs, where syncing profile & supporting modules code can be problematic. 
         This uses native ADSI calls, which are supported by Windows itself, without need for external ActiveDirectory module etc.
 
         The particular approach inspired by BF's demo func that accompanied his take on get-adExchangeServer(), which I hybrided with my own existing code for cred-less connectivity. 
         I added get-OrganizationConfig testing, for connection pre/post confirmation, along with Exchange Server revision code for continutional handling of new-pssession remote powershell EMS connections.
         Also shifted connection code into _connect-EXOP() internal func.
-        As this doesn't rely on local module presnece, it doesn't have to do the usual local remote/local invocation detection you'd do for non-dehydrated on-server EMS (more consistent this way, anyway; 
+        As this doesn't rely on local module presence, it doesn't have to do the usual local remote/local invocation detection you'd do for non-dehydrated on-server EMS (more consistent this way, anyway; 
         there are only a few cmdlet outputs I'm aware of, that have fundementally broken returns dehydrated, and require local non-remote EMS use to function.
 
         My core usage would be to paste the function into the BEGIN{} block for a given remote org process, to function as a stricly local ad-hoc function.
@@ -110,7 +111,7 @@
         ) ;
         BEGIN{
             $Verbose = ($VerbosePreference -eq 'Continue') ;
-			$CurrentVersionTlsLabel = [Net.ServicePointManager]::SecurityProtocol ; # Tls, Tls11, Tls12 ('Tls' == TLS1.0)  ;
+            $CurrentVersionTlsLabel = [Net.ServicePointManager]::SecurityProtocol ; # Tls, Tls11, Tls12 ('Tls' == TLS1.0)  ;
 			write-verbose "PRE: `$CurrentVersionTlsLabel : $($CurrentVersionTlsLabel )" ;
 			# psv6+ already covers, test via the SslProtocol parameter presense
 			if ('SslProtocol' -notin (Get-Command Invoke-RestMethod).Parameters.Keys) {
@@ -126,8 +127,9 @@
 					[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
 				} ;
 			} ;
-        
-            write-verbose "#*------v Function _connect-ExOP v------" ;
+            $smsg = "#*------v Function _connect-ExOP v------" ;
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
             function _connect-ExOP{
                 [CmdletBinding()]
                 PARAM(
@@ -167,17 +169,23 @@
                         $ByPassLocalExchangeServerTest)
                     {
                         if((Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\EdgeTransportRole') -or
-                             (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole'))
+                                (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole'))
                         {
-                            write-verbose ("We are on Exchange Edge Transport Server")
+                            $smsg = "We are on Exchange Edge Transport Server"
+                            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
                             $IsEdgeTransport = $true
                         }
                         TRY {
                             Get-ExchangeServer -ErrorAction Stop | Out-Null
-                            write-verbose "Exchange PowerShell Module already loaded."
+                            $smsg = "Exchange PowerShell Module already loaded."
+                            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
                             $passed = $true 
                         }CATCH {
-                            write-verbose ("Failed to run Get-ExchangeServer")
+                            $smsg = "Failed to run Get-ExchangeServer"
+                            if($silent){}elseif($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
                             if($isLocalExchangeServer){
                                 write-host  "Loading Exchange PowerShell Module..."
                                 TRY{
@@ -196,7 +204,9 @@
                                         $passed = $true #We are just going to assume this passed.
                                     } 
                                 }CATCH {
-                                    write-host ("Failed to Load Exchange PowerShell Module...")
+                                    $smsg = "Failed to Load Exchange PowerShell Module..." ; 
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
                                 }                               
                             } ;
                         } FINALLY {
@@ -207,20 +217,27 @@
                                     }else{
                                         $Global:ExInstall = (Get-ItemProperty HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup).MsiInstallPath
                                     }
-    
+        
                                     $Global:ExBin = $Global:ExInstall + "\Bin"
-    
-                                    write-verbose ("Set ExInstall: {0}" -f $Global:ExInstall)
-                                    write-verbose ("Set ExBin: {0}" -f $Global:ExBin)
-                                }
-                            }
-                        }
+        
+                                    $smsg = ("Set ExInstall: {0}" -f $Global:ExInstall)
+                                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                    $smsg = ("Set ExBin: {0}" -f $Global:ExBin)
+                                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                } ; 
+                            } ; 
+                        } ; 
                     } else  {
-                        write-verbose ("Does not appear to be an Exchange 2010 or newer server.")
+                        $smsg = "Does not appear to be an Exchange 2010 or newer server." ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+
                     }
                     if(get-command -Name Get-OrganizationConfig -ea 0){
                         $smsg = "Running in connected/Native EMS" ; 
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                        if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                         #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
                         Return $true ; 
@@ -256,7 +273,9 @@
                     $pltNPSS=@{ConnectionURI="http://$($Server.FQDN)/powershell"; ConfigurationName='Microsoft.Exchange' ; name="Exchange$($ExVersNum.tostring())"} ;
                     # use ExVersUnm dd instead of hardcoded (Exchange2010)
                     if($ExVersNum -ge 15){
-                        write-verbose "EXOP.15+:Adding -Authentication Kerberos" ;
+                        $smsg = "EXOP.15+:Adding -Authentication Kerberos" ;
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
                         $pltNPSS.add('Authentication',"Kerberos") ;
                         $pltNPSS.name = $ExVers ;
                     } ;
@@ -272,7 +291,9 @@
                     $ExPSS= $ExIPSS = $null ;
                 } ; 
             } ;
-            write-verbose "#*------^ END Function _connect-ExOP ^------" ;
+            $smsg = "#*------^ END Function _connect-ExOP ^------" ;
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
             $pltGADX=@{
                 ErrorAction='Stop';
             } ;
@@ -307,7 +328,9 @@
                 } ;
                 $prpPSS = 'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ; 
                 foreach($exServer in $exchServers){
-                    write-verbose "testing conn to:$($exServer.name.tostring())..." ; 
+                    $smsg = "testing conn to:$($exServer.name.tostring())..." ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
                     if(get-command -module (get-module |?{$_.name -like 'tmp_*'}).name -name 'get-OrganizationConfig' -ea SilentlyContinue){
                         if($pssEXOP = Get-PSSession |  where-object { ($_.ConfigurationName -eq 'Microsoft.Exchange') -AND ( $_.runspace.ConnectionInfo.AppName -match '^/(exadmin|powershell)$') -AND ( $_.runspace.ConnectionInfo.Port -eq '80') }){
                             if($pssEXOP.State -ne "Opened" -OR $pssEXOP.Availability -ne "Available"){
@@ -330,7 +353,7 @@
                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
                         if($NoTest){
                             $ExPSS =$ExPSS = _connect-ExOP @pltCXOP -Server $exServer
-                       } else {
+                        } else {
                             TRY{
                                 $smsg = "Testing Connection: $($exServer.FQDN)" ;
                                 if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
@@ -398,5 +421,5 @@
             } ; 
         } ;
     } ;
-#} ; 
+} ; 
 #*------^ END Function Connect-ExchangeServerTDO ^------
