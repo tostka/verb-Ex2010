@@ -1,7 +1,7 @@
 ﻿# get-ADExchangeServerTDO.ps1
 
 #*------v Function get-ADExchangeServerTDO v------
-#if(-not(get-command get-ADExchangeServerTDO -ea SilentlyContinue)){
+if(-not(get-command get-ADExchangeServerTDO -ea 0)){
     Function get-ADExchangeServerTDO {
         <#
         .SYNOPSIS
@@ -27,6 +27,7 @@
         AddedWebsite: https://codeandkeep.com/
         AddedTwitter: URL
         REVISIONS
+        * 3:57 PM 11/26/2024 updated simple write-host,write-verbose with full pswlt support;  syncd dbg & vx10 copies.
         * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
         * 2:05 PM 8/28/2023 REN -> Get-ExchangeServerInSite -> get-ADExchangeServerTDO (aliased orig); to better steer profile-level options - including in cmw org, added -TenOrg, and default Site to constructed vari, targeting new profile $XXX_ADSiteDefault vari; Defaulted -Roles to HUB,CAS as well.
         * 3:42 PM 8/24/2023 spliced together combo of my long-standing, and some of the interesting ideas BF's version had. Functional prod:
@@ -96,7 +97,6 @@
                     64  {"EDGE"}
                     16385   {"CAS"} # Ex13+
                     16439   {"CAS, HUB, MBX"  -split ","} # Ex13+
-
         .PARAMETER Roles
         Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38,16385)]
         .PARAMETER RoleNames
@@ -228,10 +228,12 @@
                     else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
                     #$bLocalEdge = $true ; 
                     $SiteName = $null ; 
-                
+                    
                 } ; 
                 If($siteName){
-                    $smsg = "WVGetting Site: $siteName" ;
+                    $smsg = "Getting Site: $siteName" ;
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
                     if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
                     else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
                     $objectClass = "objectClass=site" ;
@@ -265,12 +267,12 @@
                                 ResponseTime = if($rsp){$rsp.ResponseTime} else { 0} ;
                                 NOTE = "This summary object, returned for a non-AD-connected EDGE server, *approximates* what would be returned on an AD-connected server" ;
                             } ;
-                        
+                            
                             $smsg = "(-NoTest:Defaulting Fast:`$true)" ;
                             if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
                             else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
                             $props.add('Fast',$true) ;
-                        
+                            
                             return (New-Object -TypeName PsObject -Property $props) ;
                         }elseif(-not $env:ExchangeInstallPath){
                             $smsg = "Non-Domain Joined machine, with NO ExchangeInstallPath e-vari: `nExchange is not installed locally: local computer resolution fails:`nPlease specify an explicit -Server, or -SiteName" ;
@@ -391,5 +393,5 @@
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         } ;
     } ;
-#} ; 
+}
 #*------^ END Function get-ADExchangeServerTDO ^------ ;
