@@ -16,6 +16,7 @@ function Get-MessageTrackingLogTDO {
     Github      : https://github.com/tostka/verb-XXX
     Tags        : Powershell,Exchange,MessageTracking,Get-MessageTrackingLog,ActiveDirectory
     REVISIONS
+    * 2:34 PM 11/26/2024 updated to latest 'Connect-ExchangeServerTDO()','get-ADExchangeServerTDO()', set to defer to existing
     * 4:20 PM 11/25/2024 updated from get-exomessagetraceexportedtdo(), more silent suppression, integrated dep-less ExOP conn supportadd delimters to echos, to space more, readability ;  fixed typo in eventid histo output
     * 3:16 PM 11/21/2024 working: added back Connectorid (postfiltered from results); add: $DaysLimit = 30 ; added: MsgsFail, MsgsDefer, MsgsFailRcpStat; 
     * 2:00 PM 11/20/2024 rounded out to iflv level, no dbg yet
@@ -405,6 +406,7 @@ function Get-MessageTrackingLogTDO {
         # Pull the CUser mod dir out of psmodpaths:
         #$CUModPath = $env:psmodulepath.split(';')|?{$_ -like '*\Users\*'} ;
 
+        #region RVARIINVALIDCHARS ; #*------v RVARIINVALIDCHARS v------
         #*------v Function Remove-InvalidVariableNameChars v------
         if(-not (gcm Remove-InvalidVariableNameChars -ea 0)){
             Function Remove-InvalidVariableNameChars ([string]$Name) {
@@ -412,9 +414,10 @@ function Get-MessageTrackingLogTDO {
             };
         } ;
         #*------^ END Function Remove-InvalidVariableNameChars ^------
+        #endregion RVARIINVALIDCHARS ; #*------^ END RVARIINVALIDCHARS ^------
 
         #*------v Function Connect-ExchangeServerTDO v------
-        #if(-not(get-command Connect-ExchangeServerTDO -ea)){
+        if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
             Function Connect-ExchangeServerTDO {
                 <#
                 .SYNOPSIS
@@ -439,9 +442,12 @@ function Get-MessageTrackingLogTDO {
                 AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
                 AddedTwitter: URL
                 REVISIONS
+                * 3:54 PM 11/26/2024 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
                 * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; 
                     copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
                     includes local snapin detect & load for edge role (simplest EMS load option for Edge role, from David Paulson's original code; no longer published with Ex2010 compat)
+                * 1:30 PM 9/5/2024 added  update-SecurityProtocolTDO() SB to begin
+                * 12:49 PM 6/21/2024 flipped PSS Name to Exchange$($ExchVers[dd])
                 * 11:28 AM 5/30/2024 fixed failure to recognize existing functional PSSession; Made substantial update in logic, validate works fine with other orgs, and in our local orgs.
                 * 4:02 PM 8/28/2023 debuged, updated CBH, renamed connect-ExchangeSErver -> Connect-ExchangeServerTDO (avoid name clashes, pretty common verb-noun combo).
                 * 12:36 PM 8/24/2023 init
@@ -521,6 +527,22 @@ function Get-MessageTrackingLogTDO {
                 ) ;
                 BEGIN{
                     $Verbose = ($VerbosePreference -eq 'Continue') ;
+                    $CurrentVersionTlsLabel = [Net.ServicePointManager]::SecurityProtocol ; # Tls, Tls11, Tls12 ('Tls' == TLS1.0)  ;
+			        write-verbose "PRE: `$CurrentVersionTlsLabel : $($CurrentVersionTlsLabel )" ;
+			        # psv6+ already covers, test via the SslProtocol parameter presense
+			        if ('SslProtocol' -notin (Get-Command Invoke-RestMethod).Parameters.Keys) {
+				        $currentMaxTlsValue = [Math]::Max([Net.ServicePointManager]::SecurityProtocol.value__,[Net.SecurityProtocolType]::Tls.value__) ;
+				        write-verbose "`$currentMaxTlsValue : $($currentMaxTlsValue )" ;
+				        $newerTlsTypeEnums = [enum]::GetValues('Net.SecurityProtocolType') | Where-Object { $_ -gt $currentMaxTlsValue }
+				        if($newerTlsTypeEnums){
+					        write-verbose "Appending upgraded/missing TLS `$enums:`n$(($newerTlsTypeEnums -join ','|out-string).trim())" ;
+				        } else {
+					        write-verbose "Current TLS `$enums are up to date with max rev available on this machine" ;
+				        };
+				        $newerTlsTypeEnums | ForEach-Object {
+					        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
+				        } ;
+			        } ;
                     $smsg = "#*------v Function _connect-ExOP v------" ;
                     if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
                     else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
@@ -563,7 +585,7 @@ function Get-MessageTrackingLogTDO {
                                 $ByPassLocalExchangeServerTest)
                             {
                                 if((Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\EdgeTransportRole') -or
-                                     (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole'))
+                                        (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole'))
                                 {
                                     $smsg = "We are on Exchange Edge Transport Server"
                                     if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
@@ -598,7 +620,9 @@ function Get-MessageTrackingLogTDO {
                                                 $passed = $true #We are just going to assume this passed.
                                             } 
                                         }CATCH {
-                                            write-host "Failed to Load Exchange PowerShell Module..."
+                                            $smsg = "Failed to Load Exchange PowerShell Module..." ; 
+                                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
                                         }                               
                                     } ;
                                 } FINALLY {
@@ -612,13 +636,20 @@ function Get-MessageTrackingLogTDO {
         
                                             $Global:ExBin = $Global:ExInstall + "\Bin"
         
-                                            write-verbose ("Set ExInstall: {0}" -f $Global:ExInstall)
-                                            write-verbose ("Set ExBin: {0}" -f $Global:ExBin)
-                                        }
-                                    }
-                                }
+                                            $smsg = ("Set ExInstall: {0}" -f $Global:ExInstall)
+                                            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                            $smsg = ("Set ExBin: {0}" -f $Global:ExBin)
+                                            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                        } ; 
+                                    } ; 
+                                } ; 
                             } else  {
-                                write-verbose ("Does not appear to be an Exchange 2010 or newer server.")
+                                $smsg = "Does not appear to be an Exchange 2010 or newer server." ; 
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+
                             }
                             if(get-command -Name Get-OrganizationConfig -ea 0){
                                 $smsg = "Running in connected/Native EMS" ; 
@@ -655,7 +686,8 @@ function Get-MessageTrackingLogTDO {
                                 } ;
                             } ; 
                         } else {
-                            $pltNPSS=@{ConnectionURI="http://$($Server.FQDN)/powershell"; ConfigurationName='Microsoft.Exchange' ; name='Exchange2010'} ;
+                            $pltNPSS=@{ConnectionURI="http://$($Server.FQDN)/powershell"; ConfigurationName='Microsoft.Exchange' ; name="Exchange$($ExVersNum.tostring())"} ;
+                            # use ExVersUnm dd instead of hardcoded (Exchange2010)
                             if($ExVersNum -ge 15){
                                 $smsg = "EXOP.15+:Adding -Authentication Kerberos" ;
                                 if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
@@ -737,7 +769,7 @@ function Get-MessageTrackingLogTDO {
                                 else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
                                 if($NoTest){
                                     $ExPSS =$ExPSS = _connect-ExOP @pltCXOP -Server $exServer
-                               } else {
+                                } else {
                                     TRY{
                                         $smsg = "Testing Connection: $($exServer.FQDN)" ;
                                         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
@@ -805,11 +837,11 @@ function Get-MessageTrackingLogTDO {
                     } ; 
                 } ;
             } ;
-        #} ; 
+        } ; 
         #*------^ END Function Connect-ExchangeServerTDO ^------
 
         #*------v Function get-ADExchangeServerTDO v------
-        #if(-not(get-command get-ADExchangeServerTDO -ea)){
+        if(-not(get-command get-ADExchangeServerTDO -ea 0)){
             Function get-ADExchangeServerTDO {
                 <#
                 .SYNOPSIS
@@ -835,6 +867,7 @@ function Get-MessageTrackingLogTDO {
                 AddedWebsite: https://codeandkeep.com/
                 AddedTwitter: URL
                 REVISIONS
+                * 3:57 PM 11/26/2024 updated simple write-host,write-verbose with full pswlt support;  syncd dbg & vx10 copies.
                 * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
                 * 2:05 PM 8/28/2023 REN -> Get-ExchangeServerInSite -> get-ADExchangeServerTDO (aliased orig); to better steer profile-level options - including in cmw org, added -TenOrg, and default Site to constructed vari, targeting new profile $XXX_ADSiteDefault vari; Defaulted -Roles to HUB,CAS as well.
                 * 3:42 PM 8/24/2023 spliced together combo of my long-standing, and some of the interesting ideas BF's version had. Functional prod:
@@ -1200,7 +1233,7 @@ function Get-MessageTrackingLogTDO {
                     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 } ;
             } ;
-        #}
+        }
         #*------^ END Function get-ADExchangeServerTDO ^------ ;
 
         $smsg = #*------v out-Clipboard.ps1 v------" ; 
@@ -2317,7 +2350,7 @@ function Get-MessageTrackingLogTDO {
         } else { 
             $Msgs=($Srvrs| get-messagetrackinglog @pltGMTL) | sort Timestamp ;
         } ; 
-        $smsg = "Raw matches:$(($msgs|measure).Count)" ;
+        $smsg = "Raw matches:$(($msgs|measure).Count) events" ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
@@ -2374,7 +2407,7 @@ function Get-MessageTrackingLogTDO {
         
         if($Msgs){
             if($DoExports){
-                $smsg = "($(($Msgs|measure).count)msgs | export-csv $($ofile))" ; 
+                $smsg = "($(($Msgs|measure).count) events | export-csv $($ofile))" ; 
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 TRY{
