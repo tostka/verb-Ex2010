@@ -3,7 +3,7 @@
 function Get-MessageTrackingLogTDO {
     <#
     .SYNOPSIS
-    Get-MessageTrackingLogTDO.ps1 - Wrapper that stages everything needed to discover ADSite & Servers, and open REMS connection to mail servers, to run a Get-MessageTrackingLog pass: has all comments pulled: *should* unwrap, but can run stacked as well. Also runs natively in EMS. Center unwrapped block is stock 7psmsgboxall
+    Get-MessageTrackingLogTDO - Wrapper that stages everything needed to discover ADSite & Servers, and open REMS connection to mail servers, to run a Get-MessageTrackingLog pass: has all comments pulled: *should* unwrap, but can run stacked as well. Also runs natively in EMS. Center unwrapped block is stock 7psmsgboxall
     .NOTES
     Version     : 0.0.1
     Author      : Todd Kadrie
@@ -16,6 +16,8 @@ function Get-MessageTrackingLogTDO {
     Github      : https://github.com/tostka/verb-XXX
     Tags        : Powershell,Exchange,MessageTracking,Get-MessageTrackingLog,ActiveDirectory
     REVISIONS
+    * 3:23 PM 12/2/2024 throwing param transform errs on start & end (wyhen typed): pull typing, and do it post assignh, can't assign empty '' or $null to t a datetime coerced vary ;pre-reduce splat hash to populated values, in exmpl & BP use;
+         rem out the parameterset code, and just do manual conflicting -start/-end -days tests and errors
     * 2:34 PM 11/26/2024 updated to latest 'Connect-ExchangeServerTDO()','get-ADExchangeServerTDO()', set to defer to existing
     * 4:20 PM 11/25/2024 updated from get-exomessagetraceexportedtdo(), more silent suppression, integrated dep-less ExOP conn supportadd delimters to echos, to space more, readability ;  fixed typo in eventid histo output
     * 3:16 PM 11/21/2024 working: added back Connectorid (postfiltered from results); add: $DaysLimit = 30 ; added: MsgsFail, MsgsDefer, MsgsFailRcpStat; 
@@ -33,7 +35,7 @@ function Get-MessageTrackingLogTDO {
     +     $smsg = "$($sBnr.replace('=v','=^').replace('v=','^='))" ;
     * 11:56 AM 5/30/2024 init; add: out-clipboard() ; spliced in conditional ordered hash code; transplanted psMsgTrkCMW.cbp into a full blown function; bonus: it runs fine in either org/enviro, as it's a full self contained solution to discover the local Exchange org from AD, then connect to the systems. 
     .DESCRIPTION
-    Get-MessageTrackingLogTDO.ps1 - Wrapper that stages everything needed to discover ADSite & Exchange Servers in the site; open REMS connection to a local HubCAS mail server;and then run a Get-MessageTrackingLog pass: has all comments pulled: *should* unwrap, but can run stacked as well. Also runs natively in EMS. Center unwrapped block is stock 7psmsgboxall
+    Get-MessageTrackingLogTDO - Wrapper that stages everything needed to discover ADSite & Exchange Servers in the site; open REMS connection to a local HubCAS mail server;and then run a Get-MessageTrackingLog pass: has all comments pulled: *should* unwrap, but can run stacked as well. Also runs natively in EMS. Center unwrapped block is stock 7psmsgboxall
 
     SET DAYS=0 IF USING START/END (they only get used when days is non-0); isplt.
     TAG is appended to ticketNO for output vari $vn, and $ofile
@@ -102,12 +104,12 @@ function Get-MessageTrackingLogTDO {
     System.Boolean
     [| get-member the output to see what .NET obj TypeName is returned, to use here]
     .EXAMPLE
-    PS> $platIn=[ordered]@{
+    PS> $pltI=[ordered]@{
     PS>     ticket="TICKETNO" ;
-    PS>     uid="USERID";
+    PS>     Requestor="USERID";
     PS>     days=7 ;
-    PS>     Start="" ; 
-    PS>     End="" ; 
+    PS>     Start="" ;
+    PS>     End="" ;
     PS>     Sender="" ;
     PS>     Recipients="" ;
     PS>     MessageSubject="" ;
@@ -115,17 +117,22 @@ function Get-MessageTrackingLogTDO {
     PS>     InternalMessageId="" ;
     PS>     Reference="" ;
     PS>     EventID='' ;
+    PS>     ConnectorId="" ;
     PS>     Source="" ;
     PS>     ResultSize="" ;
     PS>     Tag='' ;
     PS> } ;
-    PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-MessageTrackingLogTDO.ps1 w`n$(($pltGMTL|out-string).trim())" ; 
-    PS> .\Get-MessageTrackingLogTDO.ps1 @platIn -verbose ; 
+    PS> $pltGMTL = [ordered]@{} ;
+    PS> $pltI.GetEnumerator() | ?{ $_.value}  | ForEach-Object { $pltGMTL.Add($_.Key, $_.Value) } ;
+    PS> $vn = (@("xopMsgs$($pltI.ticket)",$pltI.Tag) | ?{$_}) -join '_' write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-MessageTrackingLogTDO w`n$(($pltGMTL|out-string).trim())`n(assign to `$$($vn))" ;
+    PS> if(gv $vn -ea 0){rv $vn} ;
+    PS> if($tmsgs = Get-MessageTrackingLogTDO @pltGMTL){sv -na $vn -va $tmsgs ;
+    PS> write-host "(assigned to `$$vn)"} ;
     Demo run fed by splatted parameters with Days specified and Start/End blank (matches 7PSMsgTrkAll splat layout)
     .EXAMPLE
     PS> $platIn=[ordered]@{
     PS>     ticket="TICKETNO" ;
-    PS>     uid="USERID";
+    PS>     Requestor="USERID";
     PS>     days=0 ;
     PS>     Start= (get-date '5/31/2024 1:01:10 PM').adddays(-1)  ;
     PS>     End= (get-date '5/31/2024 1:01:10 PM').adddays(1)  ; ;
@@ -136,12 +143,17 @@ function Get-MessageTrackingLogTDO {
     PS>     InternalMessageId="" ;
     PS>     Reference="" ;
     PS>     EventID='' ;
+    PS>     ConnectorId="" ;
     PS>     Source="" ;
     PS>     ResultSize="" ;
     PS>     Tag='' ;
     PS> } ;
-    PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-MessageTrackingLogTDO.ps1 w`n$(($platIn|out-string).trim())" ; 
-    PS> .\Get-MessageTrackingLogTDO.ps1 @platIn -verbose ; 
+    PS> $pltGMTL = [ordered]@{} ;
+    PS> $pltI.GetEnumerator() | ?{ $_.value}  | ForEach-Object { $pltGMTL.Add($_.Key, $_.Value) } ;
+    PS> $vn = (@("xopMsgs$($pltI.ticket)",$pltI.Tag) | ?{$_}) -join '_' write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-MessageTrackingLogTDO w`n$(($pltGMTL|out-string).trim())`n(assign to `$$($vn))" ;
+    PS> if(gv $vn -ea 0){rv $vn} ;
+    PS> if($tmsgs = Get-MessageTrackingLogTDO @pltGMTL){sv -na $vn -va $tmsgs ;
+    PS> write-host "(assigned to `$$vn)"} ;
     Demo run fed by splatted parameters with Days set to 0 and Start/End using explicit timestamps, calculated to bracket a specific timestamp(matches 7PSMsgTrkAll splat layout)
     .EXAMPLE
     PS> gci \\tsclient\d\scripts\Get-MessageTrackingLogTDO* | copy-item -dest c:\scripts\ -Verbose
@@ -149,7 +161,8 @@ function Get-MessageTrackingLogTDO {
     .LINK
     https://bitbucket.org/tostka/powershell/
     #>
-    [CmdletBinding(DefaultParameterSetName='Days')]
+    #[CmdletBinding(DefaultParameterSetName='Days')]
+    [CmdletBinding()]
     ## PSV3+ whatif support:[CmdletBinding(SupportsShouldProcess)]
     ###[Alias('Alias','Alias2')]
     PARAM(
@@ -159,15 +172,20 @@ function Get-MessageTrackingLogTDO {
         [Parameter(Mandatory=$False,HelpMessage="Ticket Customer email identifier. [-Requestor 'fname.lname@domain.com']")]
             [Alias('UID')]
             [string]$Requestor,
-        [Parameter(ParameterSetName='Dates',HelpMessage="Start of range to be searched[-StartDate '11/5/2021 2:16 PM']")]
+        #[Parameter(ParameterSetName='Dates',HelpMessage="Start of range to be searched[-StartDate '11/5/2021 2:16 PM']")]
+        [Parameter(HelpMessage="Start of range to be searched[-StartDate '11/5/2021 2:16 PM']")]
+            #[Alias('Start')]
+            #[DateTime]$StartDate,
             [Alias('StartDate')]
             [DateTime]$Start,
-        [Parameter(ParameterSetName='Dates',HelpMessage="End of range to be searched (defaults to current time if unspecified)[-EndDate '11/5/2021 5:16 PM']")]
+        #[Parameter(ParameterSetName='Dates',HelpMessage="End of range to be searched (defaults to current time if unspecified)[-EndDate '11/5/2021 5:16 PM']")]
+        [Parameter(HelpMessage="End of range to be searched (defaults to current time if unspecified)[-EndDate '11/5/2021 5:16 PM']")]
             [Alias('EndDate')]
-            [DateTime]$End=(get-date),
-        [Parameter(ParameterSetName='Days',HelpMessage="Days to be searched, back from current time(Alt to use of StartDate & EndDate; Note:MS won't search -gt 10 days)[-Days 7]")]
+            [DateTime]$End,
+        #[Parameter(ParameterSetName='Days',HelpMessage="Days to be searched, back from current time(Alt to use of StartDate & EndDate; Note:MS won't search -gt 10 days)[-Days 7]")]
+        [Parameter(HelpMessage="Days to be searched, back from current time(Alt to use of StartDate & EndDate; Note:MS won't search -gt 10 days)[-Days 7]")]
             #[ValidateRange(0,[int]::MaxValue)]
-            [ValidateRange(0,10)] # MS won't search beyond 10, and silently returns incomplete results
+            [ValidateRange(0,30)] # EXOP log retn is 2g or 30d whichever comes first
             [int]$Days,
         [Parameter(HelpMessage="SenderAddress (an array runs search on each)[-SenderAddress addr@domain.com]")]
             [Alias('SenderAddress')]
@@ -2222,7 +2240,7 @@ function Get-MessageTrackingLogTDO {
             #$ofile+=",From-$($pltGMTL.Sender.replace("*","ANY"))"  ; 
         } ;
         if($Recipients){
-            $pltGMTL.add("Recipients",$Recipients) ;
+            #$pltGMTL.add("Recipients",$Recipients) ;
             if($Recipients -match $rgxIsPlusAddrSmtpAddr){write-warning "WARNING! RecipientS $($Recipients) HAS PLUS-ADDRESSING, WON'T WORK FOR EXOP!"} ; 
             #$ofile+=",To-$($Recipients)" ;
             $pltGMTL.add('Recipients',($Recipients -split ' *, *')) ;

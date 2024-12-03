@@ -5,26 +5,26 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 6.2.2
+Version     : 6.2.3
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
-CreatedDate : 1/16/2020
+CreatedDate : 1/16.2.30
 FileName    : VERB-Ex2010.psm1
 License     : MIT
-Copyright   : (c) 1/16/2020 Todd Kadrie
+Copyright   : (c) 1/16.2.30 Todd Kadrie
 Github      : https://github.com/tostka
 REVISIONS
 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
 * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
-* 1/16/2020 - 1.0.0.0
+* 1/16.2.30 - 1.0.0.0
 # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
 # 11:34 AM 12/30/2019 ran vsc alias-expansion
 # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
 # 10:19 AM 11/1/2019 trimmed some whitespace
 # 10:05 AM 10/31/2019 added sample load/call info
-# 12:02 PM 5/6.2.29 added cx10,rx10,dx10 aliases
-# 11:29 AM 5/6.2.29 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+# 12:02 PM 5/6.2.39 added cx10,rx10,dx10 aliases
+# 11:29 AM 5/6.2.39 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
 # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
 # 4:15 PM 3/24/2018 updated pshhelp
 # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
@@ -76,10 +76,10 @@ function add-MailboxAccessGrant {
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
     # 5:12 PM 10/13/2021 fixed long standing random add-adgroupmember bug (failed to see target sg/dg), by swapping in ADGM ex cmd;  pulled [int] from $ticket , to permit non-numeric & multi-tix
-    # 11:36 AM 9/16/2021 string
+    # 11:36 AM 9/16.2.31 string
     # 10:27 AM 9/14/2021 beefed up echos w 7pswhsplat's pre
     # 3:21 PM 8/17/2021 recoded grabbing outputs, on object creations in EMS, tho' AD object creations generate no proper output. functoinal on current ticket.
-    # 4:48 PM 8/16/2021 still wrestling grant fails, switched the *permission -user targets to the dg object.primarysmtpaddr (was adg.samaccountname), if the adg.sama didn't match the alias, that woulda caused failures. Seemd to work better in debugging
+    # 4:48 PM 8/16.2.31 still wrestling grant fails, switched the *permission -user targets to the dg object.primarysmtpaddr (was adg.samaccountname), if the adg.sama didn't match the alias, that woulda caused failures. Seemd to work better in debugging
     # 1:51 PM 6/30/201:51 PM 6/30/2021 trying to work around sporadic $oSG add-mailboxperm fails, played with -user $osg designator - couldn't use DN, went back to samacctname, but added explicit RETRY echos on failretries (was visible evid at least one retry was in mix) ; hardened up the report gathers - stuck thge get-s in a try/catch ahead of echos, (vs inlines) ; we'll see if the above improve the issue - another option is to build something that can parse the splt echo back into a functional splat, to at least make remediation easier (copy, convert, rerun on fly).
     # 4:21 PM 5/19/2021 added -ea STOP to splats, to force retry's to trigger
     # 5:03 PM 5/18/2021 fixed the fundementally borked start-log I created below
@@ -98,8 +98,8 @@ function add-MailboxAccessGrant {
     # 11:15 AM 2/15/2019 copied in bug-fixed write-log() with fixed debug support
     # 10:41 AM 2/15/2019 updated write-log to latest deferring version
     # 10:39 AM 2/15/2019 added full write-log logging support
-    # 3:24 PM 2/6.2.29 #1416:needs -prop * to pull msExchRecipientDisplayType,showInAddressBook,mail etc
-    # 8:36 AM 9/6.2.28 switched secgrp to Global->Universal scope, mail-enabled as DG, and hiddenfromaddressbook, debugged out issues, used in prod creation
+    # 3:24 PM 2/6/2019 #1416:needs -prop * to pull msExchRecipientDisplayType,showInAddressBook,mail etc
+    # 8:36 AM 9/6/2018 switched secgrp to Global->Universal scope, mail-enabled as DG, and hiddenfromaddressbook, debugged out issues, used in prod creation
     # 10:28 AM 6/27/2018 add $domaincontroller param option - skips dc discovery process and uses the spec, also updated $findOU code to work with torolab dom
     # 11:05 AM 3/29/2018 #1116: added trycatch, UST lacked the secgrp ou and was failing ou lookup
     # 10:31 AM 11/22/2017 shifted a block of "User mbx grant:" confirmation into review block, also tightened up the formatted whitespace to make the material pasted into cw reflect all that you need to know on the grant status. also added distrib code
@@ -135,7 +135,7 @@ function add-MailboxAccessGrant {
     # # 12:22 PM 6/21/2016 secgrp membership seldom comes through clean, add a refresh loop
     # 10:52 AM 6/20/2016 fixed typo $InputSplatSiteOverride => $InputSplat.SiteOverride (broke -SiteOverride function)
     # 11:02 AM 6/7/2016 updated get-aduser review cmds to use the same dc, not the -domain global.ad.toro.com etc
-    # 1:34 PM 5/26.2.26 confirmed/verified works fine with SPB-hosted mbx under 376336 issitjx
+    # 1:34 PM 5/26/2016 confirmed/verified works fine with SPB-hosted mbx under 376336 issitjx
     # 11:45 AM 5/19/2016 corrected $tmbx ref's to use $tmbx.identity v. $tmbx.samaccountname, now working. Retry code in place for SPB, but it didn't trigger during testing
     # 2:37 PM 5/18/2016 implmented Secgrp OU and Secgrp stnd name
     # 2:28 PM 5/18/2016 With the recent AD changes, all email access groups should be named         XXX-SEC-Email-firstname lastname-G     and stored in XXX\Managed Groups\SEC Groups\Email Access.     The generics were also renamed to XXX\Generic Email Accounts.
@@ -166,9 +166,9 @@ function add-MailboxAccessGrant {
     # 7:31 AM 10/14/2015 added -dc specs to all *-user & *-mailbox cmds, to ensure we're pulling back data from same dc that was updated in the set-* commands
     # 7:19 AM 10/14/2015 fixed some typos, made sure all $InputSplat.domaincontroller were $()'d
     # 9:13 AM 10/12/2015 force $Grantsplat=$Tmbx to use $Tmbx.Samacctname, defaulting to displayname which isn't consistently resolvable, samacctname should be.
-    # 1:17 PM 10/6.2.25 update to spec, seems to work
+    # 1:17 PM 10/6/2015 update to spec, seems to work
     # splice in Add-EMSRemote set & get-gcfast
-    # 10:49 AM 10/6.2.25: updated vers of Get-AdminInitials
+    # 10:49 AM 10/6/2015: updated vers of Get-AdminInitials
     # 2:49 PM 10/2/2015 updated catch block to be detailed
     # 10:57 AM 8/14/2015 defaulted PermsDays to 60 (was going to 999)
     # 10:46 AM 8/14/2015 add param examples for the PermsDays spec
@@ -741,7 +741,7 @@ function add-MailboxAccessGrant {
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Debug } ; #Error|Warn
             } ;
 
-            # 4:16 PM 8/16/2021 nope, it's not dg-enabled yet, it's a secgrp, can't pull it.
+            # 4:16 PM 8/16.2.31 nope, it's not dg-enabled yet, it's a secgrp, can't pull it.
             # try flipping the $osg adg, to a resolved equiv dg obj, and use it's primarysmtpaddress rather than the adg.samaccountname (which may not match the alias, as an id). The dG should be a native rcp obj better fit to the add-mailboxperm cmd
             $oDG = get-distributiongroup -DomainController $InputSplat.DomainController -Identity $osg.DistinguishedName -ErrorAction 'STOP' ;
             #$SGUpdtSplat.Identity = $DGEnableSplat.Identity = $DGUpdtSplat.Identity = $GrantSplat.User = $ADMbxGrantSplat.User = $oSG.samaccountname ;
@@ -913,7 +913,7 @@ function add-MailboxAccessGrant {
             $SGUpdtSplat.Server = $($InputSplat.DomainController) ;
             $DGEnableSplat.DomainController = $($InputSplat.DomainController) ;
             $DGUpdtSplat.DomainController = $($InputSplat.DomainController) ;
-            # 12:47 PM 10/6.2.25 add dc
+            # 12:47 PM 10/6/2015 add dc
             $GrantSplat.Add("DomainController", $($InputSplat.domaincontroller)) ;
             #8:41 AM 10/14/2015 add adp
             $ADMbxGrantSplat.Add("DomainController", $($InputSplat.domaincontroller)) ;
@@ -1152,7 +1152,7 @@ function add-MailboxAccessGrant {
                                 $smsg = "Failed to exec add-DistributionGroupMember EXEC cmd because: $($ErrTrapd)`nTry #: $($Exit)" ;
                                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Warn } ; #Error|Warn|Debug
                                 If ($Exit -eq $Retries) { $smsg = "Unable to exec cmd!" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } ; } ;
-                                # 11:15 AM 11/26.2.29 add Cont - doesn't seem to be retrying
+                                # 11:15 AM 11/26/2019 add Cont - doesn't seem to be retrying
                                 Continue ;
                             } # try-E
                         } Until ($Exit -eq $Retries) # loop-E
@@ -1188,7 +1188,7 @@ function add-MailboxAccessGrant {
                     $smsg = "Failed to exec add-DistributionGroupMember EXEC cmd because: $($ErrTrapd)`nTry #: $($Exit)" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Warn } ; #Error|Warn|Debug
                     If ($Exit -eq $Retries) { $smsg = "Unable to exec cmd!" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } ; } ;
-                    # 11:15 AM 11/26.2.29 add Cont - doesn't seem to be retrying
+                    # 11:15 AM 11/26/2019 add Cont - doesn't seem to be retrying
                     Continue ;
                 } # try-E
                 #>
@@ -1290,8 +1290,8 @@ function add-MbxAccessGrant {
     # 11:15 AM 2/15/2019 copied in bug-fixed write-log() with fixed debug support
     # 10:41 AM 2/15/2019 updated write-log to latest deferring version
     # 10:39 AM 2/15/2019 added full write-log logging support
-    # 3:24 PM 2/6.2.29 #1416:needs -prop * to pull msExchRecipientDisplayType,showInAddressBook,mail etc
-    # 8:36 AM 9/6.2.28 switched secgrp to Global->Universal scope, mail-enabled as DG, and hiddenfromaddressbook, debugged out issues, used in prod creation
+    # 3:24 PM 2/6/2019 #1416:needs -prop * to pull msExchRecipientDisplayType,showInAddressBook,mail etc
+    # 8:36 AM 9/6/2018 switched secgrp to Global->Universal scope, mail-enabled as DG, and hiddenfromaddressbook, debugged out issues, used in prod creation
     # 10:28 AM 6/27/2018 add $domaincontroller param option - skips dc discovery process and uses the spec, also updated $findOU code to work with TOL dom
     # 11:05 AM 3/29/2018 #1116: added trycatch, UST lacked the secgrp ou and was failing ou lookup
     # 10:31 AM 11/22/2017 shifted a block of "User mbx grant:" confirmation into review block, also tightened up the formatted whitespace to make the material pasted into cw reflect all that you need to know on the grant status. also added distrib code
@@ -1327,7 +1327,7 @@ function add-MbxAccessGrant {
     # # 12:22 PM 6/21/2016 secgrp membership seldom comes through clean, add a refresh loop
     # 10:52 AM 6/20/2016 fixed typo $InputSplatSiteOverride => $InputSplat.SiteOverride (broke -SiteOverride function)
     # 11:02 AM 6/7/2016 updated get-aduser review cmds to use the same dc, not the -domain global.ad.toro.com etc
-    # 1:34 PM 5/26.2.26 confirmed/verified works fine with SITE-hosted mbx under 376336 
+    # 1:34 PM 5/26/2016 confirmed/verified works fine with SITE-hosted mbx under 376336 
     # 11:45 AM 5/19/2016 corrected $tmbx ref's to use $tmbx.identity v. $tmbx.samaccountname, now working. Retry code in place for SITE, but it didn't trigger during testing
     # 2:37 PM 5/18/2016 implmented Secgrp OU and Secgrp stnd name
     # 2:28 PM 5/18/2016 support dmg's latest unilateral changes:With the recent AD changes, all email access groups should be named     XXX-SEC-Email-firstname lastname-G and stored in XXX\Managed Groups\SEC Groups\Email Access. The generics were also renamed to XXX\Generic Email Accounts.
@@ -1359,9 +1359,9 @@ function add-MbxAccessGrant {
     # 7:31 AM 10/14/2015 added -dc specs to all *-user & *-mailbox cmds, to ensure we're pulling back data from same dc that was updated in the set-* commands
     # 7:19 AM 10/14/2015 fixed some typos, made sure all $InputSplat.domaincontroller were $()'d
     # 9:13 AM 10/12/2015 force $Grantsplat=$Tmbx to use $Tmbx.Samacctname, defaulting to displayname which isn't consistently resolvable, samacctname should be.
-    # 1:17 PM 10/6.2.25 update to spec, seems to work
+    # 1:17 PM 10/6/2015 update to spec, seems to work
     # splice in Add-EMSRemote set & get-gcfast
-    # 10:49 AM 10/6.2.25: updated vers of Get-AdminInitials
+    # 10:49 AM 10/6/2015: updated vers of Get-AdminInitials
     # 2:49 PM 10/2/2015 updated catch block to be detailed
     # 10:57 AM 8/14/2015 defaulted PermsDays to 60 (was going to 999)
     # 10:46 AM 8/14/2015 add param examples for the PermsDays spec
@@ -1557,11 +1557,11 @@ function add-MbxAccessGrant {
     function _cleanup  {
         # clear all objects and exit
         # 11:15 AM 5/11/2021 renamed helper func Cleanup -> _cleanup
-        # 1:36 PM 11/16.2.28 Cleanup:stop-transcriptlog left tscript running, test again and re-stop
+        # 1:36 PM 11/16/2018 Cleanup:stop-transcriptlog left tscript running, test again and re-stop
         # 8:15 AM 10/2/2018 Cleanup:make it defer to $script:cleanup() (needs to be preloaded before verb-transcript call in script), added missing semis, replaced all $bDebug -> $showDebug
         # 2:02 PM 9/21/2018 missing $timestampnow, hardcode
         # 8:45 AM 10/13/2015 reset $DebugPreference to default SilentlyContinue, if on
-        # # 8:46 AM 3/11/2015 at some time from then to 1:06 PM 3/26.2.25 added ISE Transcript
+        # # 8:46 AM 3/11/2015 at some time from then to 1:06 PM 3/26/2015 added ISE Transcript
         # 8:39 AM 12/10/2014 shifted to stop-transcriptLog function
         # 7:43 AM 1/24/2014 always stop the running transcript before exiting
         if ($showdebug) {"_cleanup  "} ;
@@ -1586,7 +1586,7 @@ function add-MbxAccessGrant {
             #Archive-Log $transcript ;
             write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):`$transcript:$(($transcript|out-string).trim())" ;
         } # if-E
-        # 1:36 PM 11/16.2.28 _cleanup  :stop-transcriptlog left tscript running, test again and re-stop
+        # 1:36 PM 11/16/2018 _cleanup  :stop-transcriptlog left tscript running, test again and re-stop
         if (Test-Transcribing) {
             Stop-Transcript
             if ($showdebug) {write-host -foregroundcolor green "`$transcript:$transcript"} ;
@@ -1695,7 +1695,7 @@ Function Connect-Ex2010 {
     * 8:55 AM 11/27/2019 expanded $Credential support to switch to torolab & - potentiall/uncfg'd - CMW mail infra. Fw seems to block torolab access (wtf)
     * # 7:54 AM 11/1/2017 add titlebar tag & updated example to test for pres of Add-PSTitleBar
     * 12:09 PM 12/9/2016 implented and debugged as part of verb-Ex2010 set
-    * 2:37 PM 12/6.2.26 ported to local EMSRemote
+    * 2:37 PM 12/6/2016 ported to local EMSRemote
     * 2/10/14 posted version
     $Credential can leverage a global: $Credential = $global:SIDcred
     .DESCRIPTION
@@ -2253,7 +2253,7 @@ Function Connect-Ex2010 {
                     ren $Ex10siteDN -> $ExOPsiteDN; ren $Ex10configNC -> $ExopconfigNC
                 * 1:03 PM 8/22/2023 minor cleanup
                 * 10:31 AM 4/7/2023 added CBH expl of postfilter/sorting to draw predictable pattern 
-                * 4:36 PM 4/6/2023 validated Psv51 & Psv20 and Ex10 & 16; added -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
+                * 4:36 PM 4/6.2.33 validated Psv51 & Psv20 and Ex10 & 16; added -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
                 For backward-compat retain historical output field 'Roles' as the msexchcurrentserverroles summary integer; 
                 use RoleNames as the text role array; 
                     updated for psv2 compat: flipped hash key lookups into properties, found capizliation differences, (psv2 2was all lower case, wouldn't match); 
@@ -2264,7 +2264,7 @@ Function Connect-Ex2010 {
                 * 12:08 PM 5/15/2020 fixed vpn issue: Try/Catch'd around recently failing $ADSite::GetComputerSite().GetDirectoryEntry().distinguishedName qry
                 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
                 * 6:59 PM 1/15/2020 cleanup
-                # 10:03 AM 11/16.2.28 Get-ExchangeServerInSite:can't do AD-related functions when not AD authentictaed (home, pre-vpn connect). Added if/then test on status and abort balance when false.
+                # 10:03 AM 11/16/2018 Get-ExchangeServerInSite:can't do AD-related functions when not AD authentictaed (home, pre-vpn connect). Added if/then test on status and abort balance when false.
                 * 11/18/18 BF's posted rev
                 # 12:10 PM 8/1/2017 updated example code at bottom, to accommodate variant sites
                 # 11:28 AM 3/31/2016 validated that latest round of updates are still functional
@@ -3326,7 +3326,7 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
         AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
         AddedTwitter: URL
         REVISIONS
-        * 3:54 PM 11/26/2024 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
+        * 3:54 PM 11/26.2.34 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
         * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; 
             copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
             includes local snapin detect & load for edge role (simplest EMS load option for Edge role, from David Paulson's original code; no longer published with Ex2010 compat)
@@ -3910,7 +3910,7 @@ Function Disconnect-Ex2010 {
     * 6:59 PM 1/15/2020 cleanup
     * 8:01 AM 11/1/2017 added Remove-PSTitlebar 'EMS', and Disconnect-PssBroken to the bottom - to halt growth of unrepaired broken connections. Updated example to pretest for reqMods
     * 12:54 PM 12/9/2016 cleaned up, add pshelp, implented and debugged as part of verb-Ex2010 set
-    * 2:37 PM 12/6.2.26 ported to local EMSRemote
+    * 2:37 PM 12/6/2016 ported to local EMSRemote
     * 2/10/14 posted version
     .DESCRIPTION
     Disconnect-Ex2010 - Clear Remote Exch2010 Mgmt Shell connection
@@ -4109,7 +4109,7 @@ if(-not(get-command get-ADExchangeServerTDO -ea 0)){
         AddedWebsite: https://codeandkeep.com/
         AddedTwitter: URL
         REVISIONS
-        * 3:57 PM 11/26/2024 updated simple write-host,write-verbose with full pswlt support;  syncd dbg & vx10 copies.
+        * 3:57 PM 11/26.2.34 updated simple write-host,write-verbose with full pswlt support;  syncd dbg & vx10 copies.
         * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
         * 2:05 PM 8/28/2023 REN -> Get-ExchangeServerInSite -> get-ADExchangeServerTDO (aliased orig); to better steer profile-level options - including in cmw org, added -TenOrg, and default Site to constructed vari, targeting new profile $XXX_ADSiteDefault vari; Defaulted -Roles to HUB,CAS as well.
         * 3:42 PM 8/24/2023 spliced together combo of my long-standing, and some of the interesting ideas BF's version had. Functional prod:
@@ -4119,7 +4119,7 @@ if(-not(get-command get-ADExchangeServerTDO -ea 0)){
             ren $Ex10siteDN -> $ExOPsiteDN; ren $Ex10configNC -> $ExopconfigNC
         * 1:03 PM 8/22/2023 minor cleanup
         * 10:31 AM 4/7/2023 added CBH expl of postfilter/sorting to draw predictable pattern 
-        * 4:36 PM 4/6/2023 validated Psv51 & Psv20 and Ex10 & 16; added -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
+        * 4:36 PM 4/6.2.33 validated Psv51 & Psv20 and Ex10 & 16; added -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
         For backward-compat retain historical output field 'Roles' as the msexchcurrentserverroles summary integer; 
         use RoleNames as the text role array; 
             updated for psv2 compat: flipped hash key lookups into properties, found capizliation differences, (psv2 2was all lower case, wouldn't match); 
@@ -4130,7 +4130,7 @@ if(-not(get-command get-ADExchangeServerTDO -ea 0)){
         * 12:08 PM 5/15/2020 fixed vpn issue: Try/Catch'd around recently failing $ADSite::GetComputerSite().GetDirectoryEntry().distinguishedName qry
         * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
         * 6:59 PM 1/15/2020 cleanup
-        # 10:03 AM 11/16.2.28 Get-ExchangeServerInSite:can't do AD-related functions when not AD authentictaed (home, pre-vpn connect). Added if/then test on status and abort balance when false.
+        # 10:03 AM 11/16/2018 Get-ExchangeServerInSite:can't do AD-related functions when not AD authentictaed (home, pre-vpn connect). Added if/then test on status and abort balance when false.
         * 11/18/18 BF's posted rev
         # 12:10 PM 8/1/2017 updated example code at bottom, to accommodate variant sites
         # 11:28 AM 3/31/2016 validated that latest round of updates are still functional
@@ -5121,7 +5121,7 @@ TenantTag value, indicating Tenants to connect to[-TenOrg 'TOL']
 function Get-MessageTrackingLogTDO {
     <#
     .SYNOPSIS
-    Get-MessageTrackingLogTDO.ps1 - Wrapper that stages everything needed to discover ADSite & Servers, and open REMS connection to mail servers, to run a Get-MessageTrackingLog pass: has all comments pulled: *should* unwrap, but can run stacked as well. Also runs natively in EMS. Center unwrapped block is stock 7psmsgboxall
+    Get-MessageTrackingLogTDO - Wrapper that stages everything needed to discover ADSite & Servers, and open REMS connection to mail servers, to run a Get-MessageTrackingLog pass: has all comments pulled: *should* unwrap, but can run stacked as well. Also runs natively in EMS. Center unwrapped block is stock 7psmsgboxall
     .NOTES
     Version     : 0.0.1
     Author      : Todd Kadrie
@@ -5134,12 +5134,14 @@ function Get-MessageTrackingLogTDO {
     Github      : https://github.com/tostka/verb-XXX
     Tags        : Powershell,Exchange,MessageTracking,Get-MessageTrackingLog,ActiveDirectory
     REVISIONS
-    * 2:34 PM 11/26/2024 updated to latest 'Connect-ExchangeServerTDO()','get-ADExchangeServerTDO()', set to defer to existing
+    * 3:23 PM 12/2/2024 throwing param transform errs on start & end (wyhen typed): pull typing, and do it post assignh, can't assign empty '' or $null to t a datetime coerced vary ;pre-reduce splat hash to populated values, in exmpl & BP use;
+         rem out the parameterset code, and just do manual conflicting -start/-end -days tests and errors
+    * 2:34 PM 11/26.2.34 updated to latest 'Connect-ExchangeServerTDO()','get-ADExchangeServerTDO()', set to defer to existing
     * 4:20 PM 11/25/2024 updated from get-exomessagetraceexportedtdo(), more silent suppression, integrated dep-less ExOP conn supportadd delimters to echos, to space more, readability ;  fixed typo in eventid histo output
     * 3:16 PM 11/21/2024 working: added back Connectorid (postfiltered from results); add: $DaysLimit = 30 ; added: MsgsFail, MsgsDefer, MsgsFailRcpStat; 
     * 2:00 PM 11/20/2024 rounded out to iflv level, no dbg yet
     * 5:00 PM 10/14/2024 at this point roughed in ported updates from get-exomsgtracedetailed, no debugging/testing yet; updated params & cbh to semi- match vso\get-exomsgtracedetailed(); convert to a function (from ps1)
-    * 11:30 AM 7/16/2024 CBH example typo fix
+    * 11:30 AM 7/16.2.34 CBH example typo fix
     * 2:41 PM 7/10/2024 spliced in notices for plus-addressing, ren'd $Tix -> $Ticket (matches gbug fi in psb.)
     * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox;  finished test/debug on CMW edge: appears full functioning, including get-ADExchangeServerTDO() & Connect-ExchangeServerTDO()
     * 3:46 PM 6/3/2024 WIP for edge, latest chgs: rounded out params to subst cover full range of underlying Get-MessageTrackingLog: MessageID ; InternalMessageID; NetworkMessageID; Reference; ResultSize; 
@@ -5151,7 +5153,7 @@ function Get-MessageTrackingLogTDO {
     +     $smsg = "$($sBnr.replace('=v','=^').replace('v=','^='))" ;
     * 11:56 AM 5/30/2024 init; add: out-clipboard() ; spliced in conditional ordered hash code; transplanted psMsgTrkCMW.cbp into a full blown function; bonus: it runs fine in either org/enviro, as it's a full self contained solution to discover the local Exchange org from AD, then connect to the systems. 
     .DESCRIPTION
-    Get-MessageTrackingLogTDO.ps1 - Wrapper that stages everything needed to discover ADSite & Exchange Servers in the site; open REMS connection to a local HubCAS mail server;and then run a Get-MessageTrackingLog pass: has all comments pulled: *should* unwrap, but can run stacked as well. Also runs natively in EMS. Center unwrapped block is stock 7psmsgboxall
+    Get-MessageTrackingLogTDO - Wrapper that stages everything needed to discover ADSite & Exchange Servers in the site; open REMS connection to a local HubCAS mail server;and then run a Get-MessageTrackingLog pass: has all comments pulled: *should* unwrap, but can run stacked as well. Also runs natively in EMS. Center unwrapped block is stock 7psmsgboxall
 
     SET DAYS=0 IF USING START/END (they only get used when days is non-0); isplt.
     TAG is appended to ticketNO for output vari $vn, and $ofile
@@ -5220,12 +5222,12 @@ function Get-MessageTrackingLogTDO {
     System.Boolean
     [| get-member the output to see what .NET obj TypeName is returned, to use here]
     .EXAMPLE
-    PS> $platIn=[ordered]@{
+    PS> $pltI=[ordered]@{
     PS>     ticket="TICKETNO" ;
-    PS>     uid="USERID";
+    PS>     Requestor="USERID";
     PS>     days=7 ;
-    PS>     Start="" ; 
-    PS>     End="" ; 
+    PS>     Start="" ;
+    PS>     End="" ;
     PS>     Sender="" ;
     PS>     Recipients="" ;
     PS>     MessageSubject="" ;
@@ -5233,17 +5235,22 @@ function Get-MessageTrackingLogTDO {
     PS>     InternalMessageId="" ;
     PS>     Reference="" ;
     PS>     EventID='' ;
+    PS>     ConnectorId="" ;
     PS>     Source="" ;
     PS>     ResultSize="" ;
     PS>     Tag='' ;
     PS> } ;
-    PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-MessageTrackingLogTDO.ps1 w`n$(($pltGMTL|out-string).trim())" ; 
-    PS> .\Get-MessageTrackingLogTDO.ps1 @platIn -verbose ; 
+    PS> $pltGMTL = [ordered]@{} ;
+    PS> $pltI.GetEnumerator() | ?{ $_.value}  | ForEach-Object { $pltGMTL.Add($_.Key, $_.Value) } ;
+    PS> $vn = (@("xopMsgs$($pltI.ticket)",$pltI.Tag) | ?{$_}) -join '_' write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-MessageTrackingLogTDO w`n$(($pltGMTL|out-string).trim())`n(assign to `$$($vn))" ;
+    PS> if(gv $vn -ea 0){rv $vn} ;
+    PS> if($tmsgs = Get-MessageTrackingLogTDO @pltGMTL){sv -na $vn -va $tmsgs ;
+    PS> write-host "(assigned to `$$vn)"} ;
     Demo run fed by splatted parameters with Days specified and Start/End blank (matches 7PSMsgTrkAll splat layout)
     .EXAMPLE
     PS> $platIn=[ordered]@{
     PS>     ticket="TICKETNO" ;
-    PS>     uid="USERID";
+    PS>     Requestor="USERID";
     PS>     days=0 ;
     PS>     Start= (get-date '5/31/2024 1:01:10 PM').adddays(-1)  ;
     PS>     End= (get-date '5/31/2024 1:01:10 PM').adddays(1)  ; ;
@@ -5254,12 +5261,17 @@ function Get-MessageTrackingLogTDO {
     PS>     InternalMessageId="" ;
     PS>     Reference="" ;
     PS>     EventID='' ;
+    PS>     ConnectorId="" ;
     PS>     Source="" ;
     PS>     ResultSize="" ;
     PS>     Tag='' ;
     PS> } ;
-    PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-MessageTrackingLogTDO.ps1 w`n$(($platIn|out-string).trim())" ; 
-    PS> .\Get-MessageTrackingLogTDO.ps1 @platIn -verbose ; 
+    PS> $pltGMTL = [ordered]@{} ;
+    PS> $pltI.GetEnumerator() | ?{ $_.value}  | ForEach-Object { $pltGMTL.Add($_.Key, $_.Value) } ;
+    PS> $vn = (@("xopMsgs$($pltI.ticket)",$pltI.Tag) | ?{$_}) -join '_' write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-MessageTrackingLogTDO w`n$(($pltGMTL|out-string).trim())`n(assign to `$$($vn))" ;
+    PS> if(gv $vn -ea 0){rv $vn} ;
+    PS> if($tmsgs = Get-MessageTrackingLogTDO @pltGMTL){sv -na $vn -va $tmsgs ;
+    PS> write-host "(assigned to `$$vn)"} ;
     Demo run fed by splatted parameters with Days set to 0 and Start/End using explicit timestamps, calculated to bracket a specific timestamp(matches 7PSMsgTrkAll splat layout)
     .EXAMPLE
     PS> gci \\tsclient\d\scripts\Get-MessageTrackingLogTDO* | copy-item -dest c:\scripts\ -Verbose
@@ -5267,7 +5279,8 @@ function Get-MessageTrackingLogTDO {
     .LINK
     https://bitbucket.org/tostka/powershell/
     #>
-    [CmdletBinding(DefaultParameterSetName='Days')]
+    #[CmdletBinding(DefaultParameterSetName='Days')]
+    [CmdletBinding()]
     ## PSV3+ whatif support:[CmdletBinding(SupportsShouldProcess)]
     ###[Alias('Alias','Alias2')]
     PARAM(
@@ -5277,15 +5290,20 @@ function Get-MessageTrackingLogTDO {
         [Parameter(Mandatory=$False,HelpMessage="Ticket Customer email identifier. [-Requestor 'fname.lname@domain.com']")]
             [Alias('UID')]
             [string]$Requestor,
-        [Parameter(ParameterSetName='Dates',HelpMessage="Start of range to be searched[-StartDate '11/5/2021 2:16 PM']")]
+        #[Parameter(ParameterSetName='Dates',HelpMessage="Start of range to be searched[-StartDate '11/5/2021 2:16 PM']")]
+        [Parameter(HelpMessage="Start of range to be searched[-StartDate '11/5/2021 2:16 PM']")]
+            #[Alias('Start')]
+            #[DateTime]$StartDate,
             [Alias('StartDate')]
             [DateTime]$Start,
-        [Parameter(ParameterSetName='Dates',HelpMessage="End of range to be searched (defaults to current time if unspecified)[-EndDate '11/5/2021 5:16 PM']")]
+        #[Parameter(ParameterSetName='Dates',HelpMessage="End of range to be searched (defaults to current time if unspecified)[-EndDate '11/5/2021 5:16 PM']")]
+        [Parameter(HelpMessage="End of range to be searched (defaults to current time if unspecified)[-EndDate '11/5/2021 5:16 PM']")]
             [Alias('EndDate')]
-            [DateTime]$End=(get-date),
-        [Parameter(ParameterSetName='Days',HelpMessage="Days to be searched, back from current time(Alt to use of StartDate & EndDate; Note:MS won't search -gt 10 days)[-Days 7]")]
+            [DateTime]$End,
+        #[Parameter(ParameterSetName='Days',HelpMessage="Days to be searched, back from current time(Alt to use of StartDate & EndDate; Note:MS won't search -gt 10 days)[-Days 7]")]
+        [Parameter(HelpMessage="Days to be searched, back from current time(Alt to use of StartDate & EndDate; Note:MS won't search -gt 10 days)[-Days 7]")]
             #[ValidateRange(0,[int]::MaxValue)]
-            [ValidateRange(0,10)] # MS won't search beyond 10, and silently returns incomplete results
+            [ValidateRange(0,30)] # EXOP log retn is 2g or 30d whichever comes first
             [int]$Days,
         [Parameter(HelpMessage="SenderAddress (an array runs search on each)[-SenderAddress addr@domain.com]")]
             [Alias('SenderAddress')]
@@ -5560,7 +5578,7 @@ function Get-MessageTrackingLogTDO {
                 AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
                 AddedTwitter: URL
                 REVISIONS
-                * 3:54 PM 11/26/2024 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
+                * 3:54 PM 11/26.2.34 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
                 * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; 
                     copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
                     includes local snapin detect & load for edge role (simplest EMS load option for Edge role, from David Paulson's original code; no longer published with Ex2010 compat)
@@ -5985,7 +6003,7 @@ function Get-MessageTrackingLogTDO {
                 AddedWebsite: https://codeandkeep.com/
                 AddedTwitter: URL
                 REVISIONS
-                * 3:57 PM 11/26/2024 updated simple write-host,write-verbose with full pswlt support;  syncd dbg & vx10 copies.
+                * 3:57 PM 11/26.2.34 updated simple write-host,write-verbose with full pswlt support;  syncd dbg & vx10 copies.
                 * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
                 * 2:05 PM 8/28/2023 REN -> Get-ExchangeServerInSite -> get-ADExchangeServerTDO (aliased orig); to better steer profile-level options - including in cmw org, added -TenOrg, and default Site to constructed vari, targeting new profile $XXX_ADSiteDefault vari; Defaulted -Roles to HUB,CAS as well.
                 * 3:42 PM 8/24/2023 spliced together combo of my long-standing, and some of the interesting ideas BF's version had. Functional prod:
@@ -5995,7 +6013,7 @@ function Get-MessageTrackingLogTDO {
                     ren $Ex10siteDN -> $ExOPsiteDN; ren $Ex10configNC -> $ExopconfigNC
                 * 1:03 PM 8/22/2023 minor cleanup
                 * 10:31 AM 4/7/2023 added CBH expl of postfilter/sorting to draw predictable pattern 
-                * 4:36 PM 4/6/2023 validated Psv51 & Psv20 and Ex10 & 16; added -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
+                * 4:36 PM 4/6.2.33 validated Psv51 & Psv20 and Ex10 & 16; added -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
                 For backward-compat retain historical output field 'Roles' as the msexchcurrentserverroles summary integer; 
                 use RoleNames as the text role array; 
                     updated for psv2 compat: flipped hash key lookups into properties, found capizliation differences, (psv2 2was all lower case, wouldn't match); 
@@ -6006,7 +6024,7 @@ function Get-MessageTrackingLogTDO {
                 * 12:08 PM 5/15/2020 fixed vpn issue: Try/Catch'd around recently failing $ADSite::GetComputerSite().GetDirectoryEntry().distinguishedName qry
                 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
                 * 6:59 PM 1/15/2020 cleanup
-                # 10:03 AM 11/16.2.28 Get-ExchangeServerInSite:can't do AD-related functions when not AD authentictaed (home, pre-vpn connect). Added if/then test on status and abort balance when false.
+                # 10:03 AM 11/16/2018 Get-ExchangeServerInSite:can't do AD-related functions when not AD authentictaed (home, pre-vpn connect). Added if/then test on status and abort balance when false.
                 * 11/18/18 BF's posted rev
                 # 12:10 PM 8/1/2017 updated example code at bottom, to accommodate variant sites
                 # 11:28 AM 3/31/2016 validated that latest round of updates are still functional
@@ -7015,7 +7033,7 @@ function Get-MessageTrackingLogTDO {
                     $smsg = 'Set-AdServerSettings -ViewEntireForest `$True' ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    #TK 9:44 AM 10/6/2022 need org wide for rolegrps in parent dom (only for onprem RBAC, not EXO)
+                    #TK 9:44 AM 10/6.2.32 need org wide for rolegrps in parent dom (only for onprem RBAC, not EXO)
                     $GcFwide = "$((Get-ADDomainController -Discover -Service GlobalCatalog).hostname):3268" ;        
                     #endregion  ; #*------^ END  OPTIONAL CODE TO ENABLE FOREST-WIDE AD GC QRY SUPPORT  ^------
                 } ;    
@@ -7340,7 +7358,7 @@ function Get-MessageTrackingLogTDO {
             #$ofile+=",From-$($pltGMTL.Sender.replace("*","ANY"))"  ; 
         } ;
         if($Recipients){
-            $pltGMTL.add("Recipients",$Recipients) ;
+            #$pltGMTL.add("Recipients",$Recipients) ;
             if($Recipients -match $rgxIsPlusAddrSmtpAddr){write-warning "WARNING! RecipientS $($Recipients) HAS PLUS-ADDRESSING, WON'T WORK FOR EXOP!"} ; 
             #$ofile+=",To-$($Recipients)" ;
             $pltGMTL.add('Recipients',($Recipients -split ' *, *')) ;
@@ -8077,7 +8095,7 @@ Function import-EMSLocalModule {
     REVISIONS   :
     * 9:48 AM 7/27/2021 added verbose to -pstitlebar
     * 11:40 AM 5/14/2021 added -ea 0 to the gv tests (suppresses not-found error when called without logging config)
-    * 9:21 AM 4/16/2021 renamed load-emsmodule -> import-EMSLocalModule, added pretest and post verify
+    * 9:21 AM 4/16.2.31 renamed load-emsmodule -> import-EMSLocalModule, added pretest and post verify
     * 10:14 AM 4/12/2021 init vers
     .DESCRIPTION
     import-EMSLocalModule - Setup local server bin-module-based ExchOnPrem Mgmt Shell connection (contrasts with Ex2007/10 snapin use ; validated Exch2016)
@@ -8172,7 +8190,7 @@ function Invoke-ExchangeCommand{
     REVISIONS
     * 2:40 PM 9/17/2020 cleanup <?> encode damage (emdash's for dashes)
     * 4:28 PM 9/15/2020 cleanedup, added CBH, added to verb-Ex2010
-    * 10/26.2.25 posted vers
+    * 10/26/2015 posted vers
     .DESCRIPTION
     Invoke-ExchangeCommand.ps1 - PowerShell function allows you to run PowerShell commands and script blocks on Exchange servers in different forests without a forest trust.
     This PowerShell function allows you to run PowerShell commands and script blocks on Exchange servers in different forests without a forest trust.
@@ -8665,12 +8683,12 @@ function new-MailboxGenericTOR {
     Github      : https://github.com/tostka/verb-ex2010
     Tags        : Exchange,ExchangeOnPremises,Mailbox,Creation,Maintenance,UserMailbox
     REVISIONS
-    # 1:15 PM 9/6/2023 updated CBH, pulled in expls from 7PSnMbxG/psb-PSnewMbxG.cbp. Works with current cba auth etc. 
+    # 1:15 PM 9/6.2.33 updated CBH, pulled in expls from 7PSnMbxG/psb-PSnewMbxG.cbp. Works with current cba auth etc. 
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
-    * 11:37 AM 9/16/2021 string
+    * 11:37 AM 9/16.2.31 string
     * 8:55 AM 5/11/2021 functionalized into verb-ex2010 ; ren: internal helper func Cleanup() -> _cleanup() ; subbed some wv -v:v,=> wh (silly to use wv, w force display; should use it solely for optional verbose details
     # 2:35 PM 4/3/2020 genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules
-    # 8:48 AM 11/26.2.29 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office 
+    # 8:48 AM 11/26/2019 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office 
     # 12:10 PM 10/10/2019 default $mbxsplat.Office to $SiteCode value - they should always match, no reason to have a blank offic, if you know the OU & Site. Updated load-ADMS call to specific -cmdlets (speed)
     # 12:51 PM 10/4/2019 passing initial whatif on -Room
     # 2:22 PM 10/1/2019 2076 & 1549 added: $FallBackBaseUserOU, OU that's used when can't find any baseuser for the owner's OU, default to a random shared from SITECODE (avoid crapping out):
@@ -8695,9 +8713,9 @@ function new-MailboxGenericTOR {
     # 10:59 AM 5/21/2018 Fixed broken -nongeneric $true functionality: (corrected samaccountname gen code for blank fname field). Also added Mailuser/RemoteMailbox support for -Owner value. Validated functional for creation of the LYNCmonacct1 mbx.
     # 11:25 AM 12/22/2017 missing casmailbox splat construct for psv2 section, update CU5 test regx for perrotde & perrotpl, output an error when it fails to find a BaseUser (new empty site with empty target OU to draw from, prompts to hand spec -BaseUser param with mbx in another OU or loc
     # 11:58 AM 11/15/2017 1321: accommodate EXO-hosted Owners by testing with get-remotemailbox -AND get-mailbox on the owner spec. Created a mailbox, seemed to work. Not sure of access grant script yet.
-    # 11:43 AM 10/6.2.27 made $Cu5 Mandatry:$false
-    # 10:30 AM 10/6.2.27 fix typo in $cu5 switch
-    # 8:41 AM 10/6.2.27 major re-splict to read lost set-mailbox (alt domain assignment) & set-casmailbox material. Need to splice this code
+    # 11:43 AM 10/6/2017 made $Cu5 Mandatry:$false
+    # 10:30 AM 10/6/2017 fix typo in $cu5 switch
+    # 8:41 AM 10/6/2017 major re-splict to read lost set-mailbox (alt domain assignment) & set-casmailbox material. Need to splice this code
             into the other new-mailbox based scripts. This explains why nothing has been setting owner-based domains in recent (months)?.
     # 3:22 PM 10/4/2017 midway through adding CU5 support
     # 2:38 PM 6/22/2017 LastName too, strip all names back
@@ -8706,8 +8724,8 @@ function new-MailboxGenericTOR {
     # 8:18 AM 5/9/2017 fixed minotr #region/#endregion typos
     # 1:29 PM 4/3/2017 #1764: this should have the -server spec
     # 2:39 PM 3/21/2017 spliced over sitemailboxOU() from new-mailboxconfrm.ps1
-    # 8:03 AM 3/16.2.27 suppress error make sure the $($script:ExPSS).ID  is EVEN POPULATED!
-    # 7:56 AM 3/16.2.27 gadu need a dawdle loop, also add -server $(InputSplat.domaincontroller)
+    # 8:03 AM 3/16/2017 suppress error make sure the $($script:ExPSS).ID  is EVEN POPULATED!
+    # 7:56 AM 3/16/2017 gadu need a dawdle loop, also add -server $(InputSplat.domaincontroller)
     # 9:48 AM 3/2/2017 merged in updated Add-EMSRemote Set
     # 1:30 PM 2/27/2017 neither vscan cu9 nor owner's cu5 values got properly populated.
     # 12:36 PM 2/27/2017 get-SiteMbxOU(): fixed to cover breaks frm AD reorg OU name changes, Generics are all now in a single OU per site
@@ -8726,9 +8744,9 @@ function new-MailboxGenericTOR {
     # 11:28 AM 4/8/2016 passed EMSRemote dynamic
     # 11:25 AM 4/8/2016 passed initial test on Ex EMS local
     # 11:22 AM 4/8/2016 I think I've finally got it properly managing EMSRemote, purging redudant, and outputing functional report. needs to be tested in Ex EMS local
-    # 12:31 PM 4/6.2.26 it's crapping out in local EMS on SITECODE-3V6KSY1 Add-EMSRemote isn't picking up on the existing verbs, and noclobber etc.
-    # 12:29 PM 4/6.2.26 validated Generic in rEMS
-    # 12:23 PM 4/6.2.26: seems functional for testing.
+    # 12:31 PM 4/6/2016 it's crapping out in local EMS on SITECODE-3V6KSY1 Add-EMSRemote isn't picking up on the existing verbs, and noclobber etc.
+    # 12:29 PM 4/6/2016 validated Generic in rEMS
+    # 12:23 PM 4/6/2016: seems functional for testing.
         Added Validate-Password, and looping pw gen, to generate consistently compliant complexity.
         Debugged through a lot of inconsistencies. I think it can now serve as the base template for other scripts.
         needs testing to confirm that the new Add-EMSRemote will work in EMS, rEMS, and v2ps EMS on servers.
@@ -8744,8 +8762,8 @@ function new-MailboxGenericTOR {
     # 10:02 AM 1/13/2016: fixed cls bug due to spurious ";cls" included in the try/catch boilerplate: Write-Error "$((get-date).ToString('HH:mm:ss')): Command: $($_.InvocationInfo.MyCommand)" ;cls => Write-Error "$((get-date).ToString('HH:mm:ss')): Command: $($_.InvocationInfo.MyCommand)" ;
     # 1:48 PM 10/29/2015 fixed blank surname/givenname - was generic-only setting it. Also sub'd insput fname/lname for std firstname lastname field names (ported from new-mailboxCN.ps1)
     # 1:30 PM 10/29/2015: 780 get-aduser needs -server, fails:, also added -server to the get-AD* cmds missing it, and added XIA sitecode steering to the $OU find process
-    # 2:07 PM 10/26.2.25 had to split out the new-mailbox | set-mailbox, with a do/while wait for the mbx to be visible, in between, because the set wasn't finding a mbx, when it executed
-    # 1:53 PM 10/26.2.25 fixed failure to assign $InputSplat.SiteCode, for Generic mbxs
+    # 2:07 PM 10/26/2015 had to split out the new-mailbox | set-mailbox, with a do/while wait for the mbx to be visible, in between, because the set wasn't finding a mbx, when it executed
+    # 1:53 PM 10/26/2015 fixed failure to assign $InputSplat.SiteCode, for Generic mbxs
     # 12:24 PM 10/21/2015 added/debugged -Vscan YES|NO|null param. Created OEV\Generic\Test XXXOffboard mbx with it
     # 11:41 AM 10/21/2015 update clean-up param & help info
     # 11:32 AM 10/21/2015 613: added NonGeneric detect and trigger ResetPasswordOnNextLogon flag
@@ -8754,8 +8772,8 @@ function new-MailboxGenericTOR {
     # 9:08 AM 10/14/2015 added debugpref maint code to get write-debug to work
     # 7:31 AM 10/14/2015 added -dc specs to all *-user & *-mailbox cmds, to ensure we're pulling back data from same dc that was updated in the set-* commands
     # 7:27 AM 10/14/2015 rplcd all get-timestamps -> $((get-date).ToString('HH:mm:ss'))
-    # 1:12 PM 10/6.2.25 updated to spec, looks functional
-    # 10:49 AM 10/6.2.25: updated vers of Get-AdminInitials
+    # 1:12 PM 10/6/2015 updated to spec, looks functional
+    # 10:49 AM 10/6/2015: updated vers of Get-AdminInitials
     * 2:48 PM 10/2/2015 updated Catch blocks to be specific on crash
     * 10:23 AM 10/2/2015 initial port from add-mbxaccessgrant & bp code
 
@@ -9093,11 +9111,11 @@ function new-MailboxGenericTOR {
         function _cleanup {
             # clear all objects and exit
             # 8:55 AM 5/11/2021 ren: internal helper func Cleanup() -> _cleanup() 
-            # 1:36 PM 11/16.2.28 Cleanup:stop-transcriptlog left tscript running, test again and re-stop
+            # 1:36 PM 11/16/2018 Cleanup:stop-transcriptlog left tscript running, test again and re-stop
             # 8:15 AM 10/2/2018 Cleanup:make it defer to $script:cleanup() (needs to be preloaded before verb-transcript call in script), added missing semis, replaced all $bDebug -> $showDebug
             # 2:02 PM 9/21/2018 missing $timestampnow, hardcode
             # 8:45 AM 10/13/2015 reset $DebugPreference to default SilentlyContinue, if on
-            # # 8:46 AM 3/11/2015 at some time from then to 1:06 PM 3/26.2.25 added ISE Transcript
+            # # 8:46 AM 3/11/2015 at some time from then to 1:06 PM 3/26/2015 added ISE Transcript
             # 8:39 AM 12/10/2014 shifted to stop-transcriptLog function
             # 7:43 AM 1/24/2014 always stop the running transcript before exiting
             write-verbose "$((get-date).ToString('HH:mm:ss')):_cleanup" ; 
@@ -9271,7 +9289,7 @@ function new-MailboxShared {
     # 4:36 PM 4/8/2020 works fully on jumpbox, but ignores whatif, renamed $bwhatif -> $whatif (as the b variant was prev set in the same-script, now separate scopes); swapped out CU5 switch, moved settings into infra file, genericized
     # 2:15 PM 4/7/2020 updated to reflect debugging on jumpbox
     # 2:35 PM 4/3/2020 new-MailboxShared: genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules ; added -ParentPath to pass through a usable path for start-log, within new-mailboxshared()
-    # 8:48 AM 11/26.2.29 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office
+    # 8:48 AM 11/26/2019 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office
     # 12:14 PM 10/4/2019 splice in Room/Equip code from new-mailboxConfRm.ps1's variant (not functionalized yet), added new -Room & -Equipement flags to trigger ConfRm code
     # 2:22 PM 10/1/2019 2076 & 1549 added: $FallBackBaseUserOU, OU that's used when can't find any baseuser for the owner's OU, default to a random shared from SITECODE (avoid crapping out):
     # 9:48 AM 9/27/2019 new-MailboxShared:added `a 'beep' to YYY prompt
@@ -9292,9 +9310,9 @@ function new-MailboxShared {
     # 10:59 AM 5/21/2018 Fixed broken -nongeneric $true functionality: (corrected samaccountname gen code for blank fname field). Also added Mailuser/RemoteMailbox support for -Owner value. Validated functional for creation of the LYNCmonacct1 mbx.
     # 11:25 AM 12/22/2017 missing casmailbox splat construct for psv2 section, update CU5 test regx for perrotde & perrotpl, output an error when it fails to find a BaseUser (new empty site with empty target OU to draw from, prompts to hand spec -BaseUser param with mbx in another OU or loc
     # 11:58 AM 11/15/2017 1321: accommodate EXO-hosted Owners by testing with get-remotemailbox -AND get-mailbox on the owner spec. Created a mailbox, seemed to work. Not sure of access grant script yet.
-    # 11:43 AM 10/6.2.27 made $Cu5 Mandatry:$false
-    # 10:30 AM 10/6.2.27 fix typo in $cu5 switch
-    # 8:41 AM 10/6.2.27 major re-splict to read lost set-mailbox (alt domain assignment) & set-casmailbox material. Need to splice this code
+    # 11:43 AM 10/6/2017 made $Cu5 Mandatry:$false
+    # 10:30 AM 10/6/2017 fix typo in $cu5 switch
+    # 8:41 AM 10/6/2017 major re-splict to read lost set-mailbox (alt domain assignment) & set-casmailbox material. Need to splice this code
             into the other new-mailbox based scripts. This explains why nothing has been setting owner-based domains in recent (months)?.
     # 3:22 PM 10/4/2017 midway through adding CU5 support
     # 2:38 PM 6/22/2017 LastName too, strip all names back
@@ -9303,8 +9321,8 @@ function new-MailboxShared {
     # 8:18 AM 5/9/2017 fixed minotr #region/#endregion typos
     # 1:29 PM 4/3/2017 #1764: this should have the -server spec
     # 2:39 PM 3/21/2017 spliced over sitemailboxOU() from new-mailboxconfrm.ps1
-    # 8:03 AM 3/16.2.27 suppress error make sure the $($script:ExPSS).ID  is EVEN POPULATED!
-    # 7:56 AM 3/16.2.27 gadu need a dawdle loop, also add -server $(InputSplat.domaincontroller)
+    # 8:03 AM 3/16/2017 suppress error make sure the $($script:ExPSS).ID  is EVEN POPULATED!
+    # 7:56 AM 3/16/2017 gadu need a dawdle loop, also add -server $(InputSplat.domaincontroller)
     # 9:48 AM 3/2/2017 merged in updated Add-EMSRemote Set
     # 1:30 PM 2/27/2017 neither vscan cu9 nor owner's cu5 values got properly populated.
     # 12:36 PM 2/27/2017 get-SiteMbxOU(): fixed to cover breaks frm AD reorg OU name changes, Generics are all now in a single OU per site
@@ -9323,9 +9341,9 @@ function new-MailboxShared {
     # 11:28 AM 4/8/2016 passed EMSRemote dynamic
     # 11:25 AM 4/8/2016 passed initial test on Ex EMS local
     # 11:22 AM 4/8/2016 I think I've finally got it properly managing EMSRemote, purging redudant, and outputing functional report. needs to be tested in Ex EMS local
-    # 12:31 PM 4/6.2.26 it's crapping out in local EMS on SITECODE-3V6KSY1 Add-EMSRemote isn't picking up on the existing verbs, and noclobber etc.
-    # 12:29 PM 4/6.2.26 validated Generic in rEMS
-    # 12:23 PM 4/6.2.26: seems functional for testing.
+    # 12:31 PM 4/6/2016 it's crapping out in local EMS on SITECODE-3V6KSY1 Add-EMSRemote isn't picking up on the existing verbs, and noclobber etc.
+    # 12:29 PM 4/6/2016 validated Generic in rEMS
+    # 12:23 PM 4/6/2016: seems functional for testing.
         Added Validate-Password, and looping pw gen, to generate consistently compliant complexity.
         Debugged through a lot of inconsistencies. I think it can now serve as the base template for other scripts.
         needs testing to confirm that the new Add-EMSRemote will work in EMS, rEMS, and v2ps EMS on servers.
@@ -9341,8 +9359,8 @@ function new-MailboxShared {
     # 10:02 AM 1/13/2016: fixed cls bug due to spurious ";cls" included in the try/catch boilerplate: Write-Error "$((get-date).ToString('HH:mm:ss')): Command: $($_.InvocationInfo.MyCommand)" ;cls => Write-Error "$((get-date).ToString('HH:mm:ss')): Command: $($_.InvocationInfo.MyCommand)" ;
     # 1:48 PM 10/29/2015 fixed blank surname/givenname - was generic-only setting it. Also sub'd insput fname/lname for std firstname lastname field names (ported from new-mailboxCN.ps1)
     # 1:30 PM 10/29/2015: 780 get-aduser needs -server, fails:, also added -server to the get-AD* cmds missing it, and added XIA sitecode steering to the $OU find process
-    # 2:07 PM 10/26.2.25 had to split out the new-mailbox | set-mailbox, with a do/while wait for the mbx to be visible, in between, because the set wasn't finding a mbx, when it executed
-    # 1:53 PM 10/26.2.25 fixed failure to assign $InputSplat.SiteCode, for Generic mbxs
+    # 2:07 PM 10/26/2015 had to split out the new-mailbox | set-mailbox, with a do/while wait for the mbx to be visible, in between, because the set wasn't finding a mbx, when it executed
+    # 1:53 PM 10/26/2015 fixed failure to assign $InputSplat.SiteCode, for Generic mbxs
     # 12:24 PM 10/21/2015 added/debugged -Vscan YES|NO|null param. Created OEV\Generic\Test XXXOffboard mbx with it
     # 11:41 AM 10/21/2015 update clean-up param & help info
     # 11:32 AM 10/21/2015 613: added NonGeneric detect and trigger ResetPasswordOnNextLogon flag
@@ -9351,8 +9369,8 @@ function new-MailboxShared {
     # 9:08 AM 10/14/2015 added debugpref maint code to get write-debug to work
     # 7:31 AM 10/14/2015 added -dc specs to all *-user & *-mailbox cmds, to ensure we're pulling back data from same dc that was updated in the set-* commands
     # 7:27 AM 10/14/2015 rplcd all get-timestamps -> $((get-date).ToString('HH:mm:ss'))
-    # 1:12 PM 10/6.2.25 updated to spec, looks functional
-    # 10:49 AM 10/6.2.25: updated vers of Get-AdminInitials
+    # 1:12 PM 10/6/2015 updated to spec, looks functional
+    # 10:49 AM 10/6/2015: updated vers of Get-AdminInitials
     * 2:48 PM 10/2/2015 updated Catch blocks to be specific on crash
     * 10:23 AM 10/2/2015 initial port from add-mbxaccessgrant & bp code
 .DESCRIPTION
@@ -9672,7 +9690,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $MbxSetSplat.remove("Dummy") ;
         $ADSplat.remove("Dummy") ;
         $UsrSplat.remove("Dummy") ;
-        # 8:08 AM 10/6.2.27 add missing CASMailbox splat
+        # 8:08 AM 10/6/2017 add missing CASMailbox splat
         $MbxSetCASmbx.remove("Dummy") ;
 
         # also, less code post-decl to populate the $hash with fields, post creation:
@@ -9717,7 +9735,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $MbxSetSplat.Add("identity",$($null)) ;
         $MbxSetSplat.Add("CustomAttribute9",$($null)) ;
         $MbxSetSplat.Add("CustomAttribute5",$($null)) ;
-        $MbxSetSplat.Add("Office", $($null)) ; # 8:44 AM 11/26.2.29 shifted unsupported syntax mix from new-mailbox to set-mailbox
+        $MbxSetSplat.Add("Office", $($null)) ; # 8:44 AM 11/26/2019 shifted unsupported syntax mix from new-mailbox to set-mailbox
         $MbxSetSplat.Add("domaincontroller",$($null)) ;
         $MbxSetSplat.Add("whatif",$true) ;
 
@@ -11419,7 +11437,7 @@ Function remove-EMSLocalModule {
     Tags        : Powershell,Exchange,Exchange-2013,Exchange-2016
     REVISIONS   :
     * 9:42 AM 7/27/2021 add verbose to *-PsTitleBar calls
-    * 10:03 AM 4/16/2021 init vers
+    * 10:03 AM 4/16.2.31 init vers
     .DESCRIPTION
     remove-EMSLocalModule - remove/unload local server bin-module-based ExchOnPrem Mgmt Shell connection ; validated Exch2016)
     .INPUTS
@@ -11681,7 +11699,7 @@ function resolve-RecipientEAP {
     AddedTwitter: URL
     REVISIONS
     * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection 
-    * 11:21 AM 9/16/2021 string clean
+    * 11:21 AM 9/16.2.31 string clean
     * 3:27 PM 8/23/2021 revised patched in new preview-EAPUpdate() support; added 
     default EAP cheatsheet output dump to console; suppress get-EAP warning ; 
     revised recipientfilter support to simple ($(existingRcpFltr) -AND (alias -eq $rcp.alias)).
@@ -12335,7 +12353,7 @@ Github      : https://github.com/tostka/verb-XXX
 Tags        : Powershell
 REVISIONS
 * 10:53 AM 4/2/2021 typo fix
-* 10:07 AM 10/26/2020 added CBH
+* 10:07 AM 10/26.2.30 added CBH
 .DESCRIPTION
 toggle-ForestView.ps1 - Toggle Exchange onprem AD ViewEntireForest setting (permits org-wide object access, wo use of proper explicit -domaincontroller sub.domain.com)
 .INPUTS
@@ -12379,8 +12397,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU3iRmYHXedwi4jyGLckEGOsmU
-# fvagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUAHFKcNz6lYI1k1yzxX5WDq/1
+# mCCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -12395,9 +12413,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQLJZf6
-# B2v00jhTdzsD+TsZvWKHqTANBgkqhkiG9w0BAQEFAASBgIhkLWQhuVWHgvXqu2Qm
-# uB+zYpr6zH/VTckCGJNyjQlQCqoAZxKPsodrfswaOK69ymCOImr2f3O9UpCndQwG
-# cjgLqrh8xapRpcPdoMZO1bUvHh7qzLVUmyWyGC1CO8T4xJiB3Bt7gZM5xgVdEsMQ
-# q96X9bzgbQwEcCjcIq5jLnJG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSn3atc
+# JcGfpqHuhPLEMHm2ExLkDDANBgkqhkiG9w0BAQEFAASBgGPam/EPJXc5QL3ZQmcY
+# Y1vmyEqiRq+WCK0uXw/cInKAiLeNmug3wLLIc7yJNqAOkhT+y2TX/YrlBpZIwITz
+# 5GO4KAy4UL3ibogKTfr6n6igi644zao/iIbDy6+2SL7Ss+AuR8nn+ySH+xrDbYq6
+# Zlp5eoYADwqv8wiYcAcKuc2F
 # SIG # End signature block
