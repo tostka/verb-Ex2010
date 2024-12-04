@@ -5,26 +5,26 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 6.2.3
+Version     : 6.2.4
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
-CreatedDate : 1/16.2.30
+CreatedDate : 1/16.2.40
 FileName    : VERB-Ex2010.psm1
 License     : MIT
-Copyright   : (c) 1/16.2.30 Todd Kadrie
+Copyright   : (c) 1/16.2.40 Todd Kadrie
 Github      : https://github.com/tostka
 REVISIONS
 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
 * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
-* 1/16.2.30 - 1.0.0.0
+* 1/16.2.40 - 1.0.0.0
 # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
 # 11:34 AM 12/30/2019 ran vsc alias-expansion
 # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
 # 10:19 AM 11/1/2019 trimmed some whitespace
 # 10:05 AM 10/31/2019 added sample load/call info
-# 12:02 PM 5/6.2.39 added cx10,rx10,dx10 aliases
-# 11:29 AM 5/6.2.39 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+# 12:02 PM 5/6.2.49 added cx10,rx10,dx10 aliases
+# 11:29 AM 5/6.2.49 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
 # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
 # 4:15 PM 3/24/2018 updated pshhelp
 # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
@@ -76,10 +76,10 @@ function add-MailboxAccessGrant {
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
     # 5:12 PM 10/13/2021 fixed long standing random add-adgroupmember bug (failed to see target sg/dg), by swapping in ADGM ex cmd;  pulled [int] from $ticket , to permit non-numeric & multi-tix
-    # 11:36 AM 9/16.2.31 string
+    # 11:36 AM 9/16/2021 string
     # 10:27 AM 9/14/2021 beefed up echos w 7pswhsplat's pre
     # 3:21 PM 8/17/2021 recoded grabbing outputs, on object creations in EMS, tho' AD object creations generate no proper output. functoinal on current ticket.
-    # 4:48 PM 8/16.2.31 still wrestling grant fails, switched the *permission -user targets to the dg object.primarysmtpaddr (was adg.samaccountname), if the adg.sama didn't match the alias, that woulda caused failures. Seemd to work better in debugging
+    # 4:48 PM 8/16/2021 still wrestling grant fails, switched the *permission -user targets to the dg object.primarysmtpaddr (was adg.samaccountname), if the adg.sama didn't match the alias, that woulda caused failures. Seemd to work better in debugging
     # 1:51 PM 6/30/201:51 PM 6/30/2021 trying to work around sporadic $oSG add-mailboxperm fails, played with -user $osg designator - couldn't use DN, went back to samacctname, but added explicit RETRY echos on failretries (was visible evid at least one retry was in mix) ; hardened up the report gathers - stuck thge get-s in a try/catch ahead of echos, (vs inlines) ; we'll see if the above improve the issue - another option is to build something that can parse the splt echo back into a functional splat, to at least make remediation easier (copy, convert, rerun on fly).
     # 4:21 PM 5/19/2021 added -ea STOP to splats, to force retry's to trigger
     # 5:03 PM 5/18/2021 fixed the fundementally borked start-log I created below
@@ -741,7 +741,7 @@ function add-MailboxAccessGrant {
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Debug } ; #Error|Warn
             } ;
 
-            # 4:16 PM 8/16.2.31 nope, it's not dg-enabled yet, it's a secgrp, can't pull it.
+            # 4:16 PM 8/16/2021 nope, it's not dg-enabled yet, it's a secgrp, can't pull it.
             # try flipping the $osg adg, to a resolved equiv dg obj, and use it's primarysmtpaddress rather than the adg.samaccountname (which may not match the alias, as an id). The dG should be a native rcp obj better fit to the add-mailboxperm cmd
             $oDG = get-distributiongroup -DomainController $InputSplat.DomainController -Identity $osg.DistinguishedName -ErrorAction 'STOP' ;
             #$SGUpdtSplat.Identity = $DGEnableSplat.Identity = $DGUpdtSplat.Identity = $GrantSplat.User = $ADMbxGrantSplat.User = $oSG.samaccountname ;
@@ -2253,7 +2253,7 @@ Function Connect-Ex2010 {
                     ren $Ex10siteDN -> $ExOPsiteDN; ren $Ex10configNC -> $ExopconfigNC
                 * 1:03 PM 8/22/2023 minor cleanup
                 * 10:31 AM 4/7/2023 added CBH expl of postfilter/sorting to draw predictable pattern 
-                * 4:36 PM 4/6.2.33 validated Psv51 & Psv20 and Ex10 & 16; added -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
+                * 4:36 PM 4/6/2023 validated Psv51 & Psv20 and Ex10 & 16; added -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
                 For backward-compat retain historical output field 'Roles' as the msexchcurrentserverroles summary integer; 
                 use RoleNames as the text role array; 
                     updated for psv2 compat: flipped hash key lookups into properties, found capizliation differences, (psv2 2was all lower case, wouldn't match); 
@@ -3304,93 +3304,94 @@ Function Connect-Ex2010XO {
 if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
     Function Connect-ExchangeServerTDO {
         <#
-        .SYNOPSIS
-        Connect-ExchangeServerTDO.ps1 - Dependancy-less Function that, fed an Exchange server name, or AD SiteName, and optional RoleNames array, 
-        will obtain a list of Exchange servers from AD (in the specified scope), and then run the list attempting to PowershellREmote (REMS) connect to each server, 
-        stopping at the first successful connection.
-        .NOTES
-        Version     : 3.0.3
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 2024-05-30
-        FileName    : Connect-ExchangeServerTDO.ps1
-        License     : (none-asserted)
-        Copyright   : (none-asserted)
-        Github      : https://github.com/tostka/verb-Ex2010
-        Tags        : Powershell, ActiveDirectory, Exchange, Discovery
-        AddedCredit : Brian Farnsworth
-        AddedWebsite: https://codeandkeep.com/
-        AddedTwitter: URL
-        AddedCredit : David Paulson
-        AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
-        AddedTwitter: URL
-        REVISIONS
-        * 3:54 PM 11/26.2.34 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
-        * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; 
-            copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
-            includes local snapin detect & load for edge role (simplest EMS load option for Edge role, from David Paulson's original code; no longer published with Ex2010 compat)
-        * 1:30 PM 9/5/2024 added  update-SecurityProtocolTDO() SB to begin
-        * 12:49 PM 6/21/2024 flipped PSS Name to Exchange$($ExchVers[dd])
-        * 11:28 AM 5/30/2024 fixed failure to recognize existing functional PSSession; Made substantial update in logic, validate works fine with other orgs, and in our local orgs.
-        * 4:02 PM 8/28/2023 debuged, updated CBH, renamed connect-ExchangeSErver -> Connect-ExchangeServerTDO (avoid name clashes, pretty common verb-noun combo).
-        * 12:36 PM 8/24/2023 init
+            .SYNOPSIS
+            Connect-ExchangeServerTDO.ps1 - Dependancy-less Function that, fed an Exchange server name, or AD SiteName, and optional RoleNames array, 
+            will obtain a list of Exchange servers from AD (in the specified scope), and then run the list attempting to PowershellREmote (REMS) connect to each server, 
+            stopping at the first successful connection.
+            .NOTES
+            Version     : 3.0.3
+            Author      : Todd Kadrie
+            Website     : http://www.toddomation.com
+            Twitter     : @tostka / http://twitter.com/tostka
+            CreatedDate : 2024-05-30
+            FileName    : Connect-ExchangeServerTDO.ps1
+            License     : (none-asserted)
+            Copyright   : (none-asserted)
+            Github      : https://github.com/tostka/verb-Ex2010
+            Tags        : Powershell, ActiveDirectory, Exchange, Discovery
+            AddedCredit : Brian Farnsworth
+            AddedWebsite: https://codeandkeep.com/
+            AddedTwitter: URL
+            AddedCredit : David Paulson
+            AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
+            AddedTwitter: URL
+            REVISIONS
+            * 12:24 PM 12/4/2024 removed bracket bnr echos around _connect-ExOP
+            * 3:54 PM 11/26/2024 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
+            * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; 
+                copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
+                includes local snapin detect & load for edge role (simplest EMS load option for Edge role, from David Paulson's original code; no longer published with Ex2010 compat)
+            * 1:30 PM 9/5/2024 added  update-SecurityProtocolTDO() SB to begin
+            * 12:49 PM 6/21/2024 flipped PSS Name to Exchange$($ExchVers[dd])
+            * 11:28 AM 5/30/2024 fixed failure to recognize existing functional PSSession; Made substantial update in logic, validate works fine with other orgs, and in our local orgs.
+            * 4:02 PM 8/28/2023 debuged, updated CBH, renamed connect-ExchangeSErver -> Connect-ExchangeServerTDO (avoid name clashes, pretty common verb-noun combo).
+            * 12:36 PM 8/24/2023 init
 
-        .DESCRIPTION
-        Connect-ExchangeServerTDO.ps1 - Dependancy-less Function that, fed an Exchange server name, or AD SiteName, and optional RoleNames array, 
-        will obtain a list of Exchange servers from AD (in the specified scope), and then run the list attempting to PowershellRemote (REMS) connect to each server, 
-        stopping at the first successful connection.
+            .DESCRIPTION
+            Connect-ExchangeServerTDO.ps1 - Dependancy-less Function that, fed an Exchange server name, or AD SiteName, and optional RoleNames array, 
+            will obtain a list of Exchange servers from AD (in the specified scope), and then run the list attempting to PowershellRemote (REMS) connect to each server, 
+            stopping at the first successful connection.
 
-        Relies upon/requires get-ADExchangeServerTDO(), to return a descriptive summary of the Exchange server(s) revision etc, for connectivity logic.
-        Supports Exchange 2010 through 2019, as implemented.
+            Relies upon/requires get-ADExchangeServerTDO(), to return a descriptive summary of the Exchange server(s) revision etc, for connectivity logic.
+            Supports Exchange 2010 through 2019, as implemented.
         
-        Intent, as contrasted with verb-EXOP/Ex2010 is to have no local module dependancies, when running EXOP into other connected orgs, where syncing profile & supporting modules code can be problematic. 
-        This uses native ADSI calls, which are supported by Windows itself, without need for external ActiveDirectory module etc.
+            Intent, as contrasted with verb-EXOP/Ex2010 is to have no local module dependancies, when running EXOP into other connected orgs, where syncing profile & supporting modules code can be problematic. 
+            This uses native ADSI calls, which are supported by Windows itself, without need for external ActiveDirectory module etc.
 
-        The particular approach inspired by BF's demo func that accompanied his take on get-adExchangeServer(), which I hybrided with my own existing code for cred-less connectivity. 
-        I added get-OrganizationConfig testing, for connection pre/post confirmation, along with Exchange Server revision code for continutional handling of new-pssession remote powershell EMS connections.
-        Also shifted connection code into _connect-EXOP() internal func.
-        As this doesn't rely on local module presence, it doesn't have to do the usual local remote/local invocation detection you'd do for non-dehydrated on-server EMS (more consistent this way, anyway; 
-        there are only a few cmdlet outputs I'm aware of, that have fundementally broken returns dehydrated, and require local non-remote EMS use to function.
+            The particular approach inspired by BF's demo func that accompanied his take on get-adExchangeServer(), which I hybrided with my own existing code for cred-less connectivity. 
+            I added get-OrganizationConfig testing, for connection pre/post confirmation, along with Exchange Server revision code for continutional handling of new-pssession remote powershell EMS connections.
+            Also shifted connection code into _connect-EXOP() internal func.
+            As this doesn't rely on local module presence, it doesn't have to do the usual local remote/local invocation detection you'd do for non-dehydrated on-server EMS (more consistent this way, anyway; 
+            there are only a few cmdlet outputs I'm aware of, that have fundementally broken returns dehydrated, and require local non-remote EMS use to function.
 
-        My core usage would be to paste the function into the BEGIN{} block for a given remote org process, to function as a stricly local ad-hoc function.
-        .PARAMETER name
-        FQDN of a specific Exchange server[-Name EXSERVER.DOMAIN.COM]
-        .PARAMETER discover
-        Boolean paraameter that drives auto-discovery of target Exchange servers for connection (defaults `$true)[-discover:`$false]
-        .PARAMETER credential
-        Use specific Credentials[-Credentials [credential object]
-            .PARAMETER Site
-        Name of specific AD site to be searched for ExchangeServers (defaults to global variable `$TenOrg_ADSiteDefaultName if present)[-Site 'SITENAME']
-        .PARAMETER RoleNames
-        Array of Server 'Role' name strings to be filtered against (MBX|CAS|HUB|UM|MBX|EDGE)[-RoleNames 'HUB','CAS']
-        .PARAMETER TenOrg
-        Tenant Tag (3-letter abbrebiation - defaults to variable `$global:o365_TenOrgDefault if present)[-TenOrg 'XYZ']
-        .INPUTS
-        None. Does not accepted piped input.(.NET types, can add description)
-        .OUTPUTS
-        [system.object] Returns a system object containing a successful PSSession
-        System.Boolean
-        [| get-member the output to see what .NET obj TypeName is returned, to use here]
-        System.Array of System.Object's
-        .EXAMPLE
-        PS> $PSSession = Connect-ExchangeServerTDO -siteName SITENAME -RoleNames @('HUB','CAS') -verbose 
-        Demo's connecting to a functional Hub or CAS server in the SITENAME site with verbose outputs, the `PSSession variable will contain information about the successful connection. Makes automatic Exchangeserver discovery calls into AD (using ADSI) leveraging the separate get-ADExchangeServerTDO()
-        .EXAMPLE
-        PS> TRY{$Site=[System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name}CATCH{$Site=$env:COMPUTERNAME} ;
-        PS> $PSSession = Connect-ExchangeServerTDO -siteName $Site -RoleNames @('HUB','CAS') -verbose ; 
-        Demo including support for EdgeRole, which is detected on it's lack of AD Site specification (which gets fed through to call, by setting the Site to the machine itself).
-        .LINK
-        https://codeandkeep.com/PowerShell-ActiveDirectory-Exchange-Part1/
-        .LINK
-        https://github.com/Lucifer1993/PLtools/blob/main/HealthChecker.ps1
-        .LINK
-        https://microsoft.github.io/CSS-Exchange/Diagnostics/HealthChecker/
-        .LINK
-        https://bitbucket.org/tostka/powershell/
-        .LINK
-        https://github.com/tostka/verb-Ex2010
-        #>        
+            My core usage would be to paste the function into the BEGIN{} block for a given remote org process, to function as a stricly local ad-hoc function.
+            .PARAMETER name
+            FQDN of a specific Exchange server[-Name EXSERVER.DOMAIN.COM]
+            .PARAMETER discover
+            Boolean paraameter that drives auto-discovery of target Exchange servers for connection (defaults `$true)[-discover:`$false]
+            .PARAMETER credential
+            Use specific Credentials[-Credentials [credential object]
+                .PARAMETER Site
+            Name of specific AD site to be searched for ExchangeServers (defaults to global variable `$TenOrg_ADSiteDefaultName if present)[-Site 'SITENAME']
+            .PARAMETER RoleNames
+            Array of Server 'Role' name strings to be filtered against (MBX|CAS|HUB|UM|MBX|EDGE)[-RoleNames 'HUB','CAS']
+            .PARAMETER TenOrg
+            Tenant Tag (3-letter abbrebiation - defaults to variable `$global:o365_TenOrgDefault if present)[-TenOrg 'XYZ']
+            .INPUTS
+            None. Does not accepted piped input.(.NET types, can add description)
+            .OUTPUTS
+            [system.object] Returns a system object containing a successful PSSession
+            System.Boolean
+            [| get-member the output to see what .NET obj TypeName is returned, to use here]
+            System.Array of System.Object's
+            .EXAMPLE
+            PS> $PSSession = Connect-ExchangeServerTDO -siteName SITENAME -RoleNames @('HUB','CAS') -verbose 
+            Demo's connecting to a functional Hub or CAS server in the SITENAME site with verbose outputs, the `PSSession variable will contain information about the successful connection. Makes automatic Exchangeserver discovery calls into AD (using ADSI) leveraging the separate get-ADExchangeServerTDO()
+            .EXAMPLE
+            PS> TRY{$Site=[System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name}CATCH{$Site=$env:COMPUTERNAME} ;
+            PS> $PSSession = Connect-ExchangeServerTDO -siteName $Site -RoleNames @('HUB','CAS') -verbose ; 
+            Demo including support for EdgeRole, which is detected on it's lack of AD Site specification (which gets fed through to call, by setting the Site to the machine itself).
+            .LINK
+            https://codeandkeep.com/PowerShell-ActiveDirectory-Exchange-Part1/
+            .LINK
+            https://github.com/Lucifer1993/PLtools/blob/main/HealthChecker.ps1
+            .LINK
+            https://microsoft.github.io/CSS-Exchange/Diagnostics/HealthChecker/
+            .LINK
+            https://bitbucket.org/tostka/powershell/
+            .LINK
+            https://github.com/tostka/verb-Ex2010
+            #>        
         [CmdletBinding(DefaultParameterSetName='discover')]
         PARAM(
             [Parameter(Position=0,Mandatory=$true,ParameterSetName='name',HelpMessage="FQDN of a specific Exchange server[-Name EXSERVER.DOMAIN.COM]")]
@@ -3427,173 +3428,170 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
 					[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
 				} ;
 			} ;
-            $smsg = "#*------v Function _connect-ExOP v------" ;
-            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    
+            #*------v Function _connect-ExOP v------
             function _connect-ExOP{
-                [CmdletBinding()]
-                PARAM(
-                    [Parameter(Position=0,Mandatory=$true,HelpMessage="Exchange server AD Summary system object[-Server EXSERVER.DOMAIN.COM]")]
-                        [system.object]$Server,
-                    [Parameter(Position=1,HelpMessage = "Use specific Credentials[-Credentials [credential object]")]
-                        [Management.Automation.PSCredential]$credential
-                );
-                $verbose = $($VerbosePreference -eq "Continue") ;
-                if([double]$ExVersNum = [regex]::match($Server.version,"Version\s(\d+\.\d+)\s\(Build\s(\d+\.\d+)\)").groups[1].value){
-                    switch -regex ([string]$ExVersNum) {
-                        '15.2' { $isEx2019 = $true ; $ExVers = 'Ex2019' }
-                        '15.1' { $isEx2016 = $true ; $ExVers = 'Ex2016'}
-                        '15.0' { $isEx2013 = $true ; $ExVers = 'Ex2013'}
-                        '14.*' { $isEx2010 = $true ; $ExVers = 'Ex2010'}
-                        '8.*' { $isEx2007 = $true ; $ExVers = 'Ex2007'}
-                        '6.5' { $isEx2003 = $true ; $ExVers = 'Ex2003'}
-                        '6' {$isEx2000 = $true ; $ExVers = 'Ex2000'} ;
-                        default {
-                            $smsg = "UNRECOGNIZED ExVersNum.Major.Minor string:$($ExVersNum)! ABORTING!" ;
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
-                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            THROW $SMSG ;
-                            BREAK ;
-                        }
+                    [CmdletBinding()]
+                    PARAM(
+                        [Parameter(Position=0,Mandatory=$true,HelpMessage="Exchange server AD Summary system object[-Server EXSERVER.DOMAIN.COM]")]
+                            [system.object]$Server,
+                        [Parameter(Position=1,HelpMessage = "Use specific Credentials[-Credentials [credential object]")]
+                            [Management.Automation.PSCredential]$credential
+                    );
+                    $verbose = $($VerbosePreference -eq "Continue") ;
+                    if([double]$ExVersNum = [regex]::match($Server.version,"Version\s(\d+\.\d+)\s\(Build\s(\d+\.\d+)\)").groups[1].value){
+                        switch -regex ([string]$ExVersNum) {
+                            '15.2' { $isEx2019 = $true ; $ExVers = 'Ex2019' }
+                            '15.1' { $isEx2016 = $true ; $ExVers = 'Ex2016'}
+                            '15.0' { $isEx2013 = $true ; $ExVers = 'Ex2013'}
+                            '14.*' { $isEx2010 = $true ; $ExVers = 'Ex2010'}
+                            '8.*' { $isEx2007 = $true ; $ExVers = 'Ex2007'}
+                            '6.5' { $isEx2003 = $true ; $ExVers = 'Ex2003'}
+                            '6' {$isEx2000 = $true ; $ExVers = 'Ex2000'} ;
+                            default {
+                                $smsg = "UNRECOGNIZED ExVersNum.Major.Minor string:$($ExVersNum)! ABORTING!" ;
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                THROW $SMSG ;
+                                BREAK ;
+                            }
+                        } ;
+                    }else {
+                        $smsg = "UNABLE TO RESOLVE `$ExVersNum from `$Server.version:$($Server.version)!" ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        throw $smsg ;
+                        break ;
                     } ;
-                }else {
-                    $smsg = "UNABLE TO RESOLVE `$ExVersNum from `$Server.version:$($Server.version)!" ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
-                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    throw $smsg ;
-                    break ;
-                } ;
-                if($Server.RoleNames -eq 'EDGE'){
-                    if(($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\Setup')) -or
-                        ($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup')) -or
-                        $ByPassLocalExchangeServerTest)
-                    {
-                        if((Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\EdgeTransportRole') -or
-                                (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole'))
+                    if($Server.RoleNames -eq 'EDGE'){
+                        if(($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\Setup')) -or
+                            ($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup')) -or
+                            $ByPassLocalExchangeServerTest)
                         {
-                            $smsg = "We are on Exchange Edge Transport Server"
-                            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-                            $IsEdgeTransport = $true
-                        }
-                        TRY {
-                            Get-ExchangeServer -ErrorAction Stop | Out-Null
-                            $smsg = "Exchange PowerShell Module already loaded."
-                            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-                            $passed = $true 
-                        }CATCH {
-                            $smsg = "Failed to run Get-ExchangeServer"
-                            if($silent){}elseif($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-                            if($isLocalExchangeServer){
-                                write-host  "Loading Exchange PowerShell Module..."
-                                TRY{
-                                    if($IsEdgeTransport){
-                                        # implement local snapins access on edge role: Only way to get access to EMS commands.
-                                        [xml]$PSSnapIns = Get-Content -Path "$env:ExchangeInstallPath\Bin\exshell.psc1" -ErrorAction Stop
-                                        ForEach($PSSnapIn in $PSSnapIns.PSConsoleFile.PSSnapIns.PSSnapIn){
-                                            write-verbose ("Trying to add PSSnapIn: {0}" -f $PSSnapIn.Name)
-                                            Add-PSSnapin -Name $PSSnapIn.Name -ErrorAction Stop
-                                        } ; 
-                                        Import-Module $env:ExchangeInstallPath\bin\Exchange.ps1 -ErrorAction Stop ; 
-                                        $passed = $true #We are just going to assume this passed.
-                                    }else{
-                                        Import-Module $env:ExchangeInstallPath\bin\RemoteExchange.ps1 -ErrorAction Stop
-                                        Connect-ExchangeServer -Auto -ClientApplication:ManagementShell
-                                        $passed = $true #We are just going to assume this passed.
-                                    } 
-                                }CATCH {
-                                    $smsg = "Failed to Load Exchange PowerShell Module..." ; 
-                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-                                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                                }                               
-                            } ;
-                        } FINALLY {
-                            if($LoadExchangeVariables -and $passed -and $isLocalExchangeServer){
-                                if($ExInstall -eq $null -or $ExBin -eq $null){
-                                    if(Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\Setup'){
-                                        $Global:ExInstall = (Get-ItemProperty HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\Setup).MsiInstallPath
-                                    }else{
-                                        $Global:ExInstall = (Get-ItemProperty HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup).MsiInstallPath
-                                    }
+                            if((Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\EdgeTransportRole') -or
+                                    (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole'))
+                            {
+                                $smsg = "We are on Exchange Edge Transport Server"
+                                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                $IsEdgeTransport = $true
+                            }
+                            TRY {
+                                Get-ExchangeServer -ErrorAction Stop | Out-Null
+                                $smsg = "Exchange PowerShell Module already loaded."
+                                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                $passed = $true 
+                            }CATCH {
+                                $smsg = "Failed to run Get-ExchangeServer"
+                                if($silent){}elseif($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                if($isLocalExchangeServer){
+                                    write-host  "Loading Exchange PowerShell Module..."
+                                    TRY{
+                                        if($IsEdgeTransport){
+                                            # implement local snapins access on edge role: Only way to get access to EMS commands.
+                                            [xml]$PSSnapIns = Get-Content -Path "$env:ExchangeInstallPath\Bin\exshell.psc1" -ErrorAction Stop
+                                            ForEach($PSSnapIn in $PSSnapIns.PSConsoleFile.PSSnapIns.PSSnapIn){
+                                                write-verbose ("Trying to add PSSnapIn: {0}" -f $PSSnapIn.Name)
+                                                Add-PSSnapin -Name $PSSnapIn.Name -ErrorAction Stop
+                                            } ; 
+                                            Import-Module $env:ExchangeInstallPath\bin\Exchange.ps1 -ErrorAction Stop ; 
+                                            $passed = $true #We are just going to assume this passed.
+                                        }else{
+                                            Import-Module $env:ExchangeInstallPath\bin\RemoteExchange.ps1 -ErrorAction Stop
+                                            Connect-ExchangeServer -Auto -ClientApplication:ManagementShell
+                                            $passed = $true #We are just going to assume this passed.
+                                        } 
+                                    }CATCH {
+                                        $smsg = "Failed to Load Exchange PowerShell Module..." ; 
+                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                                    }                               
+                                } ;
+                            } FINALLY {
+                                if($LoadExchangeVariables -and $passed -and $isLocalExchangeServer){
+                                    if($ExInstall -eq $null -or $ExBin -eq $null){
+                                        if(Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\Setup'){
+                                            $Global:ExInstall = (Get-ItemProperty HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\Setup).MsiInstallPath
+                                        }else{
+                                            $Global:ExInstall = (Get-ItemProperty HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup).MsiInstallPath
+                                        }
         
-                                    $Global:ExBin = $Global:ExInstall + "\Bin"
+                                        $Global:ExBin = $Global:ExInstall + "\Bin"
         
-                                    $smsg = ("Set ExInstall: {0}" -f $Global:ExInstall)
-                                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-                                    $smsg = ("Set ExBin: {0}" -f $Global:ExBin)
-                                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                        $smsg = ("Set ExInstall: {0}" -f $Global:ExInstall)
+                                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                        $smsg = ("Set ExBin: {0}" -f $Global:ExBin)
+                                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                    } ; 
                                 } ; 
                             } ; 
-                        } ; 
-                    } else  {
-                        $smsg = "Does not appear to be an Exchange 2010 or newer server." ; 
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        } else  {
+                            $smsg = "Does not appear to be an Exchange 2010 or newer server." ; 
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
 
-                    }
-                    if(get-command -Name Get-OrganizationConfig -ea 0){
-                        $smsg = "Running in connected/Native EMS" ; 
-                        if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                        Return $true ; 
-                    } else { 
-                        TRY{
-                            $smsg = "Initiating Edge EMS local session (exshell.psc1 & exchange.ps1)" ; 
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                        }
+                        if(get-command -Name Get-OrganizationConfig -ea 0){
+                            $smsg = "Running in connected/Native EMS" ; 
+                            if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                             #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                            # 5;36 PM 5/30/2024 didn't work, went off to nowhere for a long time, and exited the script
-                            #& (gcm powershell.exe).path -PSConsoleFile "$($env:ExchangeInstallPath)bin\exshell.psc1" -noexit -command ". '$($env:ExchangeInstallPath)bin\Exchange.ps1'"
-                            <# [Adding the Transport Server to Exchange - Mark Lewis Blog](https://marklewis.blog/2020/11/19/adding-the-transport-server-to-exchange/)
-                            To access the management console on the transport server, I opened PowerShell then ran
-                            exshell.psc1
-                            Followed by
-                            exchange.ps1
-                            At this point, I was able to create a new subscription using he following PowerShel
-                            #>
-                            invoke-command exshell.psc1 ; 
-                            invoke-command exchange.ps1
-                            if(get-command -Name Get-OrganizationConfig -ea 0){
-                                $smsg = "Running in connected/Native EMS" ; 
+                            Return $true ; 
+                        } else { 
+                            TRY{
+                                $smsg = "Initiating Edge EMS local session (exshell.psc1 & exchange.ps1)" ; 
                                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                                 #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                                Return $true ;
-                            } else { return $false };  
-                        }CATCH{
-                            Write-Error $_ ;
+                                # 5;36 PM 5/30/2024 didn't work, went off to nowhere for a long time, and exited the script
+                                #& (gcm powershell.exe).path -PSConsoleFile "$($env:ExchangeInstallPath)bin\exshell.psc1" -noexit -command ". '$($env:ExchangeInstallPath)bin\Exchange.ps1'"
+                                <# [Adding the Transport Server to Exchange - Mark Lewis Blog](https://marklewis.blog/2020/11/19/adding-the-transport-server-to-exchange/)
+                                To access the management console on the transport server, I opened PowerShell then ran
+                                exshell.psc1
+                                Followed by
+                                exchange.ps1
+                                At this point, I was able to create a new subscription using he following PowerShel
+                                #>
+                                invoke-command exshell.psc1 ; 
+                                invoke-command exchange.ps1
+                                if(get-command -Name Get-OrganizationConfig -ea 0){
+                                    $smsg = "Running in connected/Native EMS" ; 
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                    Return $true ;
+                                } else { return $false };  
+                            }CATCH{
+                                Write-Error $_ ;
+                            } ;
+                        } ; 
+                    } else {
+                        $pltNPSS=@{ConnectionURI="http://$($Server.FQDN)/powershell"; ConfigurationName='Microsoft.Exchange' ; name="Exchange$($ExVersNum.tostring())"} ;
+                        # use ExVersUnm dd instead of hardcoded (Exchange2010)
+                        if($ExVersNum -ge 15){
+                            $smsg = "EXOP.15+:Adding -Authentication Kerberos" ;
+                            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                            $pltNPSS.add('Authentication',"Kerberos") ;
+                            $pltNPSS.name = $ExVers ;
                         } ;
+                        $smsg = "Adding EMS (connecting to $($Server.FQDN))..." ;
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        $smsg = "New-PSSession w`n$(($pltNPSS|out-string).trim())" ;
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        $ExPSS = New-PSSession @pltNPSS  ;
+                        $ExIPSS = Import-PSSession $ExPSS -allowclobber ;
+                        $ExPSS | write-output ;
+                        $ExPSS= $ExIPSS = $null ;
                     } ; 
-                } else {
-                    $pltNPSS=@{ConnectionURI="http://$($Server.FQDN)/powershell"; ConfigurationName='Microsoft.Exchange' ; name="Exchange$($ExVersNum.tostring())"} ;
-                    # use ExVersUnm dd instead of hardcoded (Exchange2010)
-                    if($ExVersNum -ge 15){
-                        $smsg = "EXOP.15+:Adding -Authentication Kerberos" ;
-                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-                        $pltNPSS.add('Authentication',"Kerberos") ;
-                        $pltNPSS.name = $ExVers ;
-                    } ;
-                    $smsg = "Adding EMS (connecting to $($Server.FQDN))..." ;
-                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
-                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-                    $smsg = "New-PSSession w`n$(($pltNPSS|out-string).trim())" ;
-                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
-                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-                    $ExPSS = New-PSSession @pltNPSS  ;
-                    $ExIPSS = Import-PSSession $ExPSS -allowclobber ;
-                    $ExPSS | write-output ;
-                    $ExPSS= $ExIPSS = $null ;
-                } ; 
-            } ;
-            $smsg = "#*------^ END Function _connect-ExOP ^------" ;
-            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                } ;
+            #*------^ END Function _connect-ExOP ^------
             $pltGADX=@{
                 ErrorAction='Stop';
             } ;
@@ -4109,7 +4107,7 @@ if(-not(get-command get-ADExchangeServerTDO -ea 0)){
         AddedWebsite: https://codeandkeep.com/
         AddedTwitter: URL
         REVISIONS
-        * 3:57 PM 11/26.2.34 updated simple write-host,write-verbose with full pswlt support;  syncd dbg & vx10 copies.
+        * 3:57 PM 11/26/2024 updated simple write-host,write-verbose with full pswlt support;  syncd dbg & vx10 copies.
         * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
         * 2:05 PM 8/28/2023 REN -> Get-ExchangeServerInSite -> get-ADExchangeServerTDO (aliased orig); to better steer profile-level options - including in cmw org, added -TenOrg, and default Site to constructed vari, targeting new profile $XXX_ADSiteDefault vari; Defaulted -Roles to HUB,CAS as well.
         * 3:42 PM 8/24/2023 spliced together combo of my long-standing, and some of the interesting ideas BF's version had. Functional prod:
@@ -4119,7 +4117,7 @@ if(-not(get-command get-ADExchangeServerTDO -ea 0)){
             ren $Ex10siteDN -> $ExOPsiteDN; ren $Ex10configNC -> $ExopconfigNC
         * 1:03 PM 8/22/2023 minor cleanup
         * 10:31 AM 4/7/2023 added CBH expl of postfilter/sorting to draw predictable pattern 
-        * 4:36 PM 4/6.2.33 validated Psv51 & Psv20 and Ex10 & 16; added -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
+        * 4:36 PM 4/6/2023 validated Psv51 & Psv20 and Ex10 & 16; added -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
         For backward-compat retain historical output field 'Roles' as the msexchcurrentserverroles summary integer; 
         use RoleNames as the text role array; 
             updated for psv2 compat: flipped hash key lookups into properties, found capizliation differences, (psv2 2was all lower case, wouldn't match); 
@@ -5136,12 +5134,12 @@ function Get-MessageTrackingLogTDO {
     REVISIONS
     * 3:23 PM 12/2/2024 throwing param transform errs on start & end (wyhen typed): pull typing, and do it post assignh, can't assign empty '' or $null to t a datetime coerced vary ;pre-reduce splat hash to populated values, in exmpl & BP use;
          rem out the parameterset code, and just do manual conflicting -start/-end -days tests and errors
-    * 2:34 PM 11/26.2.34 updated to latest 'Connect-ExchangeServerTDO()','get-ADExchangeServerTDO()', set to defer to existing
+    * 2:34 PM 11/26/2024 updated to latest 'Connect-ExchangeServerTDO()','get-ADExchangeServerTDO()', set to defer to existing
     * 4:20 PM 11/25/2024 updated from get-exomessagetraceexportedtdo(), more silent suppression, integrated dep-less ExOP conn supportadd delimters to echos, to space more, readability ;  fixed typo in eventid histo output
     * 3:16 PM 11/21/2024 working: added back Connectorid (postfiltered from results); add: $DaysLimit = 30 ; added: MsgsFail, MsgsDefer, MsgsFailRcpStat; 
     * 2:00 PM 11/20/2024 rounded out to iflv level, no dbg yet
     * 5:00 PM 10/14/2024 at this point roughed in ported updates from get-exomsgtracedetailed, no debugging/testing yet; updated params & cbh to semi- match vso\get-exomsgtracedetailed(); convert to a function (from ps1)
-    * 11:30 AM 7/16.2.34 CBH example typo fix
+    * 11:30 AM 7/16/2024 CBH example typo fix
     * 2:41 PM 7/10/2024 spliced in notices for plus-addressing, ren'd $Tix -> $Ticket (matches gbug fi in psb.)
     * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox;  finished test/debug on CMW edge: appears full functioning, including get-ADExchangeServerTDO() & Connect-ExchangeServerTDO()
     * 3:46 PM 6/3/2024 WIP for edge, latest chgs: rounded out params to subst cover full range of underlying Get-MessageTrackingLog: MessageID ; InternalMessageID; NetworkMessageID; Reference; ResultSize; 
@@ -5578,7 +5576,7 @@ function Get-MessageTrackingLogTDO {
                 AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
                 AddedTwitter: URL
                 REVISIONS
-                * 3:54 PM 11/26.2.34 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
+                * 3:54 PM 11/26/2024 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
                 * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; 
                     copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
                     includes local snapin detect & load for edge role (simplest EMS load option for Edge role, from David Paulson's original code; no longer published with Ex2010 compat)
@@ -6003,7 +6001,7 @@ function Get-MessageTrackingLogTDO {
                 AddedWebsite: https://codeandkeep.com/
                 AddedTwitter: URL
                 REVISIONS
-                * 3:57 PM 11/26.2.34 updated simple write-host,write-verbose with full pswlt support;  syncd dbg & vx10 copies.
+                * 3:57 PM 11/26/2024 updated simple write-host,write-verbose with full pswlt support;  syncd dbg & vx10 copies.
                 * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
                 * 2:05 PM 8/28/2023 REN -> Get-ExchangeServerInSite -> get-ADExchangeServerTDO (aliased orig); to better steer profile-level options - including in cmw org, added -TenOrg, and default Site to constructed vari, targeting new profile $XXX_ADSiteDefault vari; Defaulted -Roles to HUB,CAS as well.
                 * 3:42 PM 8/24/2023 spliced together combo of my long-standing, and some of the interesting ideas BF's version had. Functional prod:
@@ -6013,7 +6011,7 @@ function Get-MessageTrackingLogTDO {
                     ren $Ex10siteDN -> $ExOPsiteDN; ren $Ex10configNC -> $ExopconfigNC
                 * 1:03 PM 8/22/2023 minor cleanup
                 * 10:31 AM 4/7/2023 added CBH expl of postfilter/sorting to draw predictable pattern 
-                * 4:36 PM 4/6.2.33 validated Psv51 & Psv20 and Ex10 & 16; added -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
+                * 4:36 PM 4/6/2023 validated Psv51 & Psv20 and Ex10 & 16; added -Roles & -RoleNames params, to perform role filtering within the function (rather than as an external post-filter step). 
                 For backward-compat retain historical output field 'Roles' as the msexchcurrentserverroles summary integer; 
                 use RoleNames as the text role array; 
                     updated for psv2 compat: flipped hash key lookups into properties, found capizliation differences, (psv2 2was all lower case, wouldn't match); 
@@ -7033,7 +7031,7 @@ function Get-MessageTrackingLogTDO {
                     $smsg = 'Set-AdServerSettings -ViewEntireForest `$True' ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    #TK 9:44 AM 10/6.2.32 need org wide for rolegrps in parent dom (only for onprem RBAC, not EXO)
+                    #TK 9:44 AM 10/6/2022 need org wide for rolegrps in parent dom (only for onprem RBAC, not EXO)
                     $GcFwide = "$((Get-ADDomainController -Discover -Service GlobalCatalog).hostname):3268" ;        
                     #endregion  ; #*------^ END  OPTIONAL CODE TO ENABLE FOREST-WIDE AD GC QRY SUPPORT  ^------
                 } ;    
@@ -8095,7 +8093,7 @@ Function import-EMSLocalModule {
     REVISIONS   :
     * 9:48 AM 7/27/2021 added verbose to -pstitlebar
     * 11:40 AM 5/14/2021 added -ea 0 to the gv tests (suppresses not-found error when called without logging config)
-    * 9:21 AM 4/16.2.31 renamed load-emsmodule -> import-EMSLocalModule, added pretest and post verify
+    * 9:21 AM 4/16/2021 renamed load-emsmodule -> import-EMSLocalModule, added pretest and post verify
     * 10:14 AM 4/12/2021 init vers
     .DESCRIPTION
     import-EMSLocalModule - Setup local server bin-module-based ExchOnPrem Mgmt Shell connection (contrasts with Ex2007/10 snapin use ; validated Exch2016)
@@ -8683,9 +8681,9 @@ function new-MailboxGenericTOR {
     Github      : https://github.com/tostka/verb-ex2010
     Tags        : Exchange,ExchangeOnPremises,Mailbox,Creation,Maintenance,UserMailbox
     REVISIONS
-    # 1:15 PM 9/6.2.33 updated CBH, pulled in expls from 7PSnMbxG/psb-PSnewMbxG.cbp. Works with current cba auth etc. 
+    # 1:15 PM 9/6/2023 updated CBH, pulled in expls from 7PSnMbxG/psb-PSnewMbxG.cbp. Works with current cba auth etc. 
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
-    * 11:37 AM 9/16.2.31 string
+    * 11:37 AM 9/16/2021 string
     * 8:55 AM 5/11/2021 functionalized into verb-ex2010 ; ren: internal helper func Cleanup() -> _cleanup() ; subbed some wv -v:v,=> wh (silly to use wv, w force display; should use it solely for optional verbose details
     # 2:35 PM 4/3/2020 genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules
     # 8:48 AM 11/26/2019 new-MailboxShared():moved the Office spec from $MbxSplat => $MbxSetSplat. New-Mailbox syntax set that supports -Shared, doesn't support -Office 
@@ -11437,7 +11435,7 @@ Function remove-EMSLocalModule {
     Tags        : Powershell,Exchange,Exchange-2013,Exchange-2016
     REVISIONS   :
     * 9:42 AM 7/27/2021 add verbose to *-PsTitleBar calls
-    * 10:03 AM 4/16.2.31 init vers
+    * 10:03 AM 4/16/2021 init vers
     .DESCRIPTION
     remove-EMSLocalModule - remove/unload local server bin-module-based ExchOnPrem Mgmt Shell connection ; validated Exch2016)
     .INPUTS
@@ -11699,7 +11697,7 @@ function resolve-RecipientEAP {
     AddedTwitter: URL
     REVISIONS
     * 2:16 PM 6/24/2024: rem'd out #Requires -RunasAdministrator; sec chgs in last x mos wrecked RAA detection 
-    * 11:21 AM 9/16.2.31 string clean
+    * 11:21 AM 9/16/2021 string clean
     * 3:27 PM 8/23/2021 revised patched in new preview-EAPUpdate() support; added 
     default EAP cheatsheet output dump to console; suppress get-EAP warning ; 
     revised recipientfilter support to simple ($(existingRcpFltr) -AND (alias -eq $rcp.alias)).
@@ -12353,7 +12351,7 @@ Github      : https://github.com/tostka/verb-XXX
 Tags        : Powershell
 REVISIONS
 * 10:53 AM 4/2/2021 typo fix
-* 10:07 AM 10/26.2.30 added CBH
+* 10:07 AM 10/26/2020 added CBH
 .DESCRIPTION
 toggle-ForestView.ps1 - Toggle Exchange onprem AD ViewEntireForest setting (permits org-wide object access, wo use of proper explicit -domaincontroller sub.domain.com)
 .INPUTS
@@ -12397,8 +12395,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUAHFKcNz6lYI1k1yzxX5WDq/1
-# mCCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnYErfSRcgHLGmBaNB/3lw6B/
+# S/+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -12413,9 +12411,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSn3atc
-# JcGfpqHuhPLEMHm2ExLkDDANBgkqhkiG9w0BAQEFAASBgGPam/EPJXc5QL3ZQmcY
-# Y1vmyEqiRq+WCK0uXw/cInKAiLeNmug3wLLIc7yJNqAOkhT+y2TX/YrlBpZIwITz
-# 5GO4KAy4UL3ibogKTfr6n6igi644zao/iIbDy6+2SL7Ss+AuR8nn+ySH+xrDbYq6
-# Zlp5eoYADwqv8wiYcAcKuc2F
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQhQL4M
+# Mcsb0f7TQARp8rOu/CL+OjANBgkqhkiG9w0BAQEFAASBgLGezklyu08oIYNq4Qre
+# 20YAQ7c2qnf8SQSk3TooJLe25bXITzBTmUpCVjOPchs6E1RxycxTVbPq2fL88rXe
+# NFYRTGUDvkmJijCfK8YPXGFE6PHjk0DgS/yrdvYyO7Eh7bNlQGbBEYZ6qL6y4ZRD
+# uzyqDRmWEW9Rw6wg0dp6qcI6
 # SIG # End signature block
