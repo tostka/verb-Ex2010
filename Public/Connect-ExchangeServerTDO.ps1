@@ -2,7 +2,7 @@
 
 #region CONNEXOPTDO ; #*------v  v------
 #*------v Function Connect-ExchangeServerTDO v------
-if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
+#if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
     Function Connect-ExchangeServerTDO {
         <#
             .SYNOPSIS
@@ -27,6 +27,9 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
             AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
             AddedTwitter: URL
             REVISIONS
+            * 4:49 PM 1/9/2025 reworked connect-exchangeserverTdo() to actually use the credentials passed in, and 
+                added the missing import-module $PSS, to _connect-ExOP, to make the session actually functional 
+                for running cmds, wo popping cred prompts. 
             * 12:24 PM 12/4/2024 removed bracket bnr echos around _connect-ExOP
             * 3:54 PM 11/26/2024 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
             * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; 
@@ -272,6 +275,7 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
                         } ; 
                     } else {
                         $pltNPSS=@{ConnectionURI="http://$($Server.FQDN)/powershell"; ConfigurationName='Microsoft.Exchange' ; name="Exchange$($ExVersNum.tostring())"} ;
+                        $pltIMod=@{Global=$true;PassThru=$true;DisableNameChecking=$true ;} ;
                         # use ExVersUnm dd instead of hardcoded (Exchange2010)
                         if($ExVersNum -ge 15){
                             $smsg = "EXOP.15+:Adding -Authentication Kerberos" ;
@@ -288,6 +292,11 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
                         $ExPSS = New-PSSession @pltNPSS  ;
                         $ExIPSS = Import-PSSession $ExPSS -allowclobber ;
+                        # 3:59 PM 1/9/2025 appears credprompting is due to it's missing the import-module $ExIPSS ! 
+                        $smsg = "Import-Module w`n$(($pltIMod|out-string).trim())" ;
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        $Global:E10Mod = Import-Module $ExIPSS @pltIMod ;
                         $ExPSS | write-output ;
                         $ExPSS= $ExIPSS = $null ;
                     } ; 
@@ -323,7 +332,7 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
                     verbose = $($VerbosePreference -eq "Continue") ;
                 } ;
                 if($pltGADX.credential){
-                    $pltCXOP.Add('Credential',$pltCXOP.Credential) ;
+                    $pltCXOP.Add('Credential',$pltGADX.credential) ;
                 } ;
                 $prpPSS = 'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ; 
                 foreach($exServer in $exchServers){
@@ -350,6 +359,9 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
                         $smsg = "Connecting to: $($exServer.FQDN)" ;
                         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        $smsg = "_connect-ExOP w`n$(($pltCXOP|out-string).trim())" ;
+                        $smsg += "`nServer $($exServer.FQDN)" ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                         if($NoTest){
                             $ExPSS =$ExPSS = _connect-ExOP @pltCXOP -Server $exServer
                         } else {
@@ -420,6 +432,6 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
             } ; 
         } ;
     } ;
-} ; 
+#} ; 
 #*------^ END Function Connect-ExchangeServerTDO ^------
 #endregion CONNEXOPTDO ; #*------^ END CONNEXOPTDO ^------
