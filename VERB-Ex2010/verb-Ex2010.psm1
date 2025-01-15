@@ -5,26 +5,26 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 6.2.4
+Version     : 6.2.5
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
-CreatedDate : 1/16.2.40
+CreatedDate : 1/16.2.50
 FileName    : VERB-Ex2010.psm1
 License     : MIT
-Copyright   : (c) 1/16.2.40 Todd Kadrie
+Copyright   : (c) 1/16.2.50 Todd Kadrie
 Github      : https://github.com/tostka
 REVISIONS
 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
 * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
-* 1/16.2.40 - 1.0.0.0
+* 1/16.2.50 - 1.0.0.0
 # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
 # 11:34 AM 12/30/2019 ran vsc alias-expansion
 # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
 # 10:19 AM 11/1/2019 trimmed some whitespace
 # 10:05 AM 10/31/2019 added sample load/call info
-# 12:02 PM 5/6.2.49 added cx10,rx10,dx10 aliases
-# 11:29 AM 5/6.2.49 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+# 12:02 PM 5/6.2.59 added cx10,rx10,dx10 aliases
+# 11:29 AM 5/6.2.59 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
 # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
 # 4:15 PM 3/24/2018 updated pshhelp
 # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
@@ -3301,8 +3301,7 @@ Function Connect-Ex2010XO {
 
 
 #*------v Connect-ExchangeServerTDO.ps1 v------
-if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
-    Function Connect-ExchangeServerTDO {
+Function Connect-ExchangeServerTDO {
         <#
             .SYNOPSIS
             Connect-ExchangeServerTDO.ps1 - Dependancy-less Function that, fed an Exchange server name, or AD SiteName, and optional RoleNames array, 
@@ -3326,6 +3325,10 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
             AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
             AddedTwitter: URL
             REVISIONS
+            * 4:25 PM 1/15/2025 seems to work at this point, move to rebuild
+            * 4:49 PM 1/9/2025 reworked connect-exchangeserverTdo() to actually use the credentials passed in, and 
+                added the missing import-module $PSS, to _connect-ExOP, to make the session actually functional 
+                for running cmds, wo popping cred prompts. 
             * 12:24 PM 12/4/2024 removed bracket bnr echos around _connect-ExOP
             * 3:54 PM 11/26/2024 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
             * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; 
@@ -3571,6 +3574,7 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
                         } ; 
                     } else {
                         $pltNPSS=@{ConnectionURI="http://$($Server.FQDN)/powershell"; ConfigurationName='Microsoft.Exchange' ; name="Exchange$($ExVersNum.tostring())"} ;
+                        $pltIMod=@{Global=$true;PassThru=$true;DisableNameChecking=$true ;} ;
                         # use ExVersUnm dd instead of hardcoded (Exchange2010)
                         if($ExVersNum -ge 15){
                             $smsg = "EXOP.15+:Adding -Authentication Kerberos" ;
@@ -3587,6 +3591,11 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
                         $ExPSS = New-PSSession @pltNPSS  ;
                         $ExIPSS = Import-PSSession $ExPSS -allowclobber ;
+                        # 3:59 PM 1/9/2025 appears credprompting is due to it's missing the import-module $ExIPSS ! 
+                        $smsg = "Import-Module w`n$(($pltIMod|out-string).trim())" ;
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        $Global:E10Mod = Import-Module $ExIPSS @pltIMod ;
                         $ExPSS | write-output ;
                         $ExPSS= $ExIPSS = $null ;
                     } ; 
@@ -3622,7 +3631,7 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
                     verbose = $($VerbosePreference -eq "Continue") ;
                 } ;
                 if($pltGADX.credential){
-                    $pltCXOP.Add('Credential',$pltCXOP.Credential) ;
+                    $pltCXOP.Add('Credential',$pltGADX.credential) ;
                 } ;
                 $prpPSS = 'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ; 
                 foreach($exServer in $exchServers){
@@ -3649,6 +3658,9 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
                         $smsg = "Connecting to: $($exServer.FQDN)" ;
                         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        $smsg = "_connect-ExOP w`n$(($pltCXOP|out-string).trim())" ;
+                        $smsg += "`nServer $($exServer.FQDN)" ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                         if($NoTest){
                             $ExPSS =$ExPSS = _connect-ExOP @pltCXOP -Server $exServer
                         } else {
@@ -3718,8 +3730,7 @@ if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
                 } ;
             } ; 
         } ;
-    } ;
-}
+    }
 
 #*------^ Connect-ExchangeServerTDO.ps1 ^------
 
@@ -12395,8 +12406,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnYErfSRcgHLGmBaNB/3lw6B/
-# S/+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUtHcY8TWxY/u29a4TSHJ3tfeV
+# MUSgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -12411,9 +12422,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQhQL4M
-# Mcsb0f7TQARp8rOu/CL+OjANBgkqhkiG9w0BAQEFAASBgLGezklyu08oIYNq4Qre
-# 20YAQ7c2qnf8SQSk3TooJLe25bXITzBTmUpCVjOPchs6E1RxycxTVbPq2fL88rXe
-# NFYRTGUDvkmJijCfK8YPXGFE6PHjk0DgS/yrdvYyO7Eh7bNlQGbBEYZ6qL6y4ZRD
-# uzyqDRmWEW9Rw6wg0dp6qcI6
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQ8eAme
+# uyf3Z80tLtWHDxxSqErNPzANBgkqhkiG9w0BAQEFAASBgBXDQWiCWjoT62bYNO0u
+# i5TdSJ2sQvMjoYI/P9odeTKZvV/2nq/gJBJwNBmIZCkIzQTFatkIi08CBe+KMIgt
+# 9TNxxQgo50Sdw9az8pmLfiha7Wqa+oP3yAIdED73eILt8KJc9KJjoJHxhXhAy0Bb
+# AG5i5vqIGjB3VHNI6HtPe2UL
 # SIG # End signature block
