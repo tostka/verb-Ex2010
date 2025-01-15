@@ -27,6 +27,7 @@
             AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
             AddedTwitter: URL
             REVISIONS
+            * 4:25 PM 1/15/2025 seems to work at this point, move to rebuild
             * 4:49 PM 1/9/2025 reworked connect-exchangeserverTdo() to actually use the credentials passed in, and 
                 added the missing import-module $PSS, to _connect-ExOP, to make the session actually functional 
                 for running cmds, wo popping cred prompts. 
