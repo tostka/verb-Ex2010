@@ -18,6 +18,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 2:46 PM 1/24/2025 add support for $OfficeOverride = 'Pune, IN' ; support for Office that doesn't match SITE OU code: $OfficeOverride = 'Pune, IN' ; 
     # 10:56 AM 4/12/2024 fix: echo typo 889:FIRSTNAME -> LASTNAME
     # 2:36 PM 8/2/2023 have to bump up password complexity - revised policy., it does support fname.lname naming & email addreses, just have to pass in dname with period. but the dname will also come out with the same period (which if they specified the eml, implies they don't mind if the name has it)
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
@@ -125,6 +126,8 @@ new-MailboxShared.ps1 - Create New Generic Mbx
     Specify the userid to be responsible for access-grant-approvals[name,emailaddr,alias]
     .PARAMETER SiteOverride
     Optionally specify a 3-letter Site Code. Used to force DL name/placement to vary from Owner's site)[3-letter Site code]
+    .PARAMETER OfficeOverride
+    Optionally specify an override Office value (assigned to mailbox Office, instead of SiteCode)['City, CN']
     .PARAMETER BaseUser
     Optionally specify an existing mailbox upon which to base the new mailbox & OU settings[name,emailaddr,alias]
     .PARAMETER Room
@@ -211,40 +214,43 @@ new-MailboxShared.ps1 - Create New Generic Mbx
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory=$true,HelpMessage="Display Name for mailbox [fname lname,genericname]")]
-        [string]$DisplayName,
+          [string]$DisplayName,
         [Parameter(HelpMessage="Middle Initial for mailbox (for non-Generic)[a]")]
-        [string]$MInitial,
+          [string]$MInitial,
         [Parameter(Mandatory=$true,HelpMessage="Specify the userid to be responsible for access-grant-approvals[name,emailaddr,alias]")]
-        [string]$Owner,
+          [string]$Owner,
         [Parameter(HelpMessage="Optionally a specific existing mailbox upon which to base the new mailbox settings (default is to draw a random mbx from the target OU)[name,emailaddr,alias]")]
-        [string]$BaseUser,
+          [string]$BaseUser,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox Is Room-type[-Room `$true]")]
-        [bool]$Room,
+          [bool]$Room,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox Is Equipment-type[-Equip `$true]")]
-        [bool]$Equip,
+          [bool]$Equip,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox Is NonGeneric-type[-NonGeneric `$true]")]
-        [bool]$NonGeneric,
+          [bool]$NonGeneric,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox belongs to a Contractor[-IsContractor switch]")]
-        [switch]$IsContractor,
+          [switch]$IsContractor,
         [Parameter(HelpMessage="Optional parameter controlling Vscan (CU9) access (prompts if not specified)[-Vscan YES|NO|NULL]")]
-        [string]$Vscan="YES",
+          [string]$Vscan="YES",
         [Parameter(Mandatory=$false,HelpMessage="Optionally force CU5 (variant domain assign) [-Cu5 Exmark]")]
-        [string]$Cu5,
+          [string]$Cu5,
         [Parameter(HelpMessage="Optionally specify a 3-letter Site Code o force OU placement to vary from Owner's current site[3-letter Site code]")]
-        [string]$SiteOverride,
+          [string]$SiteOverride,
+        # 2:49 PM 1/24/2025 add support for Office that doesn't match SITE OU code: $OfficeOverride = 'Pune, IN' ; 
+        [Parameter(HelpMessage="Optionally specify an override Office value (assigned to mailbox Office, instead of SiteCode)['City, CN']")]
+            [string]$OfficeOverride,
         [Parameter(Mandatory=$true,HelpMessage="Incident number for the change request[[int]nnnnnn]")]
-        # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
-        $Ticket,
+          # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
+          $Ticket,
         [Parameter(HelpMessage="Option to hardcode a specific DC [-domaincontroller xxxx]")]
-        [string]$domaincontroller,
+          [string]$domaincontroller,
         [Parameter(HelpMessage="Calling script path (used for log construction)[-ParentPath c:\pathto\script.ps1]")]
-        [string]$ParentPath,
+          [string]$ParentPath,
         [Parameter(HelpMessage="Suppress YYY confirmation prompts [-NoPrompt]")]
-        [switch] $NoPrompt,
+          [switch] $NoPrompt,
         [Parameter(HelpMessage='Debugging Flag [$switch]')]
-        [switch] $showDebug,
+          [switch] $showDebug,
         [Parameter(HelpMessage='Whatif Flag [$switch]')]
-        [switch] $whatIf
+          [switch] $whatIf
     ) ;
 
     BEGIN {
@@ -542,8 +548,23 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         }; #  # if-E Cu5
 
 
-        if($SiteOverride){$InputSplat.SiteOverride=$SiteOverride};
+        if($SiteOverride){
+            if($InputSplat.keys -contains 'SiteOverride'){
+                $InputSplat.SiteOverride=$SiteOverride ; 
+            }else{
+                $InputSplat.add('SiteOverride',$SiteOverride) ;  
+            }
+        };
+        # 2:59 PM 1/24/2025 new OfficeOverride
+        if($OfficeOverride){
+            if($InputSplat.keys -contains 'OfficeOverride'){
+                $InputSplat.OfficeOverride=$OfficeOverride ; 
+            }else{
+                $InputSplat.add('OfficeOverride',$OfficeOverride) ;  
+            }
+        };
         if($Ticket){$InputSplat.Ticket=$Ticket};
+
 
         #endregion SPLATDEFS ; # ------
         #region LOADMODS ; # ------
@@ -645,7 +666,17 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
         # add forced office designation, to match $SiteCode/OU
         # New-Mailbox doesn't support both -Shared & -Office in the same syntax set, move it to $MbxSetSplat
-        $MbxSetSplat.Office = $SiteCode ;
+        
+        # 2:53 PM 1/24/2025 exempt OfficeOverride
+        if($InputSplat.OfficeOverride){
+            $smsg = "-OfficeOverride:$($InputSplat.OfficeOverride): overriding user object Office from SiteCode to specified Override!" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level PROMPT } 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+            $MbxSetSplat.Office = $InputSplat.OfficeOverride ;
+        } else { 
+            $MbxSetSplat.Office = $SiteCode ;
+        } ; 
         $smsg= "Site Located:`$SiteCode:$SiteCode`n`$OrganizationalUnit:$($MbxSplat.OrganizationalUnit)" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
 
 
