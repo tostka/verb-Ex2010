@@ -16,6 +16,7 @@ function new-MailboxGenericTOR {
     Github      : https://github.com/tostka/verb-ex2010
     Tags        : Exchange,ExchangeOnPremises,Mailbox,Creation,Maintenance,UserMailbox
     REVISIONS
+    # 2:46 PM 1/24/2025 add support for $OfficeOverride = 'Pune, IN' ; support for Office that doesn't match SITE OU code: $OfficeOverride = 'Pune, IN' ; 
     # 1:15 PM 9/6/2023 updated CBH, pulled in expls from 7PSnMbxG/psb-PSnewMbxG.cbp. Works with current cba auth etc. 
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     * 11:37 AM 9/16/2021 string
@@ -135,6 +136,8 @@ function new-MailboxGenericTOR {
     Specify the userid to be responsible for access-grant-approvals[name,emailaddr,alias]
     .PARAMETER SiteOverride
     Optionally specify a 3-letter Site Code. Used to force DL name/placement to vary from Owner's site)[3-letter Site code]
+    .PARAMETER OfficeOverride
+    Optionally specify an override Office value (assigned to mailbox Office, instead of SiteCode)['City, CN']
     .PARAMETER BaseUser
     Optionally specify an existing mailbox upon which to base the new mailbox & OU settings[name,emailaddr,alias]
     .PARAMETER Room
@@ -325,49 +328,53 @@ function new-MailboxGenericTOR {
     
     Param(
         [Parameter(Mandatory=$true,HelpMessage="Display Name for mailbox [fname lname,genericname]")]
-        [string]$DisplayName,
+            [string]$DisplayName,
         [Parameter(HelpMessage="Middle Initial for mailbox (for non-Generic)[a]")]
-        [string]$MInitial,
+            [string]$MInitial,
         [Parameter(Mandatory=$true,HelpMessage="Specify the userid to be responsible for access-grant-approvals[name,emailaddr,alias]")]
-        [string]$Owner,
+            [string]$Owner,
         [Parameter(HelpMessage="Optionally a specific existing mailbox upon which to base the new mailbox settings (default is to draw a random mbx from the target OU)[name,emailaddr,alias]")]
-        [string]$BaseUser,
+            [string]$BaseUser,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox Is Room-type[-Room `$true]")]
-        [bool]$Room,
+            [bool]$Room,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox Is Equipment-type[-Equip `$true]")]
-        [bool]$Equip,
+            [bool]$Equip,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox Is NonGeneric-type[-NonGeneric `$true]")]
-        [bool]$NonGeneric,
+            [bool]$NonGeneric,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox belongs to a Contractor[-IsContractor switch]")]
-        [switch]$IsContractor,
+            [switch]$IsContractor,
         [Parameter(HelpMessage="Optional parameter controlling Vscan (CU9) access (prompts if not specified)[-Vscan YES|NO|NULL]")]
-        [string]$Vscan="YES",
+            [string]$Vscan="YES",
         [Parameter(Mandatory=$false,HelpMessage="Optionally force CU5 (variant domain assign) [-Cu5 Exmark]")]
-        [string]$Cu5,
+            [string]$Cu5,
         [Parameter(HelpMessage="Optionally specify a 3-letter Site Code o force OU placement to vary from Owner's current site[3-letter Site code]")]
-        [string]$SiteOverride,
+            [string]$SiteOverride,
+        # 2:49 PM 1/24/2025 add support for Office that doesn't match SITE OU code: $OfficeOverride = 'Pune, IN' ; 
+        [Parameter(HelpMessage="Optionally specify an override Office value (assigned to mailbox Office, instead of SiteCode)['City, CN']")]
+            [string]$OfficeOverride,
         [Parameter(Mandatory=$true,HelpMessage="Incident number for the change request[[int]nnnnnn]")]
-        # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
-        $Ticket,
+            # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
+            $Ticket,
         [Parameter(HelpMessage="Option to hardcode a specific DC [-domaincontroller xxxx]")]
-        [string]$domaincontroller,
+            [string]$domaincontroller,
     	[Parameter(Mandatory=$FALSE,HelpMessage="TenantTag value, indicating Tenants to connect to[-TenOrg 'TOL']")]
-	    [ValidateNotNullOrEmpty()]
-	    $TenOrg = 'TOR',
+	        [ValidateNotNullOrEmpty()]
+	        $TenOrg = 'TOR',
 	    [Parameter(HelpMessage="Credential to use for cloud actions [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
-	    $Credential,
-	    [ValidateSet('SID','CSID','UID','B2BI','CSVC')]
-	    [string]$UserRole='SID',
+	        $Credential,
+	    [Parameter(Mandatory = $false, HelpMessage = "Credential User Role spec (SID|CSID|UID|B2BI|CSVC|ESVC|LSVC|ESvcCBA|CSvcCBA|SIDCBA)[-UserRole @('SIDCBA','SID','CSVC')]")]
+            [ValidateSet('SID','CSID','UID','B2BI','CSVC')]
+	        [string]$UserRole='SID',
         [Parameter(HelpMessage="Suppress YYY confirmation prompts [-NoPrompt]")]
-        [switch] $NoPrompt,
+            [switch] $NoPrompt,
         [Parameter(HelpMessage='Debugging Flag [$switch]')]
-        [switch] $showDebug,
+            [switch] $showDebug,
         [Parameter(HelpMessage='Whatif Flag [$switch]')]
-        [switch] $whatIf,
+            [switch] $whatIf,
         [Parameter(HelpMessage='NoOutput Flag [$switch]')]
-        [switch] $NoOutput=$true
+            [switch] $NoOutput=$true
     ) ;
-
+    #region CONSTANTS_AND_ENVIRO #*======v CONSTANTS_AND_ENVIRO v======
     $verbose = ($VerbosePreference -eq "Continue") ;
 
     # Get the name of this function
@@ -429,7 +436,7 @@ function new-MailboxGenericTOR {
 
     # Clear error variable
     $Error.Clear() ;
-    #endregion INIT; # ------
+    #endregion CONSTANTS_AND_ENVIRO ; #*------^ END CONSTANTS_AND_ENVIRO ^------
 
     #region FUNCTIONS ; # ------
     #*======v FUNCTIONS v======
@@ -537,7 +544,14 @@ function new-MailboxGenericTOR {
     if($showDebug){$pltInput.add("showDebug",$showDebug) } ;
     if($verbose){$pltInput.add("verbose",$(($VerbosePreference -eq "Continue"))) } ;
     if($whatIf){$pltInput.add("whatIf",$whatIf) } ;
-
+    # 2:59 PM 1/24/2025 new OfficeOverride
+    if($OfficeOverride){
+        if($pltInput.keys -contains 'OfficeOverride'){
+            $pltInput.OfficeOverride=$OfficeOverride ; 
+        }else{
+            $pltInput.add('OfficeOverride',$OfficeOverride) ;  
+        }
+    };
     # only reset from defaults on explicit -NonGeneric $true param
     if($NonGeneric -eq $true){
         # switching over generics to real 'shared' mbxs: "Shared" = $True
@@ -570,7 +584,7 @@ function new-MailboxGenericTOR {
     } else {
         $pltInput.add("Cu5",$null) ;
     }  ;
-
+    
     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):new-MailboxShared w`n$(($pltInput|out-string).trim())" ;
     if(-not($NoOutput)){
         $bRet = new-MailboxShared @pltInput ; 
