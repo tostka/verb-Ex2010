@@ -5,26 +5,26 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 6.2.5
+Version     : 6.2.6
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
-CreatedDate : 1/16.2.50
+CreatedDate : 1/16.2.60
 FileName    : VERB-Ex2010.psm1
 License     : MIT
-Copyright   : (c) 1/16.2.50 Todd Kadrie
+Copyright   : (c) 1/16.2.60 Todd Kadrie
 Github      : https://github.com/tostka
 REVISIONS
 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
 * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
-* 1/16.2.50 - 1.0.0.0
+* 1/16.2.60 - 1.0.0.0
 # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
 # 11:34 AM 12/30/2019 ran vsc alias-expansion
 # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
 # 10:19 AM 11/1/2019 trimmed some whitespace
 # 10:05 AM 10/31/2019 added sample load/call info
-# 12:02 PM 5/6.2.59 added cx10,rx10,dx10 aliases
-# 11:29 AM 5/6.2.59 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+# 12:02 PM 5/6.2.69 added cx10,rx10,dx10 aliases
+# 11:29 AM 5/6.2.69 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
 # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
 # 4:15 PM 3/24/2018 updated pshhelp
 # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
@@ -8224,7 +8224,7 @@ function Invoke-ExchangeCommand{
     Type          Name                             SourceOfValue Value
     ----          ----                             ------------- -----
     System.String RootSDDL                                       O:NSG:BAD:P(A;;GA;;;BA)(A;;GR;;;IU)S:P(AU;FA;GA;;;WD)(A...
-    System.String MaxConcurrentOperations                        4294967295
+    System.String MaxConcurrentOperations                        429496.2.6
     System.String MaxConcurrentOperationsPerUser                 1500
     System.String EnumerationTimeoutms                           240000
     System.String MaxConnections                                 300
@@ -8278,7 +8278,7 @@ function Invoke-ExchangeCommand{
     [PS] C:\scripts>winrm get winrm/config/service
     Service
     RootSDDL = O:NSG:BAD:P(A;;GA;;;BA)S:P(AU;FA;GA;;;WD)(AU;SA;GWGX;;;WD)
-    MaxConcurrentOperations = 4294967295
+    MaxConcurrentOperations = 429496.2.6
     MaxConcurrentOperationsPerUser = 15
     EnumerationTimeoutms = 60000
     MaxConnections = 25
@@ -8345,7 +8345,7 @@ function Invoke-ExchangeCommand{
     [PS] WSMan:\localhost\Client>winrm get winrm/config/service
     Service
         RootSDDL = O:NSG:BAD:P(A;;GA;;;BA)(A;;GR;;;IU)S:P(AU;FA;GA;;;WD)(AU;SA;GXGW;;;WD)
-        MaxConcurrentOperations = 4294967295
+        MaxConcurrentOperations = 429496.2.6
         MaxConcurrentOperationsPerUser = 1500
         EnumerationTimeoutms = 240000
         MaxConnections = 300
@@ -8387,7 +8387,7 @@ function Invoke-ExchangeCommand{
     Type          Name                             SourceOfValue Value
     ----          ----                             ------------- -----
     System.String RootSDDL                                       O:NSG:BAD:P(A;;GA;;;BA)(A;;GR;;;IU)S:P(AU;FA;GA;;;WD)(A...
-    System.String MaxConcurrentOperations                        4294967295
+    System.String MaxConcurrentOperations                        429496.2.6
     System.String MaxConcurrentOperationsPerUser                 1500
     System.String EnumerationTimeoutms                           240000
     System.String MaxConnections                                 300
@@ -8692,6 +8692,7 @@ function new-MailboxGenericTOR {
     Github      : https://github.com/tostka/verb-ex2010
     Tags        : Exchange,ExchangeOnPremises,Mailbox,Creation,Maintenance,UserMailbox
     REVISIONS
+    # 2:46 PM 1/24/2025 add support for $OfficeOverride = 'Pune, IN' ; support for Office that doesn't match SITE OU code: $OfficeOverride = 'Pune, IN' ; 
     # 1:15 PM 9/6/2023 updated CBH, pulled in expls from 7PSnMbxG/psb-PSnewMbxG.cbp. Works with current cba auth etc. 
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     * 11:37 AM 9/16/2021 string
@@ -8811,6 +8812,8 @@ function new-MailboxGenericTOR {
     Specify the userid to be responsible for access-grant-approvals[name,emailaddr,alias]
     .PARAMETER SiteOverride
     Optionally specify a 3-letter Site Code. Used to force DL name/placement to vary from Owner's site)[3-letter Site code]
+    .PARAMETER OfficeOverride
+    Optionally specify an override Office value (assigned to mailbox Office, instead of SiteCode)['City, CN']
     .PARAMETER BaseUser
     Optionally specify an existing mailbox upon which to base the new mailbox & OU settings[name,emailaddr,alias]
     .PARAMETER Room
@@ -9001,49 +9004,53 @@ function new-MailboxGenericTOR {
     
     Param(
         [Parameter(Mandatory=$true,HelpMessage="Display Name for mailbox [fname lname,genericname]")]
-        [string]$DisplayName,
+            [string]$DisplayName,
         [Parameter(HelpMessage="Middle Initial for mailbox (for non-Generic)[a]")]
-        [string]$MInitial,
+            [string]$MInitial,
         [Parameter(Mandatory=$true,HelpMessage="Specify the userid to be responsible for access-grant-approvals[name,emailaddr,alias]")]
-        [string]$Owner,
+            [string]$Owner,
         [Parameter(HelpMessage="Optionally a specific existing mailbox upon which to base the new mailbox settings (default is to draw a random mbx from the target OU)[name,emailaddr,alias]")]
-        [string]$BaseUser,
+            [string]$BaseUser,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox Is Room-type[-Room `$true]")]
-        [bool]$Room,
+            [bool]$Room,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox Is Equipment-type[-Equip `$true]")]
-        [bool]$Equip,
+            [bool]$Equip,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox Is NonGeneric-type[-NonGeneric `$true]")]
-        [bool]$NonGeneric,
+            [bool]$NonGeneric,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox belongs to a Contractor[-IsContractor switch]")]
-        [switch]$IsContractor,
+            [switch]$IsContractor,
         [Parameter(HelpMessage="Optional parameter controlling Vscan (CU9) access (prompts if not specified)[-Vscan YES|NO|NULL]")]
-        [string]$Vscan="YES",
+            [string]$Vscan="YES",
         [Parameter(Mandatory=$false,HelpMessage="Optionally force CU5 (variant domain assign) [-Cu5 Exmark]")]
-        [string]$Cu5,
+            [string]$Cu5,
         [Parameter(HelpMessage="Optionally specify a 3-letter Site Code o force OU placement to vary from Owner's current site[3-letter Site code]")]
-        [string]$SiteOverride,
+            [string]$SiteOverride,
+        # 2:49 PM 1/24/2025 add support for Office that doesn't match SITE OU code: $OfficeOverride = 'Pune, IN' ; 
+        [Parameter(HelpMessage="Optionally specify an override Office value (assigned to mailbox Office, instead of SiteCode)['City, CN']")]
+            [string]$OfficeOverride,
         [Parameter(Mandatory=$true,HelpMessage="Incident number for the change request[[int]nnnnnn]")]
-        # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
-        $Ticket,
+            # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
+            $Ticket,
         [Parameter(HelpMessage="Option to hardcode a specific DC [-domaincontroller xxxx]")]
-        [string]$domaincontroller,
+            [string]$domaincontroller,
     	[Parameter(Mandatory=$FALSE,HelpMessage="TenantTag value, indicating Tenants to connect to[-TenOrg 'TOL']")]
-	    [ValidateNotNullOrEmpty()]
-	    $TenOrg = 'TOR',
+	        [ValidateNotNullOrEmpty()]
+	        $TenOrg = 'TOR',
 	    [Parameter(HelpMessage="Credential to use for cloud actions [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
-	    $Credential,
-	    [ValidateSet('SID','CSID','UID','B2BI','CSVC')]
-	    [string]$UserRole='SID',
+	        $Credential,
+	    [Parameter(Mandatory = $false, HelpMessage = "Credential User Role spec (SID|CSID|UID|B2BI|CSVC|ESVC|LSVC|ESvcCBA|CSvcCBA|SIDCBA)[-UserRole @('SIDCBA','SID','CSVC')]")]
+            [ValidateSet('SID','CSID','UID','B2BI','CSVC')]
+	        [string]$UserRole='SID',
         [Parameter(HelpMessage="Suppress YYY confirmation prompts [-NoPrompt]")]
-        [switch] $NoPrompt,
+            [switch] $NoPrompt,
         [Parameter(HelpMessage='Debugging Flag [$switch]')]
-        [switch] $showDebug,
+            [switch] $showDebug,
         [Parameter(HelpMessage='Whatif Flag [$switch]')]
-        [switch] $whatIf,
+            [switch] $whatIf,
         [Parameter(HelpMessage='NoOutput Flag [$switch]')]
-        [switch] $NoOutput=$true
+            [switch] $NoOutput=$true
     ) ;
-
+    #region CONSTANTS_AND_ENVIRO #*======v CONSTANTS_AND_ENVIRO v======
     $verbose = ($VerbosePreference -eq "Continue") ;
 
     # Get the name of this function
@@ -9105,7 +9112,7 @@ function new-MailboxGenericTOR {
 
     # Clear error variable
     $Error.Clear() ;
-    #endregion INIT; # ------
+    #endregion CONSTANTS_AND_ENVIRO ; #*------^ END CONSTANTS_AND_ENVIRO ^------
 
     #region FUNCTIONS ; # ------
     #*======v FUNCTIONS v======
@@ -9213,7 +9220,14 @@ function new-MailboxGenericTOR {
     if($showDebug){$pltInput.add("showDebug",$showDebug) } ;
     if($verbose){$pltInput.add("verbose",$(($VerbosePreference -eq "Continue"))) } ;
     if($whatIf){$pltInput.add("whatIf",$whatIf) } ;
-
+    # 2:59 PM 1/24/2025 new OfficeOverride
+    if($OfficeOverride){
+        if($pltInput.keys -contains 'OfficeOverride'){
+            $pltInput.OfficeOverride=$OfficeOverride ; 
+        }else{
+            $pltInput.add('OfficeOverride',$OfficeOverride) ;  
+        }
+    };
     # only reset from defaults on explicit -NonGeneric $true param
     if($NonGeneric -eq $true){
         # switching over generics to real 'shared' mbxs: "Shared" = $True
@@ -9246,7 +9260,7 @@ function new-MailboxGenericTOR {
     } else {
         $pltInput.add("Cu5",$null) ;
     }  ;
-
+    
     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):new-MailboxShared w`n$(($pltInput|out-string).trim())" ;
     if(-not($NoOutput)){
         $bRet = new-MailboxShared @pltInput ; 
@@ -9285,6 +9299,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    # 2:46 PM 1/24/2025 add support for $OfficeOverride = 'Pune, IN' ; support for Office that doesn't match SITE OU code: $OfficeOverride = 'Pune, IN' ; 
     # 10:56 AM 4/12/2024 fix: echo typo 889:FIRSTNAME -> LASTNAME
     # 2:36 PM 8/2/2023 have to bump up password complexity - revised policy., it does support fname.lname naming & email addreses, just have to pass in dname with period. but the dname will also come out with the same period (which if they specified the eml, implies they don't mind if the name has it)
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
@@ -9392,6 +9407,8 @@ new-MailboxShared.ps1 - Create New Generic Mbx
     Specify the userid to be responsible for access-grant-approvals[name,emailaddr,alias]
     .PARAMETER SiteOverride
     Optionally specify a 3-letter Site Code. Used to force DL name/placement to vary from Owner's site)[3-letter Site code]
+    .PARAMETER OfficeOverride
+    Optionally specify an override Office value (assigned to mailbox Office, instead of SiteCode)['City, CN']
     .PARAMETER BaseUser
     Optionally specify an existing mailbox upon which to base the new mailbox & OU settings[name,emailaddr,alias]
     .PARAMETER Room
@@ -9478,40 +9495,43 @@ new-MailboxShared.ps1 - Create New Generic Mbx
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory=$true,HelpMessage="Display Name for mailbox [fname lname,genericname]")]
-        [string]$DisplayName,
+          [string]$DisplayName,
         [Parameter(HelpMessage="Middle Initial for mailbox (for non-Generic)[a]")]
-        [string]$MInitial,
+          [string]$MInitial,
         [Parameter(Mandatory=$true,HelpMessage="Specify the userid to be responsible for access-grant-approvals[name,emailaddr,alias]")]
-        [string]$Owner,
+          [string]$Owner,
         [Parameter(HelpMessage="Optionally a specific existing mailbox upon which to base the new mailbox settings (default is to draw a random mbx from the target OU)[name,emailaddr,alias]")]
-        [string]$BaseUser,
+          [string]$BaseUser,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox Is Room-type[-Room `$true]")]
-        [bool]$Room,
+          [bool]$Room,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox Is Equipment-type[-Equip `$true]")]
-        [bool]$Equip,
+          [bool]$Equip,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox Is NonGeneric-type[-NonGeneric `$true]")]
-        [bool]$NonGeneric,
+          [bool]$NonGeneric,
         [Parameter(HelpMessage="Optional parameter indicating new mailbox belongs to a Contractor[-IsContractor switch]")]
-        [switch]$IsContractor,
+          [switch]$IsContractor,
         [Parameter(HelpMessage="Optional parameter controlling Vscan (CU9) access (prompts if not specified)[-Vscan YES|NO|NULL]")]
-        [string]$Vscan="YES",
+          [string]$Vscan="YES",
         [Parameter(Mandatory=$false,HelpMessage="Optionally force CU5 (variant domain assign) [-Cu5 Exmark]")]
-        [string]$Cu5,
+          [string]$Cu5,
         [Parameter(HelpMessage="Optionally specify a 3-letter Site Code o force OU placement to vary from Owner's current site[3-letter Site code]")]
-        [string]$SiteOverride,
+          [string]$SiteOverride,
+        # 2:49 PM 1/24/2025 add support for Office that doesn't match SITE OU code: $OfficeOverride = 'Pune, IN' ; 
+        [Parameter(HelpMessage="Optionally specify an override Office value (assigned to mailbox Office, instead of SiteCode)['City, CN']")]
+            [string]$OfficeOverride,
         [Parameter(Mandatory=$true,HelpMessage="Incident number for the change request[[int]nnnnnn]")]
-        # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
-        $Ticket,
+          # [int] # 10:30 AM 10/13/2021 pulled, to permit non-numeric & multi-tix
+          $Ticket,
         [Parameter(HelpMessage="Option to hardcode a specific DC [-domaincontroller xxxx]")]
-        [string]$domaincontroller,
+          [string]$domaincontroller,
         [Parameter(HelpMessage="Calling script path (used for log construction)[-ParentPath c:\pathto\script.ps1]")]
-        [string]$ParentPath,
+          [string]$ParentPath,
         [Parameter(HelpMessage="Suppress YYY confirmation prompts [-NoPrompt]")]
-        [switch] $NoPrompt,
+          [switch] $NoPrompt,
         [Parameter(HelpMessage='Debugging Flag [$switch]')]
-        [switch] $showDebug,
+          [switch] $showDebug,
         [Parameter(HelpMessage='Whatif Flag [$switch]')]
-        [switch] $whatIf
+          [switch] $whatIf
     ) ;
 
     BEGIN {
@@ -9809,8 +9829,23 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         }; #  # if-E Cu5
 
 
-        if($SiteOverride){$InputSplat.SiteOverride=$SiteOverride};
+        if($SiteOverride){
+            if($InputSplat.keys -contains 'SiteOverride'){
+                $InputSplat.SiteOverride=$SiteOverride ; 
+            }else{
+                $InputSplat.add('SiteOverride',$SiteOverride) ;  
+            }
+        };
+        # 2:59 PM 1/24/2025 new OfficeOverride
+        if($OfficeOverride){
+            if($InputSplat.keys -contains 'OfficeOverride'){
+                $InputSplat.OfficeOverride=$OfficeOverride ; 
+            }else{
+                $InputSplat.add('OfficeOverride',$OfficeOverride) ;  
+            }
+        };
         if($Ticket){$InputSplat.Ticket=$Ticket};
+
 
         #endregion SPLATDEFS ; # ------
         #region LOADMODS ; # ------
@@ -9912,7 +9947,17 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
         # add forced office designation, to match $SiteCode/OU
         # New-Mailbox doesn't support both -Shared & -Office in the same syntax set, move it to $MbxSetSplat
-        $MbxSetSplat.Office = $SiteCode ;
+        
+        # 2:53 PM 1/24/2025 exempt OfficeOverride
+        if($InputSplat.OfficeOverride){
+            $smsg = "-OfficeOverride:$($InputSplat.OfficeOverride): overriding user object Office from SiteCode to specified Override!" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level PROMPT } 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+            $MbxSetSplat.Office = $InputSplat.OfficeOverride ;
+        } else { 
+            $MbxSetSplat.Office = $SiteCode ;
+        } ; 
         $smsg= "Site Located:`$SiteCode:$SiteCode`n`$OrganizationalUnit:$($MbxSplat.OrganizationalUnit)" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
 
 
@@ -12406,8 +12451,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUtHcY8TWxY/u29a4TSHJ3tfeV
-# MUSgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU4taBrPV9K0AImuWYB0tbCHxZ
+# h8ugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -12422,9 +12467,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQ8eAme
-# uyf3Z80tLtWHDxxSqErNPzANBgkqhkiG9w0BAQEFAASBgBXDQWiCWjoT62bYNO0u
-# i5TdSJ2sQvMjoYI/P9odeTKZvV/2nq/gJBJwNBmIZCkIzQTFatkIi08CBe+KMIgt
-# 9TNxxQgo50Sdw9az8pmLfiha7Wqa+oP3yAIdED73eILt8KJc9KJjoJHxhXhAy0Bb
-# AG5i5vqIGjB3VHNI6HtPe2UL
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRjlcTc
+# 9u0rVefTGXs4QdCPDpWs7jANBgkqhkiG9w0BAQEFAASBgEn+/oxNBCipxgpqDP/L
+# pf/2CPRi8W+7RPPXDYr8sA0o47ClTE3Nhbm+YDB8Ce4VNHHRdi+O62VZwxP9+fVd
+# WWWG33IjoR6y/JahsUE/A09SzHASuLRZmoZrMYjvTV+5Bf7TVivoq8MKeT5xdlzZ
+# mFSvIc+mDFmd109y8a3jmyWQ
 # SIG # End signature block
