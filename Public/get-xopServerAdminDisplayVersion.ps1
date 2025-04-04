@@ -3,7 +3,7 @@
 function get-xopServerAdminDisplayVersion {
     <#
     .SYNOPSIS
-    get-xopServerAdminDisplayVersion.ps1 - Retrieves specified ComputerName's (get-exchangeserver).AdminDisplayVersion ~ Cumulative Update version (not the actual Service Update version)
+    get-xopServerAdminDisplayVersion.ps1 - Retrieves specified ComputerName's (get-exchangeserver).AdminDisplayVersion ~ Cumulative Update version (can optionally retrieve actual Service Update version w -getSErviceUpdate param)
     .NOTES
     Version     : 1.0.2
     Author      : Todd Kadrie
@@ -18,7 +18,13 @@ function get-xopServerAdminDisplayVersion {
     AddedCredit : theSysadminChannel
     AddedWebsite: https://thesysadminchannel.com/get-exchange-cumulative-update-version-and-build-numbers-using-powershell/
     AddedTwitter: URL
-    REVISIONS
+    REVISION
+    * 11:06 AM 4/4/2025:
+        - udpated CBH (updates more extensive demos);
+        - add: -GetServiceUpdate; echo's last BuildTable date, and url to screen; 
+            pre-resolve specified Computername to DNS A record fqdn (( via Resolve-DNS -name Computername -Type A).name)
+            Object returned to pipeline includes ServiceUpdateVersion & ServiceUpdateProduct , when -getServiceUpdate param is used.
+        - removed: fqdn retry code (no longer needed if pre-fqdn'ing)
     * 1:28 PM 3/26/2025 updated CBH, with description/specifics on admindisplayversion returned by get-exchangeserver
         strange: initial atttempts on the lowest # local hub consisntly failed lookup on nbname, so added code to retry with resolved A record/fqdn; 
         ren Get-ExchangeVersion -> get-xopServerAdminDisplayVersion ; 
@@ -31,17 +37,29 @@ function get-xopServerAdminDisplayVersion {
              - Update Rollup 32 for Exchange Server 2010 SP3 	March 2, 2021 	14.3.513.0 	14.03.0513.000
     * 2021-Nov-9 tSC's posted vers at https://thesysadminchannel.com
     .DESCRIPTION
-    get-xopServerAdminDisplayVersion.ps1 - Retrieves specified ComputerName's (get-exchangeserver).AdminDisplayVersion ~ Cumulative Update version (not the actual Service Update version)
+    get-xopServerAdminDisplayVersion.ps1 - Retrieves specified ComputerName's (get-exchangeserver).AdminDisplayVersion ~ Cumulative Update version (can optionally retrieve actual Service Update version w -getSErviceUpdate param)
+
+    Expanded variant of tSC's posted script at https://thesysadminchannel.com. 
+    - Expands coverage back through 'Exchange Server 2010 RTM', and as of latest BuildToProductName update, through 'Exchange Server 2019 CU15 (2025H1)'
+    - Adds SU retrieval (via -getServiceUpdate param, reads remote server ExSetup.exe file version)
+    - More fault tolerance (pre-expands specified -ComputerNames into DNS A record fqdn's - seems to avoid sporadic issues retrieving get-exchangeserver & remote invoke-expression; 
+        adds code to retry failing queries)
+    - BuildToProductName is updated through 3/25/25 current info, and reflects the MS Build table product name strings (unmodified; simpler to maintain over time). 
 
     Per [Exchange Server build numbers and release dates | Microsoft Learn](https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates?view=exchserver-2019)
 
+    Method details: 
     get-exchangeserver [server] returns Admindisplayversion like : 
-    Version nn.n (Build nnn.n)
-    The Buildnumber Shortstring in the indexed hash below can be constructed by combining the 'Version nn.n' digits with the '(Build nnn.n)' digits: nn.n.nnn.n
+    
+        Version nn.n (Build nnn.n)
+    
+    The Buildnumber Shortstring can be converted to a value suitable for BuildToProductName indexed hash lookup, 
+    by combining the 'Version nn.n' digits with the '(Build nnn.n)' digits, into: nn.n.nnn.n
+    Handled via this regex: 
     
         [regex]::Matches($AdminDisplayVersion,"(\d*\.\d*)").value -join '.'
 
-    Do matching on the nn.n for each Major rev, if you want to be sure of your supported commandset targets
+    If using version-specific code, do any matching on the nn.n for each Major rev, if you want to be sure of your supported commandset targets
         - 2019, 'Version 15.2'
         - 2016, 'Version 15.1'
         - 2013, 'Version 15.0'
@@ -50,9 +68,10 @@ function get-xopServerAdminDisplayVersion {
         - 2010sp1, 'Version 14.1'
         - 2010, 'Version 14.0'
 
-
-    .PARAMETER  ComputerName
+    .PARAMETER ComputerName
     Array of Exchange server names to be queried
+    .PARAMETER GetServiceUpdate
+    Switch to remote-query the ServiceUpdate revision (polling Version on Exsetup.exe)
     .INPUTS
     None. Does not accepted piped input.(.NET types, can add description)
     .OUTPUTS
@@ -62,20 +81,45 @@ function get-xopServerAdminDisplayVersion {
     .EXAMPLE
     PS> Get-ExchangeServer | get-xopServerAdminDisplayVersion ; 
 
-ComputerName Edition    BuildNumber   ProductName
------------- -------    ------------  -----------
-nnnnnnn1     Standard   15.2.1748.10  Exchange Server 2019 CU15 (2025H1)
-nnnnnnn2     Standard   15.2.1748.10  Exchange Server 2019 CU15 (2025H1)
-nnnnnnn3     Enterprise 15.2.1748.10  Exchange Server 2019 CU15 (2025H1)
+        ComputerName Edition    BuildNumber   ProductName
+        ------------ -------    ------------  -----------
+        nnnnnnn1     Standard   15.2.1748.10  Exchange Server 2019 CU15 (2025H1)
+        nnnnnnn2     Enterprise 15.2.1748.10  Exchange Server 2019 CU15 (2025H1)
 
     Pipeline demo
     .EXAMPLE
     PS> get-xopServerAdminDisplayVersion -ComputerName @(ExchSrv01, ExchSrv02) ; 
     Typical pass on an array of servers
+    .EXAMPLE
+    PS> get-xopServerAdminDisplayVersion -ComputerName @(ExchSrv01, ExchSrv02) -getServiceUpdate ; 
+
+        ComputerName         : xxxxxxxx
+        Edition              : Standard
+        BuildNumber          : 14.3.123.4
+        ProductName          : Exchange Server 2010 SP3
+        ServiceUpdateVersion : 14.3.513.0
+        ServiceUpdateProduct : Update Rollup 32 for Exchange Server 2010 SP3
+        ...
+
+    Typical pass on an array of servers, and return SU version (in addition to CU reported by AdminDisplayVersion)
+    .EXAMPLE
+    PS> $results = get-exchangeserver | get-xopServerAdminDisplayVersion -getSU ; 
+    PS> $results | %{
+    PS>     $smsg = "`n$(($_ | ft -a ($_.psobject.Properties.name[0..3])|out-string).trim())" ; 
+    PS>     $smsg += "`n$(($_ | ft -a ($_.psobject.Properties.name[-2..-1])|out-string).trim())`n" ;
+    PS>     write-host -foregroundcolor green $smsg ; 
+    PS> } ;     
+
+        ComputerName Edition    BuildNumber ProductName             
+        ------------ -------    ----------- -----------             
+        xxxxxxxx     Enterprise 14.3.123.4  Exchange Server 2010 SP3
+        ServiceUpdateVersion ServiceUpdateProduct                         
+        -------------------- --------------------                         
+        14.3.513.0           Update Rollup 32 for Exchange Server 2010 SP3
+
+    Fancier formatted output demo, using -getSU alias for -getServiceUpdate
     .LINK
     https://github.com/tostka/verb-ex2010
-    .LINK
-    https://bitbucket.org/tostka/powershell/
     .LINK
     https://thesysadminchannel.com/get-exchange-cumulative-update-version-and-build-numbers-using-powershell/
     .LINK
@@ -83,15 +127,23 @@ nnnnnnn3     Enterprise 15.2.1748.10  Exchange Server 2019 CU15 (2025H1)
     #>
     [CmdletBinding()]
     PARAM(
-        #[Parameter(Mandatory = $true,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true,HelpMessage="Array of Exchange server names to be queried")]
         [Parameter(Mandatory = $true,ValueFromPipeline=$true,HelpMessage="Array of Exchange server names to be queried")]
-            [string[]] $ComputerName
+            [string[]] $ComputerName,
+        [Parameter(Mandatory = $true,ValueFromPipeline=$true,HelpMessage="Switch to remote-query the ServiceUpdate revision (polling Version on Exsetup.exe")]
+            [Alias('getSU')]
+            [switch]$GetServiceUpdate
     ) ; 
     BEGIN {
+        # when updating $BuildToProductName table (below), also record date of last update here (echos to console, for awareness on results)
+        [datetime]$lastBuildTableUpedate = '3/26/2025' ; 
+        $BuildTableUpedateUrl = 'https://docs.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-date' ; 
         #Creating the hash table with build numbers and cumulative updates
-        # updated 9:56 AM 3/26/2025 to curr https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates?view=exchserver-2019
-        # also using unmessaged Build names, from the chart (changing just burns time)
+        # updated as of 9:56 AM 3/26/2025 to curr https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates?view=exchserver-2019
+        # also using unmodified MS Build names, from the chart (changing just burns time)
         write-verbose "`$ComputerName:$($ComputerName)" ; 
+        $smsg = "NOTE:`$BuildToProductName table was last updated on $($lastBuildTableUpedate.ToShortDateString())" ; 
+        $smsg += "`n(update from:$($BuildTableUpedateUrl))" ;
+        write-host -foregroundcolor yellow $smsg ; 
         $BuildToProductName = @{
             '15.2.1748.10' = 	'Exchange Server 2019 CU15 (2025H1)'
             '15.2.1544.14' = 	'Exchange Server 2019 CU14 Nov24SUv2'
@@ -347,46 +399,27 @@ nnnnnnn3     Enterprise 15.2.1748.10  Exchange Server 2019 CU15 (2025H1)
     PROCESS {
         foreach ($Computer in $ComputerName) {
             $Computer = $Computer.ToUpper()
+            write-verbose "==Computer:$($Computer)" ; 
             $Exit = 0 ;
             Do {
                 TRY {
-                    if($Server = get-exchangeserver -Identity $Computer -ErrorAction Stop -Verbose:($PSBoundParameters['Verbose'] -eq $true)){
+                    # getting errors on the invoke-expression: always preconvert DNS nbname to FQDN: 
+                    if($cFQDN = (resolve-dnsname -type A $computer | sort { $_.IPAddress -replace '\d+', { $_.Value.PadLeft(3, '0') } } )[-1].name){
+                        write-verbose "`$cFQDN:$($cFQDN)" ; 
+                        if($Server = get-exchangeserver -Identity $cFQDN -ErrorAction Stop -Verbose:($PSBoundParameters['Verbose'] -eq $true)){
+                            $Exit = $Retries ;
+                        }; 
+                    }elseif($Server = get-exchangeserver -Identity $Computer -ErrorAction Stop -Verbose:($PSBoundParameters['Verbose'] -eq $true)){
                         $Exit = $Retries ;
-                    } else {                        
-                        # one isn't returning a value, but isn't throwing an error either, test and Continue 
-                        # try expanding to fqdn and rerunning
-                        write-verbose "Initial get-exchangeserver $($Computer) failed to return server, retrying fqdn:" ; 
-                        # some have mult bindings A's in DNS, so assert sort order on the returned IPs &  take the last
-                        if($cFQDN = (resolve-dnsname -type A $computer | sort { $_.IPAddress -replace '\d+', { $_.Value.PadLeft(3, '0') } } )[-1].name){
-                            Start-Sleep -Seconds $RetrySleep ;
-                            $Exit ++ ;
-                            $smsg= "Try #: $($Exit)" ;
-                            write-verbose $smsg ;
-                            if($Server = get-exchangeserver -Identity $cFQDN -ErrorAction Stop -Verbose:($PSBoundParameters['Verbose'] -eq $true)){
-                                $Exit = $Retries ;
-                            } else {
-                                If ($Exit -eq $Retries) {
-                                    Break ; 
-                                } else { 
-                                    Continue ; 
-                                } ; 
-                            }; 
-                        }else {
-                            write-warning "Unable to:resolve-dnsname -type A $($computer) to resolve FQDN for retry!" ; 
-                        } ; 
-                        if(($Server| measure-object).count -ne 1){
-                            If ($Exit -eq $Retries) {
-                                Break ; 
-                            } else { 
-                                Continue ; 
-                            } ; 
-                        } ; 
+                    } else { 
+                        write-warning "Unable to either:resolve-dnsname -type A $($computer) to FQDN, and/or get-exchangeserver -Identity $($Computer)!`nSKIPPING!" ; 
+                        CONTINUE
                     }  ; 
+                    write-verbose "`$Server:`n$(($Server|out-string).trim())" ; 
                 } CATCH {
                     $ErrorTrapped=$Error[0] ;
                     Write-warning "Failed to exec cmd because: $($ErrorTrapped.Exception.Message )" ;
                     Start-Sleep -Seconds $RetrySleep ;
-                    # reconnect-exo/reconnect-ex2010
                     $Exit ++ ;
                     Write-Verbose "Try #: $Exit" ;
                     If ($Exit -eq $Retries) {Write-Warning "Unable to exec cmd!"; BREAK ; } ;
@@ -397,22 +430,53 @@ nnnnnnn3     Enterprise 15.2.1748.10  Exchange Server 2019 CU15 (2025H1)
                 $Version = $Server.AdminDisplayVersion
                 $Version = [regex]::Matches($Version, "(\d*\.\d*)").value -join '.'
                 $Product = $BuildToProductName[$Version]
-                $Object = [pscustomobject]@{
-                    ComputerName = $Computer
-                    Edition      = $Server.Edition
-                    BuildNumber  = $Version
-                    ProductName  = $Product
-                }
+                if($GetServiceUpdate){
+                    if($cFQDN){
+                        $targetName = $cFQDN ; 
+                    }else{
+                        $targetName = $Server.Name ; 
+                    }
+                    if($FileversionInfo = Invoke-Command -ComputerName $targetName -ScriptBlock { Get-Command Exsetup.exe | ForEach-Object { $_.FileversionInfo } } ){
+                        write-verbose "`$FileversionInfo:`n$(($FileversionInfo | ft -a |out-string).trim())" ; 
+                        [version]$ExsetupRev = (@($FileversionInfo.FileMajorPart,$FileversionInfo.FileMinorPart,$FileversionInfo.FileBuildPart,$FileversionInfo.FilePrivatePart) -join '.')
+                        $ExsetupProduct = $BuildToProductName[$ExsetupRev.tostring()]
+                        write-verbose "`$ExsetupProduct:$($ExsetupProduct)" ; 
+                    } else { 
+                        throw "$($Server.name):Unable to remote retrieve: Get-Command Exsetup.exe | ForEach-Object { $_.FileversionInfo}"
+                    } ; 
+                    $Object = [pscustomobject]@{
+                        ComputerName = $Computer
+                        Edition      = $Server.Edition
+                        BuildNumber  = $Version
+                        ProductName  = $Product
+                        ServiceUpdateVersion = $ExsetupRev.tostring() ; 
+                        ServiceUpdateProduct = $ExsetupProduct ; 
+                    }
+                }else{
+                    $Object = [pscustomobject]@{
+                        ComputerName = $Computer ; 
+                        Edition      = $Server.Edition ; 
+                        BuildNumber  = $Version ; 
+                        ProductName  = $Product ; 
+                    } ; 
+                } ; 
                 Write-Output $Object
             } CATCH {
-                Write-Error "$_.Exception.Message"
+                $ErrTrapd=$Error[0] ;
+                $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
             } FINALLY {
-                $Server  = $null
-                $Version = $null
-                $Product = $null
+                $Server  = $null ; 
+                $Version = $null ; 
+                $Product = $null ; 
+                $ExsetupRev = $null  ; 
+                $ExsetupProduct = $null  ; 
+                $FileversionInfo = $null  ; 
+                $FileversionInfo = $null  ; 
+                $ExsetupProduct = $null  ; 
             }
         } ;  # loop-E
     };  # PROC-E
     END {}
-}
+} ; 
 #*------^ END Function get-xopServerAdminDisplayVersion() ^------
