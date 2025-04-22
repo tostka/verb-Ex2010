@@ -27,6 +27,7 @@
             AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
             AddedTwitter: URL
             REVISIONS
+            * 2:46 PM 4/22/2025 add: -Version (default to Ex2010), and postfiltered returned ExchangeServers on version. If no -Version, sort on newest Version, then name, -descending.
             * 4:25 PM 1/15/2025 seems to work at this point, move to rebuild
             * 4:49 PM 1/9/2025 reworked connect-exchangeserverTdo() to actually use the credentials passed in, and 
                 added the missing import-module $PSS, to _connect-ExOP, to make the session actually functional 
@@ -86,6 +87,9 @@
             PS> TRY{$Site=[System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name}CATCH{$Site=$env:COMPUTERNAME} ;
             PS> $PSSession = Connect-ExchangeServerTDO -siteName $Site -RoleNames @('HUB','CAS') -verbose ; 
             Demo including support for EdgeRole, which is detected on it's lack of AD Site specification (which gets fed through to call, by setting the Site to the machine itself).
+            .EXAMPLE
+            PS> $PSSession = Connect-ExchangeServerTDO -siteName SITENAME -RoleNames @('HUB','CAS') -Version Ex2016 -verbose 
+            Demo's connecting to a functional Hub or CAS server Version Ex2016 in the SITENAME site with verbose outputs, the `PSSession variable will contain information about the successful connection. Makes automatic Exchangeserver discovery calls into AD (using ADSI) leveraging the separate get-ADExchangeServerTDO()
             .LINK
             https://codeandkeep.com/PowerShell-ActiveDirectory-Exchange-Part1/
             .LINK
@@ -111,6 +115,9 @@
             [Parameter(Position=2,HelpMessage="Array of Server 'Role' name strings to be filtered against (MBX|CAS|HUB|UM|MBX|EDGE)[-RoleNames 'HUB','CAS']")]
                 [ValidateSet('MBX','CAS','HUB','UM','MBX','EDGE')]
                 [string[]]$RoleNames = @('HUB','CAS'),
+            [Parameter(Position=2,HelpMessage="Specific Exchange Server Version to connect to('Ex2019|Ex2016|Ex2013|Ex2010|Ex2007|Ex2003|Ex2000')[-Version 'Ex2016']")]
+                [ValidateSet('Ex2019','Ex2016','Ex2013','Ex2010','Ex2007','Ex2003','Ex2000')]
+                [string[]]$Version = 'Ex2010',
             [Parameter(Mandatory=$FALSE,HelpMessage="Tenant Tag (3-letter abbrebiation - defaults to global:o365_TenOrgDefault if present)[-TenOrg 'XYZ']")]
                 [ValidateNotNullOrEmpty()]
                 [string]$TenOrg = $global:o365_TenOrgDefault
@@ -335,6 +342,22 @@
                 if($pltGADX.credential){
                     $pltCXOP.Add('Credential',$pltGADX.credential) ;
                 } ;
+                if($Version){
+                    switch ($Version){
+                      'Ex2000'{$rgxExVersNum = '6' } 
+                      'Ex2003'{$rgxExVersNum = '6.5' } 
+                      'Ex2007'{$rgxExVersNum = '8.*' } 
+                      'Ex2010'{$rgxExVersNum = '14.*'} 
+                      'Ex2013'{$rgxExVersNum = '15.0' } 
+                      'Ex2016'{$rgxExVersNum = '15.1'} 
+                      'Ex2019'{$rgxExVersNum = '15.2' } 
+                    } ; 
+                    $exchServers  = $exchServers | ?{ [double]([regex]::match( $_.version,"Version\s(\d+\.\d+)\s\(Build\s(\d+\.\d+)\)").groups[1].value) -match $rgxExVersNum } ; 
+
+                } else {
+                    write-verbose "no -Version: Sorting Newest first, then names, descending" ; 
+                    $exchServers  = $exchServers | sort version,name -desc
+                } ; 
                 $prpPSS = 'Id','Name','ComputerName','ComputerType','State','ConfigurationName','Availability' ; 
                 foreach($exServer in $exchServers){
                     $smsg = "testing conn to:$($exServer.name.tostring())..." ; 
