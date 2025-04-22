@@ -677,7 +677,6 @@ new-MailboxGenericTOR:IsContractor
 new-MailboxGenericTOR:Vscan
 new-MailboxGenericTOR:Cu5
 new-MailboxGenericTOR:SiteOverride
-new-MailboxGenericTOR:OfficeOverride
 new-MailboxGenericTOR:Ticket
 new-MailboxGenericTOR:domaincontroller
 new-MailboxGenericTOR:TenOrg
@@ -720,7 +719,6 @@ new-MailboxShared:IsContractor
 new-MailboxShared:Vscan
 new-MailboxShared:Cu5
 new-MailboxShared:SiteOverride
-new-MailboxShared:OfficeOverride
 new-MailboxShared:Ticket
 new-MailboxShared:domaincontroller
 new-MailboxShared:ParentPath
