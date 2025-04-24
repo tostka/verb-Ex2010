@@ -12,7 +12,7 @@
 RootModule = 'VERB-Ex2010.psm1'
 
 # Version number of this module.
-ModuleVersion = '6.3.0'
+ModuleVersion = '6.4.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'Exchange 2010 PS Module-related generic functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('add-MailboxAccessGrant','add-MbxAccessGrant','_cleanup','Connect-Ex2010','Connect-ExchangeServerTDO','_connect-ExOP','get-ADExchangeServerTDO','Connect-Ex2010XO','Connect-ExchangeServerTDO','_connect-ExOP','cx10cmw','cx10tol','cx10tor','disable-ForestView','Disconnect-Ex2010','enable-ForestView','get-ADExchangeServerTDO','get-DAGDatabaseCopyStatus','Get-ExchServerFromExServersGroup','get-ExRootSiteOUs','get-MailboxDatabaseQuotas','Get-MessageTrackingLogTDO','2b4','2b4c','fb4','resolve-EnvironmentTDO','write-log','Start-Log','Remove-InvalidVariableNameChars','Connect-ExchangeServerTDO','_connect-ExOP','get-ADExchangeServerTDO','out-Clipboard','convertFrom-MarkdownTable','remove-SmtpPlusAddress','Initialize-xopEventIDTable','get-UserMailADSummary','get-xopServerAdminDisplayVersion','import-EMSLocalModule','Invoke-ExchangeCommand','load-EMSLatest','Load-EMSSnap','new-MailboxGenericTOR','_cleanup','new-MailboxShared','preview-EAPUpdate','Reconnect-Ex2010','Reconnect-Ex2010XO','remove-EMSLocalModule','resolve-ExchangeServerVersionTDO','resolve-RecipientEAP','rx10cmw','rx10tol','rx10tor','test-ExOPPSession','test-EXOPConnection','toggle-ForestView')
+FunctionsToExport = @('add-MailboxAccessGrant','add-MbxAccessGrant','_cleanup','Connect-Ex2010','Connect-ExchangeServerTDO','_connect-ExOP','get-ADExchangeServerTDO','Connect-Ex2010XO','Connect-ExchangeServerTDO','_connect-ExOP','cx10cmw','cx10tol','cx10tor','disable-ForestView','Disconnect-Ex2010','enable-ForestView','get-ADExchangeServerTDO','get-DAGDatabaseCopyStatus','Get-ExchServerFromExServersGroup','get-ExRootSiteOUs','get-MailboxDatabaseQuotas','Get-MessageTrackingLogTDO','resolve-EnvironmentTDO','write-log','Start-Log','Remove-InvalidVariableNameChars','Connect-ExchangeServerTDO','_connect-ExOP','get-ADExchangeServerTDO','load-ADMS','get-GCFast','out-Clipboard','convertFrom-MarkdownTable','remove-SmtpPlusAddress','Initialize-xopEventIDTable','2b4','2b4c','fb4','get-UserMailADSummary','get-xopServerAdminDisplayVersion','import-EMSLocalModule','Invoke-ExchangeCommand','load-EMSLatest','Load-EMSSnap','new-MailboxGenericTOR','_cleanup','new-MailboxShared','preview-EAPUpdate','Reconnect-Ex2010','Reconnect-Ex2010XO','remove-EMSLocalModule','resolve-ExchangeServerVersionTDO','resolve-RecipientEAP','rx10cmw','rx10tol','rx10tor','test-ExOPPSession','test-EXOPConnection','toggle-ForestView')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUGfAi6tyUZcl0O8IOmeK9hIsc
-# DVqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUze3BWnhC7e0ulwcJZKtBJtQ8
+# D8+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,10 +142,10 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTq4Cow
-# PKKnMSTVzQtGFwS0Yv54YDANBgkqhkiG9w0BAQEFAASBgCb+scCkL+w8chCR2p3P
-# gywDgCu4fiLH2Dxt0r6IZr2/wem3/UWGDCIzLsaEuvIrUwSa7G3SAY8UgkaKqJ3z
-# VRkPQjxZvrT7EojpFDEyaThftjrxUzsYCM/6S/CiADkzp3tK3VgQ+vDsSBpNPuDn
-# /YDfhtoJaq0t80YYkLZJSyJY
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT3ESP+
+# jzMFCrNlb8FPYI18nXE12zANBgkqhkiG9w0BAQEFAASBgBlTUf9zdA9aq9FvsbvP
+# FpNBiU0IUlKIItlf5ujZ6E5cXIBAD2nPfdkJR/okK5oRidBr5BHKTSIg/oGnQKV8
+# VbtcWq51CJ04Oo86FdrECRQXBgYsO4FvNLAMxoOuP2DwChvhBF8VuNElT9YPlv8i
+# ILBRKeM6FxFhZBCQ5tTw1LlK
 # SIG # End signature block
 
