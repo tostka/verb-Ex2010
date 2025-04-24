@@ -5,26 +5,26 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 6.4.0
+Version     : 6.4.1
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
-CreatedDate : 1/16.4.00
+CreatedDate : 1/16.4.10
 FileName    : VERB-Ex2010.psm1
 License     : MIT
-Copyright   : (c) 1/16.4.00 Todd Kadrie
+Copyright   : (c) 1/16.4.10 Todd Kadrie
 Github      : https://github.com/tostka
 REVISIONS
 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
 * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
-* 1/16.4.00 - 1.0.0.0
+* 1/16.4.10 - 1.0.0.0
 # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
 # 11:34 AM 12/30/2019 ran vsc alias-expansion
 # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
 # 10:19 AM 11/1/2019 trimmed some whitespace
 # 10:05 AM 10/31/2019 added sample load/call info
-# 12:02 PM 5/6.4.09 added cx10,rx10,dx10 aliases
-# 11:29 AM 5/6.4.09 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+# 12:02 PM 5/6.4.19 added cx10,rx10,dx10 aliases
+# 11:29 AM 5/6.4.19 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
 # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
 # 4:15 PM 3/24/2018 updated pshhelp
 # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
@@ -5166,6 +5166,8 @@ function Get-MessageTrackingLogTDO {
     Github      : htt-ps://github.com/tostka/verb-XXX
     Tags        : Powershell,Exchange,MessageTracking,Get-MessageTrackingLog,ActiveDirectory
     REVISIONS
+    * 4:25 PM 4/24/2025 validated TOR & full func verif CMW, after: Svcs_conn: added pretest for version in connect-exchangeserverTDO, splat (suppress dupe add error), only necc if both an explicit vers is specd & its on CMW
+        - also added OrgName abbreviated to the exports, to differentiate sources
     * 8:01 PM 4/23/2025 add: Version, to match connect-ExchangeServerTDO() param, -DetailLimit for config of detailed outptut sizes; 
         # service_conn block: added $ExopVers, which defers to local $Version, if populated
         # also completely skips all the verb-x10 functions, when $TenOrg -eq CMW (no mod installs on their servers, this runs freestanding, self-contained only, no central va support
@@ -5292,6 +5294,7 @@ function Get-MessageTrackingLogTDO {
     PS>     EventID='' ;
     PS>     ConnectorId="" ;
     PS>     Source="" ;
+    PS>     Version = 'Ex2010' ; 
     PS>     ResultSize="" ;
     PS>     Tag='' ;
     PS> } ;
@@ -5319,6 +5322,7 @@ function Get-MessageTrackingLogTDO {
     PS>     ConnectorId="" ;
     PS>     Source="" ;
     PS>     ResultSize="" ;
+    PS>     Version = 'Ex2010' ; 
     PS>     Tag='' ;
     PS> } ;
     PS> $pltGMTL = [ordered]@{} ;
@@ -5328,6 +5332,33 @@ function Get-MessageTrackingLogTDO {
     PS> if($tmsgs = Get-MessageTrackingLogTDO @pltGMTL){sv -na $vn -va $tmsgs ;
     PS> write-host "(assigned to `$$vn)"} ;
     Demo run fed by splatted parameters with Days set to 0 and Start/End using explicit timestamps, calculated to bracket a specific timestamp(matches 7PSMsgTrkAll splat layout)
+    .EXAMPLE
+    PS> $pltI=[ordered]@{
+    PS>     ticket="TICKETNO" ;
+    PS>     Requestor="USERID";
+    PS>     days=7 ;
+    PS>     Start="" ;
+    PS>     End="" ;
+    PS>     Sender="" ;
+    PS>     Recipients="" ;
+    PS>     MessageSubject="" ;
+    PS>     MessageId="" ;
+    PS>     InternalMessageId="" ;
+    PS>     Reference="" ;
+    PS>     EventID='' ;
+    PS>     ConnectorId="" ;
+    PS>     Source="" ;
+    PS>     Version = 'Ex2016' ; 
+    PS>     ResultSize="" ;
+    PS>     Tag='' ;
+    PS> } ;
+    PS> $pltGMTL = [ordered]@{} ;
+    PS> $pltI.GetEnumerator() | ?{ $_.value}  | ForEach-Object { $pltGMTL.Add($_.Key, $_.Value) } ;
+    PS> $vn = (@("xopMsgs$($pltI.ticket)",$pltI.Tag) | ?{$_}) -join '_' write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):.\Get-MessageTrackingLogTDO w`n$(($pltGMTL|out-string).trim())`n(assign to `$$($vn))" ;
+    PS> if(gv $vn -ea 0){rv $vn} ;
+    PS> if($tmsgs = .\Get-MessageTrackingLogTDO @pltGMTL){sv -na $vn -va $tmsgs ;
+    PS> write-host "(assigned to `$$vn)"} ;
+    Demo with dot-exec'd script syntax, same as demo1, with .\'s and version ex16 (for renames from _func.ps1 -> .ps1, and rem'ing the function declar lines). 
     .EXAMPLE
     PS> gci \\tsclient\d\scripts\Get-MessageTrackingLogTDO* | copy-item -dest c:\scripts\ -Verbose
     Copy in via RDP (includes exported psbreakpoint file etc)
@@ -8441,7 +8472,9 @@ TRANSFER              | Recipients were moved to a forked message because of con
                     # 5:15 PM 4/22/2025 on CMW, have to patch version to Ex2016
                     #if($env:userdomain -eq 'CMW'){
                     if($TenOrg -eq 'CMW'){
-                        $pltCcX10.add('version','Ex2016') ; 
+                        if($pltCcX10.keys -contains 'Version'){
+                            $pltCcX10.version = 'Ex2016' ; 
+                        } else { $pltCcX10.add('version','Ex2016') } ;
                     } ; 
                     $smsg = "Connect-ExchangeServerTDO w`n$(($pltCcX10|out-string).trim())" ; 
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
@@ -8719,601 +8752,516 @@ TRANSFER              | Recipients were moved to a forked message because of con
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
 
-        # convert dates to GMT .ToUniversalTime(
-        $Start = ([datetime]$Start).ToUniversalTime() ; 
-        $End = ([datetime]$End).ToUniversalTime() ; 
-        $StartLocal = ([datetime]$Start).ToLocalTime() ; 
-        $EndLocal = ([datetime]$End).ToLocalTime() ; 
+        TRY {
+            $OrgName = (Get-OrganizationConfig -ea STOP).name ; 
+            if(($orgname.ToCharArray() | ?{$_ -cmatch '[A-Z]'}).count -gt 1){
+                $OrgTag = ($orgname.ToCharArray() | ?{$_ -cmatch '[A-Z]'}) -join '' ; #Acroynymize the OrgName on caps
+            } else { 
+                $OrgTag = $orgname  -replace '[^\w]','' ; # use orgname with non-\W chars replaced
+            } ; 
+            # convert dates to GMT .ToUniversalTime(
+            $Start = ([datetime]$Start).ToUniversalTime() ; 
+            $End = ([datetime]$End).ToUniversalTime() ; 
+            $StartLocal = ([datetime]$Start).ToLocalTime() ; 
+            $EndLocal = ([datetime]$End).ToLocalTime() ; 
         
-        # sanity test the start/end dates, just in case (won't throw an error in gxmt)
-        if($Start -gt $End){
-            $smsg = "`-Start:$($Start) is GREATER THAN -End:($End)!" ; 
+            # sanity test the start/end dates, just in case (won't throw an error in gxmt)
+            if($Start -gt $End){
+                $smsg = "`-Start:$($Start) is GREATER THAN -End:($End)!" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                throw $smsg ; 
+                break ; 
+            } ;
+
+            $smsg = "`$Start:$(get-date -Date $StartLocal -format $sFulltimeStamp )" ;
+            $smsg += "`n`$End:$(get-date -Date $EndLocal -format $sFulltimeStamp )" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
+            if((New-TimeSpan -Start $Start -End $End).days -gt $DaysLimit){
+                $smsg = "Search span (between -Start & -End, or- Days in use) *exceeds* MS supported days history limit!`nReduce the window below a historical 10d, or use get-HistoricalSearch instead!" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                Break ; 
+            } ; 
+
+            if($Sender){
+                if($Sender -match $rgxIsPlusAddrSmtpAddr){write-warning "WARNING! Sender $($Sender) HAS PLUS-ADDRESSING, WON'T WORK FOR EXOP RECIPIENTS!"} ; 
+                #$pltGMTL.add("Sender",$Sender) ;
+                $pltGMTL.add('Sender',($Sender -split ' *, *')) ;
+                #$ofile+=",From-$($pltGMTL.Sender.replace("*","ANY"))"  ; 
+            } ;
+            if($Recipients){
+                #$pltGMTL.add("Recipients",$Recipients) ;
+                if($Recipients -match $rgxIsPlusAddrSmtpAddr){write-warning "WARNING! RecipientS $($Recipients) HAS PLUS-ADDRESSING, WON'T WORK FOR EXOP!"} ; 
+                #$ofile+=",To-$($Recipients)" ;
+                $pltGMTL.add('Recipients',($Recipients -split ' *, *')) ;
+                #$ofile+=",To-$($pltGMTL.RecipientAddress.replace("*","ANY"))" ;
+            } ;
+            if($Start){
+                $pltGMTL.add('Start',$Start) ; 
+                #$ofile+= "-$(get-date $pltGMTL.Start -format $sFiletimestamp)-"  ;
+            } ;
+            if($End){
+                $pltGMTL.add('End',$End) ; 
+                #$ofile+= "$(get-date $pltGMTL.End -format $sFiletimestamp)" ;
+            } ;
+            if($MessageSubject){
+                #$ofile+=",Subj-$($MessageSubject.substring(0,[System.Math]::Min(15,$MessageSubject.Length)))..." 
+            } ;
+            if($EventID){
+                $pltGMTL.add('EventID',($EventID -split ' *, *')) ; 
+                #$ofile+= "-Evt-$($EventID -join ',')" ;
+            } ;
+            if($MessageId){
+                $pltGMTL.add('MessageId',($MessageId -split ' *, *')) ; 
+                #$ofile+=",MsgId-$($pltGMTL.MessageId.replace('<','').replace('>',''))" ;
+            } ;
+            if($InternalMessageId){
+                $pltGMTL.add("InternalMessageId",$InternalMessageId)  ;
+                #$ofile+=",MsgID-$($InternalMessageId.replace('<','').replace('>','').substring(0,10))" ;
+            } ;
+            if($NetworkMessageId){
+                $pltGMTL.add("NetworkMessageId",$NetworkMessageId)  ;
+                #$ofile+=",MsgID-$($NetworkMessageId.replace('<','').replace('>','').substring(0,10))" ;
+            } ;
+             # Reference
+            if($Reference){     $pltGMTL.add("Reference",$Reference)  ;
+                #$ofile+=",Ref-$($Reference.replace('<','').replace('>','').substring(0,10))" ;
+            } ;
+            if($TransportTrafficType){     $pltGMTL.add("TransportTrafficType",$TransportTrafficType)  ;
+                #$ofile+=",TTT-$(Remove-IllegalFileNameChars -Name $TransportTrafficType )" ;
+            } ;
+            if($Source){     $pltGMTL.add("Source",$Source)  ;
+                #$ofile+=",Source-$($Source )" ;
+            } ;
+            if($Server){
+                $pltGMTL.Server = $Server  ;
+                if($Server -ne 'unlimited'){
+                    #$ofile+="-$($Server)" ;
+                } ; 
+            } ;
+            if($ResultSize){
+                $pltGMTL.ResultSize = $ResultSize  ;
+                if($ResultSize -ne 'unlimited'){
+                    #$ofile+=",RSize-$($ResultSize)" ;
+                } ; 
+            } ;
+
+
+            #region MSGTRKFILENAME ; #*------v MSGTRKFILENAME v------
+            $LogPath = split-path $logfile ; 
+            $smsg = "Writing export files to discovered `$LogPath: $($LogPath)" ; 
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            throw $smsg ; 
-            break ; 
-        } ;
 
-        $smsg = "`$Start:$(get-date -Date $StartLocal -format $sFulltimeStamp )" ;
-        $smsg += "`n`$End:$(get-date -Date $EndLocal -format $sFulltimeStamp )" ;
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-
-        if((New-TimeSpan -Start $Start -End $End).days -gt $DaysLimit){
-            $smsg = "Search span (between -Start & -End, or- Days in use) *exceeds* MS supported days history limit!`nReduce the window below a historical 10d, or use get-HistoricalSearch instead!" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
-            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-            Break ; 
-        } ; 
-#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-        <#
-        [Parameter(Mandatory=$True,HelpMessage="Ticket Number [-Ticket 'TICKETNO']")]
-            [Alias('tix')]
-            [string]$ticket,
-        [Parameter(Mandatory=$False,HelpMessage="Ticket Customer email identifier. [-Requestor 'fname.lname@domain.com']")]
-            [Alias('UID')]
-            [string]$Requestor,
-        [Parameter(ParameterSetName='Dates',HelpMessage="Start of range to be searched[-StartDate '11/5/2021 2:16 PM']")]
-            [Alias('StartDate')]
-            [DateTime]$Start,
-        [Parameter(ParameterSetName='Dates',HelpMessage="End of range to be searched (defaults to current time if unspecified)[-EndDate '11/5/2021 5:16 PM']")]
-            [Alias('EndDate')]
-            [DateTime]$End=(get-date),
-        [Parameter(ParameterSetName='Days',HelpMessage="Days to be searched, back from current time(Alt to use of StartDate & EndDate; Note:MS won't search -gt 10 days)[-Days 7]")]
-            #[ValidateRange(0,[int]::MaxValue)]
-            [ValidateRange(0,10)] # MS won't search beyond 10, and silently returns incomplete results
-            [int]$Days,
-        [Parameter(HelpMessage="SenderAddress (an array runs search on each)[-SenderAddress addr@domain.com]")]
-            [Alias('SenderAddress')]
-            [string]$Sender, # MultiValuedProperty
-        [Parameter(HelpMessage="RecipientAddress (an array runs search on each)[-RecipientAddress addr@domain.com]")]
-                [Alias('RecipientAddress')]
-                [string[]]$Recipients, # MultiValuedProperty
-        [Parameter(HelpMessage="Subject of target message (emulated via post filtering, not supported param of Get-xoMessageTrace) [-Subject 'Some subject']")]
-                [Alias('subject')]
-                [string]$MessageSubject,
-        [Parameter(Mandatory=$False,HelpMessage="Corresponds to the value of the Message-Id: header field in the message. Be sure to include the full MessageId string (which may include angle brackets) and enclose the value in quotation marks[-MessageId `"<nnnn-nnn...>`"]")]
-            [string]$MessageId,
-        [Parameter(Mandatory=$False,HelpMessage="The InternalMessageId parameter filters the message tracking log entries by the value of the InternalMessageId field. The InternalMessageId value is a message identifier that's assigned by the Exchange server that's currently processing the message.  The value of the internal-message-id for a specific message is different in the message tracking log of every Exchange server that's involved in the delivery of the message.")]
-            [string]$InternalMessageId,
-        [Parameter(Mandatory=$False,HelpMessage="This field contains a unique message ID value that persists across copies of the message that may be created due to bifurcation or distribution group expansion.(Ex16,19)")]
-            [string]$NetworkMessageId,
-        [Parameter(Mandatory=$False,HelpMessage="The Reference field contains additional information for specific types of events. For example, the Reference field value for a DSN message tracking entry contains the InternalMessageId value of the message that caused the DSN. For many types of events, the value of Reference is blank")]
-            [string]$Reference,
-        [Parameter(HelpMessage="The Status parameter filters the results by the delivery status of the message (None|GettingStatus|Failed|Pending|Delivered|Expanded|Quarantined|FilteredAsSpam),an array runs search on each). [-Status 'Failed']")]
-                [Alias('DeliveryStatus','Status')]
-                [ValidateSet("RECEIVE","DELIVER","FAIL","SEND","RESOLVE","EXPAND","TRANSFER","DEFER","")]
-                [string[]]$EventId, # MultiValuedProperty
-        [Parameter(Mandatory=$False,HelpMessage="The TransportTrafficType parameter filters the message tracking log entries by the value of the TransportTrafficType field. However, this field isn't interesting for on-premises Exchange organizations[-TransportTrafficType xxx]")]
-            [string]$TransportTrafficType, 
-        [Parameter(Mandatory=$False,HelpMessage="Source (STOREDRIVER|SMTP|DNS|ROUTING)[-Source STOREDRIVER]")]
-            [ValidateSet("STOREDRIVER","SMTP","DNS","ROUTING","")]
-            [string]$Source,
-        [Parameter(Mandatory=$False,HelpMessage="The Server parameter specifies the Exchange server where you want to run this command. You can use any value that uniquely identifies the server. For example: Name, FQDN, Distinguished name (DN), Exchange Legacy DN. If you don't use this parameter, the command is run on the local server[-Server Servername]")]
-            [string]$Server,
-        [Parameter(Mandatory=$False,HelpMessage="The ResultSize parameter specifies the maximum number of results to return. If you want to return all requests that match the query, use unlimited for the value of this parameter. The default value is 1000.")]
-            [ValidateScript({
-                if( ($_ -match 'unlimited') -OR ($_.gettype().fullname -eq 'System.Int32') -OR ($null -eq $_) -OR ('' -eq $_) ){
-                    $true ; 
+            if (-not (test-path $LogPath )){mkdir $LogPath -verbose  }
+            [string[]]$ofile=@() ; 
+            write-verbose "Add comma-delimited elements" ; 
+            #$ofile+=if($ticket -AND $Tag){@($ticket,$tag) -join '_'}else{$ticket} ;
+            $ofile+= (@($ticket,$tag) | ?{$_}) -join '_' ; 
+            $ofile+= (@($Ten,$Requestor,'XOPMsgTrk') | ?{$_} ) -join '-' ;
+            $ofile+=if($Sender){
+                "FROM_$((($Sender | select -first 2) -join ',').replace('*','ANY'))"
+            }else{''} ;
+            $ofile+=if($Recipients){
+                "TO_$(( ($Recipients| select -first 2) -join ',').replace('*','ANY'))"
+            }else{''} ;
+            $ofile+=if($MessageId){
+                if($MessageId -is [array]){
+                    "MSGID_$($MessageId[0] -replace '[\<\>]','')..."
                 } else { 
-                    throw "Resultsize must be an integer or the string 'unlimited' (or blank)" ; 
-                } ;
-            })]
-            $ResultSize,
-        [Parameter(HelpMessage="Tag string (Variable Name compatible: no spaces A-Za-z0-9_ only) that is used for Variables and export file name construction. [-Tag 'LastDDGSend']")] 
-            [ValidatePattern('^[A-Za-z0-9_]*$')]
-            [string]$Tag,
-        [Parameter(HelpMessage="switch to just return the net messages on the initial track (no Fail/Quarantine, MTDetail or other post-processing summaries) [-simpletrack]")]
-            [switch]$SimpleTrack,
-        [Parameter(HelpMessage="switch to perform configured csv exports of results (defaults true) [-DoExports]")]
-            [switch]$DoExports=$TRUE,
-        [Parameter(HelpMessage="switch to perform MessageTrackingDetail pass, after intial MessageTrace (up to limit specified in -DetailLimit (defaults true) [-Detailed]")]
-            [switch]$Detailed,
-        # Service Connection Supporting Varis (AAD, EXO, EXOP)
-        [Parameter(Mandatory=$FALSE,HelpMessage="TenantTag value, indicating Tenants to connect to[-TenOrg 'TOL']")]
-            [ValidateNotNullOrEmpty()]
-            #[ValidatePattern("^\w{3}$")]
-            [string]$TenOrg = $global:o365_TenOrgDefault,
-        [Parameter(Mandatory = $false, HelpMessage = "Use specific Credentials (defaults to Tenant-defined SvcAccount)[-Credentials [credential object]]")]
-            [System.Management.Automation.PSCredential]$Credential,
-        [Parameter(Mandatory = $false, HelpMessage = "Credential User Role spec (SID|CSID|UID|B2BI|CSVC|ESVC|LSVC|ESvcCBA|CSvcCBA|SIDCBA)[-UserRole @('SIDCBA','SID','CSVC')]")]
-            # sourced from get-admincred():#182: $targetRoles = 'SID', 'CSID', 'ESVC','CSVC','UID','ESvcCBA','CSvcCBA','SIDCBA' ;
-            #[ValidateSet("SID","CSID","UID","B2BI","CSVC","ESVC","LSVC","ESvcCBA","CSvcCBA","SIDCBA")]
-            # pulling the pattern from global vari w friendly err
-            [ValidateScript({
-                if(-not $rgxPermittedUserRoles){$rgxPermittedUserRoles = '(SID|CSID|UID|B2BI|CSVC|ESVC|LSVC|ESvcCBA|CSvcCBA|SIDCBA)'} ;
-                if(-not ($_ -match $rgxPermittedUserRoles)){throw "'$($_)' doesn't match `$rgxPermittedUserRoles:`n$($rgxPermittedUserRoles.tostring())" ; } ;
-                return $true ;
-            })]
-            [string[]]$UserRole = @('SIDCBA','SID','CSVC'),
-            #@('SID','CSVC'),
-            # svcAcct use: @('ESvcCBA','CSvcCBA','SIDCBA')
-        [Parameter(HelpMessage="Silent output (suppress status echos)[-silent]")]
-            [switch] $silent
-        #>
-
-        #if(-not(gcm Remove-InvalidVariableNameChars -ea 0)){ Function Remove-InvalidVariableNameChars ([string]$Name) {($Name.tochararray() -match '[A-Za-z0-9_]') -join '' | write-output } } ;
-        #$prpMTLfta = 'Timestamp','EventId','Sender','Recipients','MessageSubject' ; 
-        #$prpXCsv = "Timestamp",@{N='TimestampLocal'; E={$_.Timestamp.ToLocalTime()}},"Source","EventId","RelatedRecipientAddress","Sender",@{N='Recipients'; E={$_.Recipients}},"RecipientCount",@{N='RecipientStatus'; E={$_.RecipientStatus}},"MessageSubject","TotalBytes",@{N='Reference'; E={$_.Reference}},"MessageLatency","MessageLatencyType","InternalMessageId","MessageId","ReturnPath","ClientIp","ClientHostname","ServerIp","ServerHostname","ConnectorId","SourceContext","MessageInfo",@{N='EventData'; E={$_.EventData}} ;
-        #$prpMTFailFL = 'Timestamp','ClientHostname','Source','EventId','Recipients','RecipientStatus','MessageSubject','ReturnPath' ;
-        #$pltGMTL=@{  resultsize="UNLIMITED" } ;
-
-        #$ofile ="$($ticket)-$($uid)-$($Site.substring(0,3))-MsgTrk" ;
-        #$ofile ="$($ticket)-MsgTrk" ;
-        #2:39 PM 7/10/2024 revised for plus addressing
-        if($Sender){
-            if($Sender -match $rgxIsPlusAddrSmtpAddr){write-warning "WARNING! Sender $($Sender) HAS PLUS-ADDRESSING, WON'T WORK FOR EXOP RECIPIENTS!"} ; 
-            #$pltGMTL.add("Sender",$Sender) ;
-            $pltGMTL.add('Sender',($Sender -split ' *, *')) ;
-            #$ofile+=",From-$($pltGMTL.Sender.replace("*","ANY"))"  ; 
-        } ;
-        if($Recipients){
-            #$pltGMTL.add("Recipients",$Recipients) ;
-            if($Recipients -match $rgxIsPlusAddrSmtpAddr){write-warning "WARNING! RecipientS $($Recipients) HAS PLUS-ADDRESSING, WON'T WORK FOR EXOP!"} ; 
-            #$ofile+=",To-$($Recipients)" ;
-            $pltGMTL.add('Recipients',($Recipients -split ' *, *')) ;
-            #$ofile+=",To-$($pltGMTL.RecipientAddress.replace("*","ANY"))" ;
-        } ;
-        if($Start){
-            $pltGMTL.add('Start',$Start) ; 
-            #$ofile+= "-$(get-date $pltGMTL.Start -format $sFiletimestamp)-"  ;
-        } ;
-        if($End){
-            $pltGMTL.add('End',$End) ; 
-            #$ofile+= "$(get-date $pltGMTL.End -format $sFiletimestamp)" ;
-        } ;
-        if($MessageSubject){
-            #$ofile+=",Subj-$($MessageSubject.substring(0,[System.Math]::Min(15,$MessageSubject.Length)))..." 
-        } ;
-        if($EventID){
-            $pltGMTL.add('EventID',($EventID -split ' *, *')) ; 
-            #$ofile+= "-Evt-$($EventID -join ',')" ;
-        } ;
-        if($MessageId){
-            $pltGMTL.add('MessageId',($MessageId -split ' *, *')) ; 
-            #$ofile+=",MsgId-$($pltGMTL.MessageId.replace('<','').replace('>',''))" ;
-        } ;
-        if($InternalMessageId){
-            $pltGMTL.add("InternalMessageId",$InternalMessageId)  ;
-            #$ofile+=",MsgID-$($InternalMessageId.replace('<','').replace('>','').substring(0,10))" ;
-        } ;
-        if($NetworkMessageId){
-            $pltGMTL.add("NetworkMessageId",$NetworkMessageId)  ;
-            #$ofile+=",MsgID-$($NetworkMessageId.replace('<','').replace('>','').substring(0,10))" ;
-        } ;
-         # Reference
-        if($Reference){     $pltGMTL.add("Reference",$Reference)  ;
-            #$ofile+=",Ref-$($Reference.replace('<','').replace('>','').substring(0,10))" ;
-        } ;
-        if($TransportTrafficType){     $pltGMTL.add("TransportTrafficType",$TransportTrafficType)  ;
-            #$ofile+=",TTT-$(Remove-IllegalFileNameChars -Name $TransportTrafficType )" ;
-        } ;
-        if($Source){     $pltGMTL.add("Source",$Source)  ;
-            #$ofile+=",Source-$($Source )" ;
-        } ;
-        if($Server){
-            $pltGMTL.Server = $Server  ;
-            if($Server -ne 'unlimited'){
-                #$ofile+="-$($Server)" ;
-            } ; 
-        } ;
-        if($ResultSize){
-            $pltGMTL.ResultSize = $ResultSize  ;
-            if($ResultSize -ne 'unlimited'){
-                #$ofile+=",RSize-$($ResultSize)" ;
-            } ; 
-        } ;
-
-        #region MSGTRKFILENAME ; #*------v MSGTRKFILENAME v------
-        $LogPath = split-path $logfile ; 
-        $smsg = "Writing export files to discovered `$LogPath: $($LogPath)" ; 
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-
-        if (-not (test-path $LogPath )){mkdir $LogPath -verbose  }
-        [string[]]$ofile=@() ; 
-        write-verbose "Add comma-delimited elements" ; 
-        #$ofile+=if($ticket -AND $Tag){@($ticket,$tag) -join '_'}else{$ticket} ;
-        $ofile+= (@($ticket,$tag) | ?{$_}) -join '_' ; 
-        $ofile+= (@($Ten,$Requestor,'XOPMsgTrk') | ?{$_} ) -join '-' ;
-        $ofile+=if($Sender){
-            "FROM_$((($Sender | select -first 2) -join ',').replace('*','ANY'))"
-        }else{''} ;
-        $ofile+=if($Recipients){
-            "TO_$(( ($Recipients| select -first 2) -join ',').replace('*','ANY'))"
-        }else{''} ;
-        $ofile+=if($MessageId){
-            if($MessageId -is [array]){
-                "MSGID_$($MessageId[0] -replace '[\<\>]','')..."
+                    "MSGID_$($MessageId -replace '[\<\>]','')"                
+                } ; 
+            }else{''} ;
+            $ofile+=if($MessageSubject){"SUBJ_$($MessageSubject.substring(0,[System.Math]::Min(10,$MessageSubject.Length)))..."}else{''} ;
+            $ofile+=if($EventID){
+                "EVT_$($EventID -join ',')"
+            }else{''} ;
+            $ofile+=if($OrgTag){
+                "O_$($OrgTag)"
+            }else{''} ;
+            write-verbose "comma join the non-empty elements" ; 
+            [string[]]$ofile=($ofile |  ?{$_} ) -join ',' ; 
+            write-verbose "add the dash-delimited elements" ; 
+            $ofile+=if($days){"$($days)d"}else{''} ;
+            $ofile+=if($Start){"$(get-date $Start -format 'yyyyMMdd-HHmm')"}else{''} ;
+            $ofile+=if($End){$ofile+= "$(get-date $End -format 'yyyyMMdd-HHmm')"}else{''} ;
+            $ofile+=if($MessageSubject){"Subj_$($MessageSubject.replace("*"," ").replace("\"," "))"}else{''} ;
+            $ofile+="run$(get-date -format 'yyyyMMdd-HHmm').csv" ;
+            write-verbose "dash-join non-empty elems" ; 
+            [string]$ofile=($ofile |  ?{$_} ) -join '-' ; 
+            write-verbose "replace filesys illegal chars" ; 
+            [string]$ofile=[RegEx]::Replace($ofile, "[{0}]" -f ([RegEx]::Escape(-join [System.IO.Path]::GetInvalidFileNameChars())), '') ;
+            if($LogPath){
+                write-verbose "add configured `LogPath" ; 
+                $ofile = join-path $LogPath $ofile ; 
             } else { 
-                "MSGID_$($MessageId -replace '[\<\>]','')"                
+                write-verbose "add relative path" ; 
+                $ofile=".\logs\$($ofile)" ;
             } ; 
-        }else{''} ;
-        $ofile+=if($MessageSubject){"SUBJ_$($MessageSubject.substring(0,[System.Math]::Min(10,$MessageSubject.Length)))..."}else{''} ;
-        $ofile+=if($EventID){
-            "EVT_$($EventID -join ',')"
-        }else{''} ;
-        write-verbose "comma join the non-empty elements" ; 
-        [string[]]$ofile=($ofile |  ?{$_} ) -join ',' ; 
-        write-verbose "add the dash-delimited elements" ; 
-        $ofile+=if($days){"$($days)d"}else{''} ;
-        $ofile+=if($Start){"$(get-date $Start -format 'yyyyMMdd-HHmm')"}else{''} ;
-        $ofile+=if($End){$ofile+= "$(get-date $End -format 'yyyyMMdd-HHmm')"}else{''} ;
-        $ofile+=if($MessageSubject){"Subj_$($MessageSubject.replace("*"," ").replace("\"," "))"}else{''} ;
-        $ofile+="run$(get-date -format 'yyyyMMdd-HHmm').csv" ;
-        write-verbose "dash-join non-empty elems" ; 
-        [string]$ofile=($ofile |  ?{$_} ) -join '-' ; 
-        write-verbose "replace filesys illegal chars" ; 
-        [string]$ofile=[RegEx]::Replace($ofile, "[{0}]" -f ([RegEx]::Escape(-join [System.IO.Path]::GetInvalidFileNameChars())), '') ;
-        if($LogPath){
-            write-verbose "add configured `LogPath" ; 
-            $ofile = join-path $LogPath $ofile ; 
-        } else { 
-            write-verbose "add relative path" ; 
-            $ofile=".\logs\$($ofile)" ;
-        } ; 
 
-        $hReports = [ordered]@{} ; 
-        #rx10 ;
-        $error.clear() ;
+            $hReports = [ordered]@{} ; 
+            #rx10 ;
+            $error.clear() ;
 
-        TRY {
+    
 
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Running Get-MessageTrackingLog w`n$(($pltGMTL|out-string).trim())" ; 
-        $Srvrs=Get-ExchangeServer ;
-        if($Srvrs.name -contains $Site){
-            write-verbose "Edge Role detected" ;
-            $Srvrs=$Srvrs | where {$_.name -eq $Site -AND $_.IsEdgeServer} | select -expand Name ;
-        }else{$Srvrs=($Srvrs | where { $_.isHubTransportServer -eq $true -and $_.Site -match ".*\/$($Site)$"} | select -expand Name)} ;
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Running Get-MessageTrackingLog w`n$(($pltGMTL|out-string).trim())" ; 
+            $Srvrs=Get-ExchangeServer -ea STOP ;
+            if($Srvrs.name -contains $Site){
+                write-verbose "Edge Role detected" ;
+                $Srvrs=$Srvrs | where {$_.name -eq $Site -AND $_.IsEdgeServer} | select -expand Name ;
+            }else{$Srvrs=($Srvrs | where { $_.isHubTransportServer -eq $true -and $_.Site -match ".*\/$($Site)$"} | select -expand Name)} ;
 
-        #if($tag){$vn =  Remove-InvalidVariableNameChars -name "msgsOP$($ticket)_$($tag)"} else {$vn =  Remove-InvalidVariableNameChars -name "msgsOP$($ticket)" } ;
-        #write-host "`$vn: $($vn)" ;
-        #write-host -fore gray "collecting to variable: `$$($vn)" ;
-        #if(gv $vn -ea 0){sv -name $vn -value $null } else {nv -name $vn -value $null } ;
+            #if($tag){$vn =  Remove-InvalidVariableNameChars -name "msgsOP$($ticket)_$($tag)"} else {$vn =  Remove-InvalidVariableNameChars -name "msgsOP$($ticket)" } ;
+            #write-host "`$vn: $($vn)" ;
+            #write-host -fore gray "collecting to variable: `$$($vn)" ;
+            #if(gv $vn -ea 0){sv -name $vn -value $null } else {nv -name $vn -value $null } ;
 
-        if($Server){
-            $Msgs=($Server| get-messagetrackinglog @pltGMTL) | sort Timestamp ;
-        } else { 
-            $Msgs=($Srvrs| get-messagetrackinglog @pltGMTL) | sort Timestamp ;
-        } ; 
-        $smsg = "Raw matches:$(($msgs|measure).Count) events" ;
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-        if($Connectorid){
-            write-host -foregroundcolor gray   "Filtering on Conn:$($Connectorid)" ;
-            $Msgs = $Msgs | ?{$_.connectorid -like $Connectorid} ;
-            $ofile+="-conn-$($Connectorid.replace("*"," ").replace("\"," "))" ;
-            write-host -foregroundcolor gray   "Post Conn filter matches:$(($Msgs|measure).Count)" ;
-        } ;
-        if($Source){
-            write-host -foregroundcolor gray   "Filtering on Source:$($Source)" ;
-            $Msgs = $Msgs | ?{$_.Source -like $Source} ;
-            write-host -foregroundcolor gray   "Post Src filter matches:$(($Msgs|measure).Count)" ;
-            $ofile+="-src-$($Source)" ;
-        } ;
+            if($Server){
+                $Msgs=($Server| get-messagetrackinglog @pltGMTL) | sort Timestamp ;
+            } else { 
+                $Msgs=($Srvrs| get-messagetrackinglog @pltGMTL) | sort Timestamp ;
+            } ; 
+            $smsg = "Raw matches:$(($msgs|measure).Count) events" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+            if($Connectorid){
+                write-host -foregroundcolor gray   "Filtering on Conn:$($Connectorid)" ;
+                $Msgs = $Msgs | ?{$_.connectorid -like $Connectorid} ;
+                $ofile+="-conn-$($Connectorid.replace("*"," ").replace("\"," "))" ;
+                write-host -foregroundcolor gray   "Post Conn filter matches:$(($Msgs|measure).Count)" ;
+            } ;
+            if($Source){
+                write-host -foregroundcolor gray   "Filtering on Source:$($Source)" ;
+                $Msgs = $Msgs | ?{$_.Source -like $Source} ;
+                write-host -foregroundcolor gray   "Post Src filter matches:$(($Msgs|measure).Count)" ;
+                $ofile+="-src-$($Source)" ;
+            } ;
 
-        if($MessageSubject){
-            $smsg = "Post-Filtering on MessageSubject:$($MessageSubject)" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-            else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-            # detect whether to filter on -match (regex) or -like (asterisk, or default non-regex)
-            if(test-IsRegexPattern -string $MessageSubject -verbose:$($VerbosePreference -eq "Continue")){
-                $smsg = "(detected -MessageSubject as regex - using -match comparison)" ; 
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                $MsgsFltrd = $Msgs | ?{$_.MessageSubject -match $MessageSubject} ;
-                if(-not $MsgsFltrd){
-                    $smsg = "MessageSubject: regex -match comparison *FAILED* to return matches`nretrying MessageSubject filter as -Like..." ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
-                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            if($MessageSubject){
+                $smsg = "Post-Filtering on MessageSubject:$($MessageSubject)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                # detect whether to filter on -match (regex) or -like (asterisk, or default non-regex)
+                if(test-IsRegexPattern -string $MessageSubject -verbose:$($VerbosePreference -eq "Continue")){
+                    $smsg = "(detected -MessageSubject as regex - using -match comparison)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    $MsgsFltrd = $Msgs | ?{$_.MessageSubject -match $MessageSubject} ;
+                    if(-not $MsgsFltrd){
+                        $smsg = "MessageSubject: regex -match comparison *FAILED* to return matches`nretrying MessageSubject filter as -Like..." ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        $MsgsFltrd = $Msgs | ?{$_.MessageSubject -like $MessageSubject} ;
+                    } ; 
+                } else { 
+                    $smsg = "(detected -MessageSubject as NON-regex - using -like comparison)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     $MsgsFltrd = $Msgs | ?{$_.MessageSubject -like $MessageSubject} ;
+                    if(-not $MsgsFltrd){
+                        $smsg = "MessageSubject: -like comparison *FAILED* to return matches`nretrying MessageSubject filter as -match..." ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        $MsgsFltrd = $Msgs | ?{$_.MessageSubject -match $MessageSubject} 
+                    } ; 
                 } ; 
-            } else { 
-                $smsg = "(detected -MessageSubject as NON-regex - using -like comparison)" ; 
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                $MsgsFltrd = $Msgs | ?{$_.MessageSubject -like $MessageSubject} ;
-                if(-not $MsgsFltrd){
-                    $smsg = "MessageSubject: -like comparison *FAILED* to return matches`nretrying MessageSubject filter as -match..." ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
-                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    $MsgsFltrd = $Msgs | ?{$_.MessageSubject -match $MessageSubject} 
-                } ; 
-            } ; 
-            $smsg = "Post Subj filter matches:$(($MsgsFltrd|measure).Count)" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-            else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-            $msgs = $MsgsFltrd ; 
-        } ;
+                $smsg = "Post Subj filter matches:$(($MsgsFltrd|measure).Count)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                $msgs = $MsgsFltrd ; 
+            } ;
 
         
-        #if(get-variable -name $vn -scope global -ea 0){remove-variable -name $vn -scope global -force -ea 0} ; 
-        #set-variable -name $vn -Value ($Msgs) -scope global ;
+            #if(get-variable -name $vn -scope global -ea 0){remove-variable -name $vn -scope global -force -ea 0} ; 
+            #set-variable -name $vn -Value ($Msgs) -scope global ;
         
-        if($Msgs){
-            if($DoExports){
-                $smsg = "($(($Msgs|measure).count) events | export-csv $($ofile))" ; 
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                TRY{
-                    $Msgs | SELECT $prpXCsv | EXPORT-CSV -notype -path $ofile ;
-                    $smsg = "export-csv'd to:`n$((resolve-path $ofile).path)" ; 
-                } CATCH {
-                    $ErrTrapd=$Error[0] ;
-                    $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-                    else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                } ; 
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                $smsg = "(adding `$hReports.MTMessages)" ; 
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    
-                # add the csvfilename
-                $smsg = "(adding `$hReports.MTMessagesCSVFile:$($ofile))" ; 
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                $hReports.add('MTMessagesCSVFile',$ofile) ; 
-            } ; 
-
-            $hReports.add('MTMessages',$msgs) ; 
-
-            $smsg = "`n`n#*------v EventID DISTRIB v------`n`n" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-            else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-
             if($Msgs){
-                $hReports.add('EventIDHisto',($Msgs | select -expand EventID | group | sort count,count -desc | select count,name)) ;
-
-                #$smsg = "$(($Msgs | select -expand EventID | group | sort count,count -desc | select count,name|out-string).trim())" ;
-                $smsg = "`n$(($hReports.EventIDHisto|out-string).trim())" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                $smsg = "`n`n#*------^ EventID DISTRIB ^------`n`n" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-
-                # $hReports.add('EventIDHisto'
-                $smsg = "`n`n## EventID Definitions:" ; 
-                $hReports.EventIDHisto | select -expand Name | foreach-object{                   
-                    $smsg += "`n$(($eventIDLookupTbl[$_] | ft -HideTableHeaders |out-string).trim())" ; 
-                } ; 
-                $smsg += "`n`n"
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-
-
-                $smsg = "`n`n#*------v MOST RECENT MATCH v------`n`n" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-host -foregroundcolor white "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-
-                $hReports.add('MsgLast',($msgs[-1]| fl $prpMTLfta)) ;
-            
-                $smsg = "`n$(($hReports.MsgLast |out-string).trim())";
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                $smsg = "`n`n#*------^ MOST RECENT MATCH ^------`n`n" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-host -foregroundcolor white "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-
-            } ; 
-
-
-            <#---
-            write-host -foregroundcolor gray   "`n#*------v MOST RECENT MATCH v------" ;
-            write-host "$(($msgs[-1]| format-list $prpMTLfta|out-string).trim())";
-            write-host -foregroundcolor gray   "`n#*------^ MOST RECENT MATCH ^------`n" ;
-            write-host -foregroundcolor gray   "`n#*------v EventID DISTRIB v------" ;
-            write-host -foregroundcolor yellow "$(($Msgs | group EventID | sort count -desc | ft -a count,name |out-string).trim())";
-            write-host -foregroundcolor gray   "`n#*------^ EventID DISTRIB ^------" ;
-            #---
-            #>
-
-            if($mFails = $msgs | ?{$_.EventID -eq 'FAIL'}){
-                $hReports.add('MsgsFail',$mFails) ; 
-                $ofileF = $ofile.replace('-XOPMsgTrk,','FAILMsgs,') ;
                 if($DoExports){
+                    $smsg = "($(($Msgs|measure).count) events | export-csv $($ofile))" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     TRY{
-                        $mFails | export-csv -notype -path $ofileF -ea STOP ;
-                        $smsg = "export-csv'd to:`n$((resolve-path $ofileF).path)" ; 
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                        else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        $Msgs | SELECT $prpXCsv | EXPORT-CSV -notype -path $ofile ;
+                        $smsg = "export-csv'd to:`n$((resolve-path $ofile).path)" ; 
                     } CATCH {
                         $ErrTrapd=$Error[0] ;
                         $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
                         else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     } ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    $smsg = "(adding `$hReports.MTMessages)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    
+                    # add the csvfilename
+                    $smsg = "(adding `$hReports.MTMessagesCSVFile:$($ofile))" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    $hReports.add('MTMessagesCSVFile',$ofile) ; 
                 } ; 
-                if($mOOO = $mFails | ?{$_.Subject -match '^Automatic\sreply:\s'} ){
-                    $smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: Expected Policy Blocked External OutOfOffice (up to last $($DetailLimit))v~~~~~~" ;
-                    $smsg += "`n$($mOOO| measure | select -expand count) msgs:Expected Out-of-Office Policy:(attempt to send externally)`n$(($mOOO | select -last $DetailLimit | ft -a $prpGXMTfta |out-string).trim())" ;
-                    $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
+
+                $hReports.add('MTMessages',$msgs) ; 
+
+                $smsg = "`n`n#*------v EventID DISTRIB v------`n`n" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+
+                if($Msgs){
+                    $hReports.add('EventIDHisto',($Msgs | select -expand EventID | group | sort count,count -desc | select count,name)) ;
+
+                    #$smsg = "$(($Msgs | select -expand EventID | group | sort count,count -desc | select count,name|out-string).trim())" ;
+                    $smsg = "`n$(($hReports.EventIDHisto|out-string).trim())" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    $smsg = "`n`n#*------^ EventID DISTRIB ^------`n`n" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                     else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                } ;
-                if($mRecl = $mFails | ?{$_.Subject -match '^Recall:\s'}){
-                    $smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: Expected: Recalled message (up to last $($DetailLimit)) v~~~~~~" ;
-                    $smsg += "`n$($mRecl| measure | select -expand count) msgs:Expected Sender Recalled Message `n$(($mRecl| select -last $DetailLimit| ft -a $prpGXMTfta |out-string).trim())" ;
-                    $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
+
+                    # $hReports.add('EventIDHisto'
+                    $smsg = "`n`n## EventID Definitions:" ; 
+                    $hReports.EventIDHisto | select -expand Name | foreach-object{                   
+                        $smsg += "`n$(($eventIDLookupTbl[$_] | ft -HideTableHeaders |out-string).trim())" ; 
+                    } ; 
+                    $smsg += "`n`n"
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+
+
+                    $smsg = "`n`n#*------v MOST RECENT MATCH v------`n`n" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    else{ write-host -foregroundcolor white "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+
+                    $hReports.add('MsgLast',($msgs[-1]| fl $prpMTLfta)) ;
+            
+                    $smsg = "`n$(($hReports.MsgLast |out-string).trim())";
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    $smsg = "`n`n#*------^ MOST RECENT MATCH ^------`n`n" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host -foregroundcolor white "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+
+                } ; 
+
+
+                <#---
+                write-host -foregroundcolor gray   "`n#*------v MOST RECENT MATCH v------" ;
+                write-host "$(($msgs[-1]| format-list $prpMTLfta|out-string).trim())";
+                write-host -foregroundcolor gray   "`n#*------^ MOST RECENT MATCH ^------`n" ;
+                write-host -foregroundcolor gray   "`n#*------v EventID DISTRIB v------" ;
+                write-host -foregroundcolor yellow "$(($Msgs | group EventID | sort count -desc | ft -a count,name |out-string).trim())";
+                write-host -foregroundcolor gray   "`n#*------^ EventID DISTRIB ^------" ;
+                #---
+                #>
+
+                if($mFails = $msgs | ?{$_.EventID -eq 'FAIL'}){
+                    $hReports.add('MsgsFail',$mFails) ; 
+                    $ofileF = $ofile.replace('-XOPMsgTrk,','FAILMsgs,') ;
+                    if($DoExports){
+                        TRY{
+                            $mFails | export-csv -notype -path $ofileF -ea STOP ;
+                            $smsg = "export-csv'd to:`n$((resolve-path $ofileF).path)" ; 
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                            else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        } CATCH {
+                            $ErrTrapd=$Error[0] ;
+                            $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        } ; 
+                    } ; 
+                    if($mOOO = $mFails | ?{$_.Subject -match '^Automatic\sreply:\s'} ){
+                        $smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: Expected Policy Blocked External OutOfOffice (up to last $($DetailLimit))v~~~~~~" ;
+                        $smsg += "`n$($mOOO| measure | select -expand count) msgs:Expected Out-of-Office Policy:(attempt to send externally)`n$(($mOOO | select -last $DetailLimit | ft -a $prpGXMTfta |out-string).trim())" ;
+                        $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    } ;
+                    if($mRecl = $mFails | ?{$_.Subject -match '^Recall:\s'}){
+                        $smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: Expected: Recalled message (up to last $($DetailLimit)) v~~~~~~" ;
+                        $smsg += "`n$($mRecl| measure | select -expand count) msgs:Expected Sender Recalled Message `n$(($mRecl| select -last $DetailLimit| ft -a $prpGXMTfta |out-string).trim())" ;
+                        $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    } ;
+
+                    # reclass everything *not* one of the above as $mfails:
+                    if($mFails = $mFails | ?{$_.Subject -notmatch '^Recall:\s' -AND $_.Subject -notmatch '^Automatic\sreply:\s'}){
+                        <#$smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: Other Failure message (up to last $($DetailLimit)) v~~~~~~" ;
+                        $smsg += "`n$(($mFails| select -last $DetailLimit | ft -a |out-string).trim())" ;
+                        $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
+                        write-host -foregroundcolor yellow $smsg ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        #>
+                        if($mFailAddr = $mFails | ?{$_.EventID -eq 'FAIL' -AND $_.Source -eq 'ROUTING'}){
+                            $smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: BAD ADDRESS FAILS: (EventID:'FAIL' & Source:'ROUTING') ($(($mFailAddr|measure).count)msgs, echo up to last $($DetailLimit))) v~~~~~~" ;
+                            $smsg += "`n$(($mFailAddr| select -last $DetailLimit | ft -a |out-string).trim())" ;
+                            $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                            else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        } ;
+                        if($mFailRej = $mFails | ?{$_.EventID -eq 'FAIL' -AND $_.Source -eq 'SMTP'}){
+                            $smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: REJECTED BY RECIPIENT SERVER : (EventID:'FAIL' & Source:'SMTP') ($(($mFailRej|measure).count)msgs, echo up to last $($DetailLimit)) v~~~~~~" ;
+                            $smsg += "`n$(($mFailRej| select -last $DetailLimit | ft -a |out-string).trim())" ;
+                            $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                            else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        } ;
+                        if($mFailDom = $mFails | ?{$_.EventID -eq 'FAIL' -AND $_.Source -eq 'DNS'}){
+                            $smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: BAD DOMAIN : (EventID:'FAIL' & Source:'DNS') ($(($mFailDom|measure).count)msgs, echo up to last $($DetailLimit)) v~~~~~~" ;
+                            $smsg += "`n$(($mFailDom| select -last $DetailLimit | ft -a |out-string).trim())" ;
+                            $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                            else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        } ;
+                        # anything *not* filtered above
+                        if($mFailsOther = $mFails | 
+                            ?{$_.Subject -notmatch '^Recall:\s' -AND $_.Subject -notmatch '^Automatic\sreply:\s' -AND -not(
+                                $_.EventID -eq 'FAIL' -AND $_.Source -eq 'ROUTING') -AND -NOT($_.EventID -eq 'FAIL' -AND $_.Source -eq 'SMTP') -AND -NOT(
+                                $_.EventID -eq 'FAIL' -AND $_.Source -eq 'DNS') }){
+                            $smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: OTHER:) ($(($mFailsOther|measure).count)msgs, echo up to last $($DetailLimit)) v~~~~~~" ;
+                            $smsg += "`n$(($mFailsOther| select -last $DetailLimit | ft -a |out-string).trim())" ;
+                            $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                            else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        } ;
+
+                    } else {
+                        $smsg = "(no non-RECALL,non-OOO block, FAILs logged)" 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    } ;
+
+
                 } ;
 
-                # reclass everything *not* one of the above as $mfails:
-                if($mFails = $mFails | ?{$_.Subject -notmatch '^Recall:\s' -AND $_.Subject -notmatch '^Automatic\sreply:\s'}){
-                    <#$smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: Other Failure message (up to last $($DetailLimit)) v~~~~~~" ;
-                    $smsg += "`n$(($mFails| select -last $DetailLimit | ft -a |out-string).trim())" ;
-                    $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
-                    write-host -foregroundcolor yellow $smsg ;
+                if($mDefers = $msgs|?{$_.EventID -eq 'DEFER'}){
+                    $smsg = "`n`n#*------v DEFER's Distribution v------`n`n" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    #>
-                    if($mFailAddr = $mFails | ?{$_.EventID -eq 'FAIL' -AND $_.Source -eq 'ROUTING'}){
-                        $smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: BAD ADDRESS FAILS: (EventID:'FAIL' & Source:'ROUTING') ($(($mFailAddr|measure).count)msgs, echo up to last $($DetailLimit))) v~~~~~~" ;
-                        $smsg += "`n$(($mFailAddr| select -last $DetailLimit | ft -a |out-string).trim())" ;
-                        $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                        else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+
+                
+                    $hReports.add('MsgsDefer',$mDefers) ;
+
+                    $smsg = "`n$(($mDefers | select -expand RecipientStatus | group | sort count -desc | ft -auto count,name|out-string).trim())";
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    $smsg = "`n`n#*------^ DEFER's Distribution ^------`n`n" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    # defers are infra issue, not recipient/resolution, no sense dumping details, other than to let user know which delayed
+
+                    $smsg = $sBnrS="`n#*------v DEFER's RETRY handling (up to last $($DetailLimit) messages) v------" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H2 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
+                    # hash index the main msg list: (post filtering lags)
+                    $swSEND = [Diagnostics.Stopwatch]::StartNew();
+                    $mSends = $msgs|?{$_.EventID -eq 'SEND'}
+                    $ndxMsgsSEND = @{} ;
+                    $mSends | foreach-object{
+                        $ndxMsgsSEND[$_.MessageId] = $_ ; 
+                    } ; 
+                    remove-variable mSends -force 
+                    if($host.version.major -ge 3){
+                        $smsg =  ("$($smsg) {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $swSEND.Elapsed) ; #outputs: Elapsed Time: 0d 0h 0m 10s 101ms
+                    } else {
+                        $smsg = "$($smsg) $($swSEND.Elapsed.ToString()))" ; # outputs: Elapsed Time: (HH:MM:SS.ms) 00:00:15.8418655
                     } ;
-                    if($mFailRej = $mFails | ?{$_.EventID -eq 'FAIL' -AND $_.Source -eq 'SMTP'}){
-                        $smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: REJECTED BY RECIPIENT SERVER : (EventID:'FAIL' & Source:'SMTP') ($(($mFailRej|measure).count)msgs, echo up to last $($DetailLimit)) v~~~~~~" ;
-                        $smsg += "`n$(($mFailRej| select -last $DetailLimit | ft -a |out-string).trim())" ;
-                        $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                        else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    } ;
-                    if($mFailDom = $mFails | ?{$_.EventID -eq 'FAIL' -AND $_.Source -eq 'DNS'}){
-                        $smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: BAD DOMAIN : (EventID:'FAIL' & Source:'DNS') ($(($mFailDom|measure).count)msgs, echo up to last $($DetailLimit)) v~~~~~~" ;
-                        $smsg += "`n$(($mFailDom| select -last $DetailLimit | ft -a |out-string).trim())" ;
-                        $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                        else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    } ;
-                    # anything *not* filtered above
-                    if($mFailsOther = $mFails | 
-                        ?{$_.Subject -notmatch '^Recall:\s' -AND $_.Subject -notmatch '^Automatic\sreply:\s' -AND -not(
-                            $_.EventID -eq 'FAIL' -AND $_.Source -eq 'ROUTING') -AND -NOT($_.EventID -eq 'FAIL' -AND $_.Source -eq 'SMTP') -AND -NOT(
-                            $_.EventID -eq 'FAIL' -AND $_.Source -eq 'DNS') }){
-                        $smsg = $sBnr3="`n#*~~~~~~v EventID FAIL: OTHER:) ($(($mFailsOther|measure).count)msgs, echo up to last $($DetailLimit)) v~~~~~~" ;
-                        $smsg += "`n$(($mFailsOther| select -last $DetailLimit | ft -a |out-string).trim())" ;
-                        $smsg += "`n$($sBnr3.replace('~v','~^').replace('v~','^~'))`n"  ;
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                        else{ write-host -foregroundcolor blue "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    } ;
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                    #
+
+                    $midn = 20 ; $namn = 15 ; 
+                    $dmprcd = 0 ; 
+                    foreach($dmsg in ($mDefers | select -last $DetailLimit)){
+                        $dmprcd++ ; 
+                        #$smsg ="`n#*~~~~~~v " ; 
+                        $smsg = "#$($dmprcd) " ; 
+                        $smsg += "MsgID:$(($dmsg.MessageId -replace '[\<\>]','').substring(0,[System.Math]::Min(($dmsg.MessageId -replace '[\<\>]','').length,((($dmsg.MessageId -replace '[\<\>]','').ToCharArray() | select -first $midn) -join '').length)))..." ; 
+                        $smsg += " Fr:$($dmsg.Sender.substring(0,[System.Math]::Min($dmsg.Sender.length,(($dmsg.Sender.ToCharArray() | select -first $namn) -join '').length)))..." ; 
+                        #$smsg += " To:$($dmsg.Recipients.substring(0,[System.Math]::Min($dmsg.Recipients.length,(($dmsg.Recipients.ToCharArray() | select -first $namn) -join '').length)))..." ; 
+                        #$smsg += " To:$( ($dmsg.Recipients -join ',').substring(0,[System.Math]::Min(($dmsg.Recipients -join ',').length,((($dmsg.Recipients -join ',').ToCharArray() | select -first $namn) -join '').length)))..." ; 
+                        $sRcp = $dmsg.Recipients -join ',' ; 
+                        $smsg += " To:$( $sRcp.substring(0,[System.Math]::Min($sRcp.length,(($sRcp.ToCharArray() | select -first $namn) -join '').length)))..." ; 
+                        $smsg += " Sub:$($dmsg.MessageSubject.substring(0,[System.Math]::Min($dmsg.MessageSubject.length,(($dmsg.MessageSubject.ToCharArray() | select -first $namn) -join '').length)))..." ;         
+                        #$smsg += " v~~~~~~" ; 
+                        #$sBnr3 = $smsg ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;   
+        
+                        #$handling = $msgs |?{$_.messageid -eq $dmsg.MessageId -AND $_.eventid -match 'DEFER|SEND'} | sort TimestampLocal ;
+                        # use $ndxMsgsSEND, postfilter too slow, aah, but msgid is repeated across evts pftftf
+                        if($confirmedSEND = $ndxMsgsSEND[$dmsg.MessageId]){
+                            $aHndl = @() ; 
+                            $aHndl += @('DEFER') ; 
+                            #$aHndl += @($handling[0].Timestamp) ; 
+                            $aHndl += @($dmsg.Timestamp) ; 
+                            $aHndl += @('SEND') ; 
+                            #$aHndl += @($handling[1].Timestamp) ; 
+                            $aHndl += @($confirmedSEND.Timestamp) ; 
+                    
+
+                            $aHndl += @('Retried Sent') ; 
+                            #$aHndl += @("{0:dd}d:{0:hh}h:{0:mm}m:{0:ss}s:{0:fff}ms" -f (new-timespan -start $handling[0].Timestamp -end $handling[-1].Timestamp)) ; 
+                            $aHndl += @("{0:dd}d:{0:hh}h:{0:mm}m:{0:ss}s:{0:fff}ms" -f (new-timespan -start $dmsg.Timestamp -end $confirmedSEND.Timestamp)) ; 
+                            $smsg = "=>$($ahndl -join ' : ')`n`n" ; 
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level SUCCESS } else{ write-host -foregroundcolor green $smsg } ;                         
+
+                        } else {
+                            $smsg = "UNABLE TO LOCATE A SUCCESFUL SEND eventID for:" ; 
+                            $smsg += "`n$(($dmsg | fl |out-string).trim())" ; 
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        }
+
+
+                        #$smsg = "$($sBnr3.replace('~v','~^').replace('v~','^~'))`n" ;
+                        #if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H3 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;   
+                    } ; 
+    
+                    $smsg = "$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H2 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
 
                 } else {
-                    $smsg = "(no non-RECALL,non-OOO block, FAILs logged)" 
+                    $smsg = "(no DEFERs logged)" 
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 } ;
 
-
-            } ;
-
-            if($mDefers = $msgs|?{$_.EventID -eq 'DEFER'}){
-                $smsg = "`n`n#*------v DEFER's Distribution v------`n`n" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-
-                
-                $hReports.add('MsgsDefer',$mDefers) ;
-
-                $smsg = "`n$(($mDefers | select -expand RecipientStatus | group | sort count -desc | ft -auto count,name|out-string).trim())";
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                $smsg = "`n`n#*------^ DEFER's Distribution ^------`n`n" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                # defers are infra issue, not recipient/resolution, no sense dumping details, other than to let user know which delayed
-
-                $smsg = $sBnrS="`n#*------v DEFER's RETRY handling (up to last $($DetailLimit) messages) v------" ; 
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H2 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-
-                # hash index the main msg list: (post filtering lags)
-                $swSEND = [Diagnostics.Stopwatch]::StartNew();
-                $mSends = $msgs|?{$_.EventID -eq 'SEND'}
-                $ndxMsgsSEND = @{} ;
-                $mSends | foreach-object{
-                    $ndxMsgsSEND[$_.MessageId] = $_ ; 
-                } ; 
-                remove-variable mSends -force 
-                if($host.version.major -ge 3){
-                    $smsg =  ("$($smsg) {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $swSEND.Elapsed) ; #outputs: Elapsed Time: 0d 0h 0m 10s 101ms
-                } else {
-                    $smsg = "$($smsg) $($swSEND.Elapsed.ToString()))" ; # outputs: Elapsed Time: (HH:MM:SS.ms) 00:00:15.8418655
-                } ;
-                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-                #
-
-                $midn = 20 ; $namn = 15 ; 
-                $dmprcd = 0 ; 
-                foreach($dmsg in ($mDefers | select -last $DetailLimit)){
-                    $dmprcd++ ; 
-                    #$smsg ="`n#*~~~~~~v " ; 
-                    $smsg = "#$($dmprcd) " ; 
-                    $smsg += "MsgID:$(($dmsg.MessageId -replace '[\<\>]','').substring(0,[System.Math]::Min(($dmsg.MessageId -replace '[\<\>]','').length,((($dmsg.MessageId -replace '[\<\>]','').ToCharArray() | select -first $midn) -join '').length)))..." ; 
-                    $smsg += " Fr:$($dmsg.Sender.substring(0,[System.Math]::Min($dmsg.Sender.length,(($dmsg.Sender.ToCharArray() | select -first $namn) -join '').length)))..." ; 
-                    #$smsg += " To:$($dmsg.Recipients.substring(0,[System.Math]::Min($dmsg.Recipients.length,(($dmsg.Recipients.ToCharArray() | select -first $namn) -join '').length)))..." ; 
-                    #$smsg += " To:$( ($dmsg.Recipients -join ',').substring(0,[System.Math]::Min(($dmsg.Recipients -join ',').length,((($dmsg.Recipients -join ',').ToCharArray() | select -first $namn) -join '').length)))..." ; 
-                    $sRcp = $dmsg.Recipients -join ',' ; 
-                    $smsg += " To:$( $sRcp.substring(0,[System.Math]::Min($sRcp.length,(($sRcp.ToCharArray() | select -first $namn) -join '').length)))..." ; 
-                    $smsg += " Sub:$($dmsg.MessageSubject.substring(0,[System.Math]::Min($dmsg.MessageSubject.length,(($dmsg.MessageSubject.ToCharArray() | select -first $namn) -join '').length)))..." ;         
-                    #$smsg += " v~~~~~~" ; 
-                    #$sBnr3 = $smsg ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;   
-        
-                    #$handling = $msgs |?{$_.messageid -eq $dmsg.MessageId -AND $_.eventid -match 'DEFER|SEND'} | sort TimestampLocal ;
-                    # use $ndxMsgsSEND, postfilter too slow, aah, but msgid is repeated across evts pftftf
-                    if($confirmedSEND = $ndxMsgsSEND[$dmsg.MessageId]){
-                        $aHndl = @() ; 
-                        $aHndl += @('DEFER') ; 
-                        #$aHndl += @($handling[0].Timestamp) ; 
-                        $aHndl += @($dmsg.Timestamp) ; 
-                        $aHndl += @('SEND') ; 
-                        #$aHndl += @($handling[1].Timestamp) ; 
-                        $aHndl += @($confirmedSEND.Timestamp) ; 
-                    
-
-                        $aHndl += @('Retried Sent') ; 
-                        #$aHndl += @("{0:dd}d:{0:hh}h:{0:mm}m:{0:ss}s:{0:fff}ms" -f (new-timespan -start $handling[0].Timestamp -end $handling[-1].Timestamp)) ; 
-                        $aHndl += @("{0:dd}d:{0:hh}h:{0:mm}m:{0:ss}s:{0:fff}ms" -f (new-timespan -start $dmsg.Timestamp -end $confirmedSEND.Timestamp)) ; 
-                        $smsg = "=>$($ahndl -join ' : ')`n`n" ; 
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level SUCCESS } else{ write-host -foregroundcolor green $smsg } ;                         
-
-                    } else {
-                        $smsg = "UNABLE TO LOCATE A SUCCESFUL SEND eventID for:" ; 
-                        $smsg += "`n$(($dmsg | fl |out-string).trim())" ; 
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    }
-
-
-                    #$smsg = "$($sBnr3.replace('~v','~^').replace('v~','^~'))`n" ;
-                    #if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H3 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;   
-                } ; 
-    
-                $smsg = "$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H2 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-
+                $msgs = $null ;
+                if(test-path -path $ofile){  
+                    write-host -foregroundcolor green  "(log file confirmed)" ;
+                    #Resolve-Path -Path $ofile | select -expand Path | out-clipboard ;
+                    $smsg = "`n(Tracked output file confirmed)" ;
+                    write-host -fore green $smsg ;
+                } else { write-warning "MISSING LOG FILE!" } ;
             } else {
-                $smsg = "(no DEFERs logged)" 
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                $smsg = "NO MATCHES FOUND From Qry:" ; 
+                $smsg += "`n$(($pltGMTL|out-string).trim())" ; 
+                write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
             } ;
-
-            $msgs = $null ;
-            if(test-path -path $ofile){  
-                write-host -foregroundcolor green  "(log file confirmed)" ;
-                #Resolve-Path -Path $ofile | select -expand Path | out-clipboard ;
-                $smsg = "`n(Tracked output file confirmed)" ;
-                write-host -fore green $smsg ;
-            } else { write-warning "MISSING LOG FILE!" } ;
-        } else {
-            $smsg = "NO MATCHES FOUND From Qry:" ; 
-            $smsg += "`n$(($pltGMTL|out-string).trim())" ; 
-            write-host -foregroundcolor yellow "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
-        } ;
-    } CATCH {
-        $ErrTrapd=$Error[0] ;
-        $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        #-=-record a STATUSWARN=-=-=-=-=-=-=
-        $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
-        if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
-        if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
-        #-=-=-=-=-=-=-=-=
-        $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ; 
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
-    } ; 
+        } CATCH {
+            $ErrTrapd=$Error[0] ;
+            $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            #-=-record a STATUSWARN=-=-=-=-=-=-=
+            $statusdelta = ";WARN"; # CHANGE|INCOMPLETE|ERROR|WARN|FAIL ;
+            if(gv passstatus -scope Script -ea 0){$script:PassStatus += $statusdelta } ;
+            if(gv -Name PassStatus_$($tenorg) -scope Script -ea 0){set-Variable -Name PassStatus_$($tenorg) -scope Script -Value ((get-Variable -Name PassStatus_$($tenorg)).value + $statusdelta)} ; 
+            #-=-=-=-=-=-=-=-=
+            $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+        } ; 
 
         write-verbose "#*------^ END Function SUB MAIN ^------" ;
     } ;  # BEG-E
@@ -10017,7 +9965,7 @@ function get-xopServerAdminDisplayVersion {
             '14.1.218.15' = 	'Exchange Server 2010 SP1'
             '14.0.726.0' = 	'Update Rollup 5 for Exchange Server 2010'
             '14.0.702.1' = 	'Update Rollup 4 for Exchange Server 2010'
-            '14.0.694.0' = 	'Update Rollup 3 for Exchange Server 2010'
+            '14.0.6.4.1' = 	'Update Rollup 3 for Exchange Server 2010'
             '14.0.689.0' = 	'Update Rollup 2 for Exchange Server 2010'
             '14.0.682.1' = 	'Update Rollup 1 for Exchange Server 2010'
             '14.0.639.21' = 	'Exchange Server 2010 RTM'            
