@@ -18,6 +18,12 @@ function Get-MessageTrackingLogTDO {
     Github      : htt-ps://github.com/tostka/verb-XXX
     Tags        : Powershell,Exchange,MessageTracking,Get-MessageTrackingLog,ActiveDirectory
     REVISIONS
+    * 3:12 pm 4/28/2025 Noted, get-OrgConfig returns 'First Org... on edge, so coded in TenOrgedge as OrgTag in that niched case (was coming back 'O_FO' ; 
+        extensive debugging updates in the services_control BP block, and detection and handling of TenOrg around non-dom-joined edge role machine; 
+            Still having issues in psie debugging: throws localizaiton error - appears due to the EMS connection; works fine in raw EMS console on edge. 
+            work either way on non-edge systems. Fine, but you can't step-debug it in ise on edge boxes
+             - you can, but you can't get the get-messagetrackinglog command to exec properrly, throws Access Denied trying to access the logs
+             errors correspond to those reported by folks trying to centralize edge tracking, from remote hosts. So it's definitely an REMS v EMS issue.
     * 4:25 PM 4/24/2025 validated TOR & full func verif CMW, after: Svcs_conn: added pretest for version in connect-exchangeserverTDO, splat (suppress dupe add error), only necc if both an explicit vers is specd & its on CMW
         - also added OrgName abbreviated to the exports, to differentiate sources
     * 8:01 PM 4/23/2025 add: Version, to match connect-ExchangeServerTDO() param, -DetailLimit for config of detailed outptut sizes; 
@@ -1364,7 +1370,7 @@ function Get-MessageTrackingLogTDO {
                                         $smsg = "We are on Exchange Edge Transport Server"
                                         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
                                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-                                        $IsEdgeTransport = $true
+                                        c
                                     }
                                     TRY {
                                         Get-ExchangeServer -ErrorAction Stop | Out-Null
@@ -2316,6 +2322,76 @@ function Get-MessageTrackingLogTDO {
         }
         #endregion GET_GCFAST ; #*------^ END GET_GCFAST ^------
 
+        #region RESOLVE_NETWORKLOCALTDO ; #*------v resolve-NetworkLocalTDO v------
+        #*------v Function resolve-NetworkLocalTDO v------
+        if(-not(gci function:resolve-NetworkLocalTDO -ea 0)){
+            Function resolve-NetworkLocalTDO {
+                <#
+                .SYNOPSIS
+                resolve-NetworkLocalTDO.ps1 - Retrieve local network interface descriptors, and resolved ip address PTR -> A Record FQDN
+                .NOTES
+                Version     : 0.0.1
+                Author      : Todd Kadrie
+                Website     : http://www.toddomation.com
+                Twitter     : @tostka / http://twitter.com/tostka
+                CreatedDate : 2025-04-28
+                FileName    : resolve-NetworkLocalTDO.ps1
+                License     : MIT License
+                Copyright   : (c) 2025 Todd Kadrie
+                Github      : https://github.com/tostka/verb-XXX
+                Tags        : Powershell
+                AddedCredit : REFERENCE
+                AddedWebsite: URL
+                AddedTwitter: URL
+                REVISIONS
+                .DESCRIPTION
+                resolve-NetworkLocalTDO.ps1 - Retrieve local network interface descriptors, and resolved ip address PTR -> A Record FQDN                
+                .INPUTS
+                None. Does not accepted piped input.(.NET types, can add description)
+                .OUTPUTS
+                System.PsCustomObject summary of useful Neic descriptors
+                [| get-member the output to see what .NET obj TypeName is returned, to use here]
+                .EXAMPLE
+                PS> $netsettings = resolve-NetworkLocalTDO ; 
+                Demo run
+                .LINK
+                https://github.com/tostka/verb-Network
+                #>                
+                [CmdletBinding()]
+                Param () ;
+                BEGIN{
+                    $rgxIP4Addr = "(?:\d{1,3}\.){3}\d{1,3}" ;
+                    $rgxIP6Addr = "^((([0-9A-Fa-f]{1,4}:){1,6}:)|(([0-9A-Fa-f]{1,4}:){7}))([0-9A-Fa-f]{1,4})$" ; 
+                    $rgxIP4AddrAuto = "169\.254\.\d{1,3}\.\d{1,3}" ;  
+                    $prpNS = 'DNSHostName','ServiceName',@{N="DNSServerSearchOrder";E={"$($_.DNSServerSearchOrder)"}}, 
+                        @{N='IPAddress';E={$_.IPAddress}},@{N='DefaultIPGateway';E={$_.DefaultIPGateway}} ;
+                } ; 
+                PROCESS {
+                    $nicsettings = [ordered]@{ DNSHostName = $null ;  ServiceName = $null ;  DNSServerSearchOrder = $null ;  IPAddress = $null ;  DefaultIPGateway = $null ;  Fqdn = $null ;  }  ;                    
+                    TRY{
+                        $ret = Get-WMIObject Win32_NetworkAdapterConfiguration -Computername localhost -ea STOP|
+                             ? {$_.IPEnabled -match "True"} | Select -property $prpNS ; 
+                        $nicsettings.DNSHostName = $ret.DNSHostName; 
+                        $nicsettings.ServiceName = $ret.ServiceName;  
+                        $nicsettings.DNSServerSearchOrder = $ret.DNSServerSearchOrder;  
+                        $nicsettings.IPAddress = $ret.IPAddress;  
+                        $nicsettings.DefaultIPGateway = $ret.DefaultIPGateway;  
+                        if($nicSettings.ipaddress | ?{$_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto} ){
+                            $nicsettings.fqdn = (resolve-dnsname -name ($nicSettings.ipaddress | ?{$_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto} ) -type ptr).namehost | select -first 1 ;   
+                        } ; 
+                        [pscustomobject]$nicsettings | write-output ; 
+                    } CATCH {
+                        $ErrTrapd=$Error[0] ;
+                        $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    } ;                     
+                } ; 
+            }
+        } ; 
+        #*------^ END Function resolve-NetworkLocalTDO ^------
+        #endregion RESOLVE_NETWORKLOCALTDO ; #*------^ END resolve-NetworkLocalTDO ^------
+
         #region OUT_CLIPBOARD ; #*------v OUT_CLIPBOARD v------
         #*------v Function out-Clipboard v------
         if(-not(gci function:out-Clipboard -ea 0)){
@@ -2535,10 +2611,21 @@ function Get-MessageTrackingLogTDO {
             AddedWebsite: https://www.linkedin.com/in/blopesinfo
             AddedTwitter: @brunokktro / https://twitter.com/brunokktro
             REVISIONS
+            * 2;58 pm 4/28/2025 Updated table again, and found Ex2016/19 eventid specifications online, added. Did find that 
+            the online doc doesn't document the edge SendExternal event id (added below, manually).             
             * 1:47 PM 7/9/2024 CBA github field correction
             * 1:22 PM 5/22/2024init
             .DESCRIPTION
             Initialize-xopEventIDTable - Builds an indexed hash tabl of Exchange Server Get-MessageTrackingLog EventIDs
+
+            ## Exchange 2019 EventID reference:
+
+            [Event types in the message tracking log | Microsoft Learn](https://learn.microsoft.com/en-us/exchange/mail-flow/transport-logs/message-tracking?view=exchserver-2019#event-types-in-the-message-tracking-log)
+
+            Doesn't include Edge eventid: 
+            SENDEXTERNAL          | A message was sent by SMTP to an external recipient. 
+            Added to the table below
+
 
             .OUTPUT
             String
@@ -2572,46 +2659,49 @@ function Get-MessageTrackingLogTDO {
                 write-verbose  "$((get-date).ToString('HH:mm:ss')):$($sBnr)" ;
                 
                 $eventIDsMD = @"
-EventName             | Description
---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-AGENTINFO             | This event is used by transport agents to log custom data.
-BADMAIL               | A message submitted by the Pickup directory or the Replay directory that can't be delivered or returned.
-DEFER                 | Message delivery was delayed (and auto-retried until successful).
-DELIVER               | A message was delivered to a local mailbox.
-DROP                  | A message was dropped without a delivery status notification (also known as a DSN, bounce message, non-delivery report, or NDR). For example:<br/> - Completed moderation approval request messages.<br/> - Spam messages that were silently dropped without an NDR.
-DSN                   | A delivery status notification (DSN) was generated.
-DUPLICATEDELIVER      | A duplicate message was delivered to the recipient. Duplication may occur if a recipient is a member of multiple nested distribution groups. Duplicate messages are detected and removed by the information store.
-DUPLICATEEXPAND       | During the expansion of the distribution group, a duplicate recipient was detected.
-DUPLICATEREDIRECT     | An alternate recipient for the message was already a recipient.
-EXPAND                | A distribution group was expanded.
-FAIL                  | Message delivery failed. Sources include SMTP, DNS, QUEUE, and ROUTING.
-HADISCARD             | A shadow message was discarded after the primary copy was delivered to the next hop. For more information, see Shadow redundancy.
-HARECEIVE             | A shadow message was received by the server in the local database availability group (DAG) or Active Directory site.
-HAREDIRECT            | A shadow message was created.
-HAREDIRECTFAIL        | A shadow message failed to be created. The details are stored in the source-context field.
-INITMESSAGECREATED    | A message was sent to a moderated recipient, so the message was sent to the arbitration mailbox for approval. For more information, see Manage message approval.
-LOAD                  | A message was successfully loaded at boot.
-MODERATIONEXPIRE      | A moderator for a moderated recipient never approved or rejected the message, so the message expired. For more information about moderated recipients, see Manage message approval.
-MODERATORAPPROVE      | A moderator for a moderated recipient approved the message, so the message was delivered to the moderated recipient.
-MODERATORREJECT       | A moderator for a moderated recipient rejected the message, so the message wasn't delivered to the moderated recipient.
-MODERATORSALLNDR      | All approval requests sent to all moderators of a moderated recipient were undeliverable, and resulted in non-delivery reports (NDRs).
-NOTIFYMAPI            | A message was detected in the Outbox of a mailbox on the local server.
-NOTIFYSHADOW          | A message was detected in the Outbox of a mailbox on the local server, and a shadow copy of the message needs to be created.
-POISONMESSAGE         | A message was put in the poison message queue or removed from the poison message queue.
-PROCESS               | The message was successfully processed.
-PROCESSMEETINGMESSAGE | A meeting message was processed by the Mailbox Transport Delivery service.
-RECEIVE               | A message was received by the SMTP receive component of the transport service or from the Pickup or Replay directories (source: SMTP), or a message was submitted from a mailbox to the Mailbox Transport Submission service (source: STOREDRIVER).
-REDIRECT              | A message was redirected to an alternative recipient after an Active Directory lookup.
-RESOLVE               | A message's recipients were resolved to a different email address after an Active Directory lookup.
-RESUBMIT              | A message was automatically resubmitted from Safety Net. For more information, see Safety Net.
-RESUBMITDEFER         | A message resubmitted from Safety Net was deferred.
-RESUBMITFAIL          | A message resubmitted from Safety Net failed.
-SEND                  | A message was sent by SMTP between transport services.
-SUBMIT                | The Mailbox Transport Submission service successfully transmitted the message to the Transport service. For SUBMIT events, the source-context property contains the following details:<br/> - MDB   The mailbox database GUID.<br/> - Mailbox   The mailbox GUID.<br/> - Event   The event sequence number.<br/> - MessageClass   The type of message. For example, IPM.Note.<br/> - CreationTime   Date-time of the message submission.<br/> - ClientType   For example, User, OWA ,or ActiveSync.
-SUBMITDEFER           | The message transmission from the Mailbox Transport Submission service to the Transport service was deferred.
-SUBMITFAIL            | The message transmission from the Mailbox Transport Submission service to the Transport service failed.
-SUPPRESSED            | The message transmission was suppressed.
-THROTTLE              | The message was throttled.
+EventName             | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+--------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+AGENTINFO             | This event is used by transport agents to log custom data.                                                                                                                                                                                                                                                                                                                                                                                                                             
+BADMAIL               | A message submitted by the Pickup directory or the Replay directory that can't be delivered or returned.                                                                                                                                                                                                                                                                                                                                                                               
+CLIENTSUBMISSION      | A message was submitted from the Outbox of a mailbox.                                                                                                                                                                                                                                                                                                                                                                                                                                  
+DEFER                 | Message delivery was delayed.                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+DELIVER               | A message was delivered to a local mailbox.                                                                                                                                                                                                                                                                                                                                                                                                                                            
+DELIVERFAIL           | An agent tried to deliver the message to a folder that doesn't exist in the mailbox.                                                                                                                                                                                                                                                                                                                                                                                                   
+DROP                  | A message was dropped without a delivery status notification (also known as a DSN, bounce message, non-delivery report, or NDR). For example:<br/>- Completed moderation approval request messages.<br/>- Spam messages that were silently dropped without an NDR.                                                                                                                                                                                                                     
+DSN                   | A delivery status notification (DSN) was generated.                                                                                                                                                                                                                                                                                                                                                                                                                                    
+DUPLICATEDELIVER      | A duplicate message was delivered to the recipient. Duplication may occur if a recipient is a member of multiple nested distribution groups. Duplicate messages are detected and removed by the information store.                                                                                                                                                                                                                                                                     
+DUPLICATEEXPAND       | During the expansion of the distribution group, a duplicate recipient was detected.                                                                                                                                                                                                                                                                                                                                                                                                    
+DUPLICATEREDIRECT     | An alternate recipient for the message was already a recipient.                                                                                                                                                                                                                                                                                                                                                                                                                        
+EXPAND                | A distribution group was expanded.                                                                                                                                                                                                                                                                                                                                                                                                                                                     
+FAIL                  | Message delivery failed. Sources include SMTP, DNS, QUEUE, and ROUTING.                                                                                                                                                                                                                                                                                                                                                                                                                
+HADISCARD             | A shadow message was discarded after the primary copy was delivered to the next hop. For more information, see Shadow redundancy in Exchange Server.                                                                                                                                                                                                                                                                                                                                   
+HARECEIVE             | A shadow message was received by the server in the local database availability group (DAG) or Active Directory site.                                                                                                                                                                                                                                                                                                                                                                   
+HAREDIRECT            | A shadow message was created.                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+HAREDIRECTFAIL        | A shadow message failed to be created. The details are stored in the source-context field.                                                                                                                                                                                                                                                                                                                                                                                             
+INITMESSAGECREATED    | A message was sent to a moderated recipient, so the message was sent to the arbitration mailbox for approval. For more information, see Manage message approval.                                                                                                                                                                                                                                                                                                                       
+LOAD                  | A message was successfully loaded at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                             
+MODERATIONEXPIRE      | A moderator for a moderated recipient never approved or rejected the message, so the message expired. For more information about moderated recipients, see Manage message approval.                                                                                                                                                                                                                                                                                                    
+MODERATORAPPROVE      | A moderator for a moderated recipient approved the message, so the message was delivered to the moderated recipient.                                                                                                                                                                                                                                                                                                                                                                   
+MODERATORREJECT       | A moderator for a moderated recipient rejected the message, so the message wasn't delivered to the moderated recipient.                                                                                                                                                                                                                                                                                                                                                                
+MODERATORSALLNDR      | All approval requests sent to all moderators of a moderated recipient were undeliverable, and resulted in non-delivery reports (also known as NDRs or bounce messages).                                                                                                                                                                                                                                                                                                                
+NOTIFYMAPI            | A message was detected in the Outbox of a mailbox on the local server.                                                                                                                                                                                                                                                                                                                                                                                                                 
+NOTIFYSHADOW          | A message was detected in the Outbox of a mailbox on the local server, and a shadow copy of the message needs to be created.                                                                                                                                                                                                                                                                                                                                                           
+POISONMESSAGE         | A message was put in the poison message queue or removed from the poison message queue.                                                                                                                                                                                                                                                                                                                                                                                                
+PROCESS               | The message was successfully processed.                                                                                                                                                                                                                                                                                                                                                                                                                                                
+PROCESSMEETINGMESSAGE | A meeting message was processed by the Mailbox Transport Delivery service.                                                                                                                                                                                                                                                                                                                                                                                                             
+RECEIVE               | A message was received by the SMTP receive component of the transport service or from the Pickup or Replay directories (source: SMTP), or a message was submitted from a mailbox to the Mailbox Transport Submission service (source: STOREDRIVER).                                                                                                                                                                                                                                    
+REDIRECT              | A message was redirected to an alternative recipient after an Active Directory lookup.                                                                                                                                                                                                                                                                                                                                                                                                 
+RESOLVE               | A message's recipients were resolved to a different email address after an Active Directory lookup.                                                                                                                                                                                                                                                                                                                                                                                    
+RESUBMIT              | A message was automatically resubmitted from Safety Net. For more information, see Safety Net in Exchange Server.                                                                                                                                                                                                                                                                                                                                                                      
+RESUBMITDEFER         | A message resubmitted from Safety Net was deferred.                                                                                                                                                                                                                                                                                                                                                                                                                                    
+RESUBMITFAIL          | A message resubmitted from Safety Net failed.                                                                                                                                                                                                                                                                                                                                                                                                                                          
+SEND                  | A message was sent by SMTP between transport services.                                                                                                                                                                                                                                                                                                                                                                                                                                 
+SENDEXTERNAL          | A message was sent by SMTP between to an external recipient.                                                                                                                                                                                                                                                                                                                                                                                                                           
+SUBMIT                | The Mailbox Transport Submission service successfully transmitted the message to the Transport service. For SUBMIT events, the source-context property contains the following details:<br/>- MDB: The mailbox database GUID.<br/>- Mailbox: The mailbox GUID.<br/>- Event: The event sequence number.<br/>- MessageClass: The type of message. For example, IPM.Note.<br/>- CreationTime: Date-time of the message submission.<br/>- ClientType: For example, User, OWA, or ActiveSync.
+SUBMITDEFER           | The message transmission from the Mailbox Transport Submission service to the Transport service was deferred.                                                                                                                                                                                                                                                                                                                                                                          
+SUBMITFAIL            | The message transmission from the Mailbox Transport Submission service to the Transport service failed.                                                                                                                                                                                                                                                                                                                                                                                
+SUPPRESSED            | The message transmission was suppressed.                                                                                                                                                                                                                                                                                                                                                                                                                                               
+THROTTLE              | The message was throttled.                                                                                                                                                                                                                                                                                                                                                                                                                                                             
 TRANSFER              | Recipients were moved to a forked message because of content conversion, message recipient limits, or agents. Sources include ROUTING or QUEUE.
 "@ ; 
 
@@ -2808,6 +2898,34 @@ TRANSFER              | Recipients were moved to a forked message because of con
                 if(-not $TOR_logon_SID){$TOR_logon_SID = 'VE9ST1xrYWRyaXRzcw==' | fb4 } ; 
                 $logon_SID = $TOR_logon_SID ; 
             }
+            $env:COMPUTERNAME{
+                $smsg = "%USERDOMAIN% -EQ %COMPUTERNAME%: $($env:computername) => non-domain-connected, likely edge role Ex server!" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                if($WorkgroupName = (Get-WmiObject -Class Win32_ComputerSystem).Workgroup){
+                    $smsg = "WorkgroupName:$($WorkgroupName)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                }
+                if(($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\Setup')) -or (
+                        $isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup')) -or
+                            $ByPassLocalExchangeServerTest){
+                            $smsg = "We are on Exchange Server"
+                            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                            $IsEdgeTransport = $true
+                            if((Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\EdgeTransportRole') -or (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole')){
+                                $smsg = "We are on Exchange Edge Transport Server"
+                                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                $IsEdgeTransport = $true
+                            } ; 
+                } else {
+                    $isLocalExchangeServer = $false 
+                    $IsEdgeTransport = $false ;
+                } ;
+            } ; 
             default{
                 $smsg = "$($env:userdomain):UNRECOGIZED/UNCONFIGURED USER DOMAIN STRING!" ; 
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
@@ -2968,6 +3086,10 @@ TRANSFER              | Recipients were moved to a forked message because of con
         #...
         #endregion START_LOG_OPTIONS #*======^ START_LOG_OPTIONS ^======
 
+        #region NETWORK_INFO ; #*======v NETWORK_INFO v======
+        $netsettings = resolve-NetworkLocalTDO ; 
+        #endregion NETWORK_INFO ; #*======^ END NETWORK_INFO ^======
+
         #region SERVICE_CONNECTIONS #*======v SERVICE_CONNECTIONS v======
         # PRETUNE STEERING separately *before* pasting in balance of region
         # THIS BLOCK DEPS ON VERB-* FANCY CRED/AUTH HANDLING MODULES THAT *MUST* BE INSTALLED LOCALLY TO FUNCTION
@@ -2986,6 +3108,28 @@ TRANSFER              | Recipients were moved to a forked message because of con
         $UseOPAD = $false ; 
         $UseMSOL = $false ; # should be hard disabled now in o365
         $UseAAD = $false  ; 
+        if($env:userdomain -eq $env:computername){
+            $isNonDomainServer = $true ; 
+            $UseOPAD = $false ; 
+        } 
+        if(get-service MSExchangeTransport -ea 0){
+            $isExServer = $true ; 
+            if( ($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\Setup')) -or
+                    ($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup')) -or $ByPassLocalExchangeServerTest)
+                {
+                    if((Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\EdgeTransportRole') -or
+                            (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole')) {
+                        $smsg = "We are on Exchange Edge Transport Server"
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                        $IsEdgeTransport = $true ; 
+                    } else {
+                        $IsEdgeTransport = $false ; 
+                    } ; 
+                }
+        }else{
+            $isExServer = $false ; 
+        }
         $useO365 = [boolean]($useO365 -OR $useEXO -OR $UseMSOL -OR $UseAAD)
         $UseOP = [boolean]($UseOP -OR $UseExOP -OR $UseOPAD) ;
         #*------^ END STEERING VARIS ^------
@@ -3016,6 +3160,19 @@ TRANSFER              | Recipients were moved to a forked message because of con
             switch -regex ($env:USERDOMAIN){
                 ([regex]('(' + (( @($TORMeta.legacyDomain,$CMWMeta.legacyDomain)  |foreach-object{[regex]::escape($_)}) -join '|') + ')')).tostring() {$TenOrg = $env:USERDOMAIN.substring(0,3).toupper() } ;
                 $TOLMeta.legacyDomain {$TenOrg = 'TOL' }
+                $env:COMPUTERNAME {
+                    # non-domain-joined, no domain, but the $netsettings.fqdn has a dns suffix that can be steered.
+                    if($netsettings.fqdn){
+                    switch -regex (($netsettings.fqdn.split('.') | select -last 2 ) -join '.'){
+                      'toro\.com$' {$tenorg = 'TOR' ; } ; 
+                      '(charlesmachineworks\.com|cmw\.internal)$' { $TenOrg = 'CMW'} ; 
+                      '(torolab\.com|snowthrower\.com)$'  { $TenOrg = 'TOL'} ; 
+                      default {throw "UNRECOGNIZED DNS SUFFIX!:$(($netsettings.fqdn.split('.') | select -last 2 ) -join '.')" ; break ; } ;
+                    } ; 
+                    }else{
+                        throw "NIC.ip $($netsettings.ipaddress) does not PTR resolve to a DNS A with a full fqdn!" ; 
+                    } ; 
+                } ; 
                 default {throw "UNRECOGNIZED `$env:USERDOMAIN!:$($env:USERDOMAIN)" ; exit ; } ;
             } ; 
         } ; 
@@ -3382,44 +3539,50 @@ TRANSFER              | Recipients were moved to a forked message because of con
     
         #region UseOPAD #*------v UseOPAD v------
         if($UseOP -OR $UseOPAD){
-            #region GENERIC_ADMS_CONN_&_XO #*------v GENERIC ADMS CONN & XO  v------
-            $smsg = "(loading ADMS...)" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            # always capture load-adms return, it outputs a $true to pipeline on success
-            $ADMTLoaded = load-ADMS -Verbose:$FALSE ;
-            # 9:32 AM 4/20/2023 trimmed disabled/fw-borked cross-org code
-            TRY {
-                if(-not(Get-ADDomain  -ea STOP).DNSRoot){
-                    $smsg = "Missing AD Connection! (no (Get-ADDomain).DNSRoot returned)" ; 
-                    throw $smsg ; 
-                    $smsg | write-warning  ; 
-                } ; 
-                $objforest = get-adforest -ea STOP ; 
-                # Default new UPNSuffix to the UPNSuffix that matches last 2 elements of the forestname.
-                $forestdom = $UPNSuffixDefault = $objforest.UPNSuffixes | ?{$_ -eq (($objforest.name.split('.'))[-2..-1] -join '.')} ; 
-                if($useForestWide){
-                    #region  ; #*------v OPTIONAL CODE TO ENABLE FOREST-WIDE AD GC QRY SUPPORT v------
-                    $smsg = "(`$useForestWide:$($useForestWide)):Enabling AD Forestwide)" ; 
-                    if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    $smsg = 'Set-AdServerSettings -ViewEntireForest `$True' ;
-                    if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    #TK 9:44 AM 10/6/2022 need org wide for rolegrps in parent dom (only for onprem RBAC, not EXO)
-                    $GcFwide = "$((Get-ADDomainController -Discover -Service GlobalCatalog).hostname):3268" ;        
-                    #endregion  ; #*------^ END  OPTIONAL CODE TO ENABLE FOREST-WIDE AD GC QRY SUPPORT  ^------
-                } ;    
-            } CATCH {
-                $ErrTrapd=$Error[0] ;
-                $smsg = $ErrTrapd ;
-                $smsg += "`n";
-                $smsg += $ErrTrapd.Exception.Message ;
-                if ($logging) { _write-log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
-                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                CONTINUE ;
-            } ;        
-            #endregion GENERIC_ADMS_CONN_&_XO #*------^ END GENERIC ADMS CONN & XO ^------
+            if($isNonDomainServer){
+                $smsg = "(non-Domain-connected server:Skipping GENERIC ADMS CONN) "  
+                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+            }else {
+                #region GENERIC_ADMS_CONN_&_XO #*------v GENERIC ADMS CONN & XO  v------
+                $smsg = "(loading ADMS...)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                # always capture load-adms return, it outputs a $true to pipeline on success
+                $ADMTLoaded = load-ADMS -Verbose:$FALSE ;
+                # 9:32 AM 4/20/2023 trimmed disabled/fw-borked cross-org code
+                TRY {
+                    if(-not(Get-ADDomain  -ea STOP).DNSRoot){
+                        $smsg = "Missing AD Connection! (no (Get-ADDomain).DNSRoot returned)" ; 
+                        throw $smsg ; 
+                        $smsg | write-warning  ; 
+                    } ; 
+                    $objforest = get-adforest -ea STOP ; 
+                    # Default new UPNSuffix to the UPNSuffix that matches last 2 elements of the forestname.
+                    $forestdom = $UPNSuffixDefault = $objforest.UPNSuffixes | ?{$_ -eq (($objforest.name.split('.'))[-2..-1] -join '.')} ; 
+                    if($useForestWide){
+                        #region  ; #*------v OPTIONAL CODE TO ENABLE FOREST-WIDE AD GC QRY SUPPORT v------
+                        $smsg = "(`$useForestWide:$($useForestWide)):Enabling AD Forestwide)" ; 
+                        if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        $smsg = 'Set-AdServerSettings -ViewEntireForest `$True' ;
+                        if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        #TK 9:44 AM 10/6/2022 need org wide for rolegrps in parent dom (only for onprem RBAC, not EXO)
+                        $GcFwide = "$((Get-ADDomainController -Discover -Service GlobalCatalog).hostname):3268" ;        
+                        #endregion  ; #*------^ END  OPTIONAL CODE TO ENABLE FOREST-WIDE AD GC QRY SUPPORT  ^------
+                    } ;    
+                } CATCH {
+                    $ErrTrapd=$Error[0] ;
+                    $smsg = $ErrTrapd ;
+                    $smsg += "`n";
+                    $smsg += $ErrTrapd.Exception.Message ;
+                    if ($logging) { _write-log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    CONTINUE ;
+                } ;        
+                #endregion GENERIC_ADMS_CONN_&_XO #*------^ END GENERIC ADMS CONN & XO ^------
+            } ; 
         } else {
             $smsg = "(`$UseOP:$($UseOP))" ; 
             if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
@@ -3430,11 +3593,15 @@ TRANSFER              | Recipients were moved to a forked message because of con
         # use new get-GCFastXO cross-org dc finde
         # default to Op_ExADRoot forest from $TenOrg Meta
         #if($UseOP -AND -not $domaincontroller){
-        if($UseOP -AND -not (get-variable domaincontroller -ea 0)){
+        if($UseOP -AND -not $isNonDomainServer -AND -not (get-variable domaincontroller -ea 0)){
             #$domaincontroller = get-GCFastXO -TenOrg $TenOrg -subdomain ((get-variable -name "$($TenOrg)Meta").value['OP_ExADRoot']) -verbose:$($verbose) |?{$_.length};
             # need to debug the above, credential issue?
             # just get it done
             $domaincontroller = get-GCFast
+        }elseif($isNonDomainServer){
+            $smsg = "(non-ADDomain-connected, skipping divert to EXO group resolution)" ; 
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
         }  else { 
             # have to defer to get-azuread, or use EXO's native cmds to poll grp members
             # TODO 1/15/2021
@@ -3443,7 +3610,7 @@ TRANSFER              | Recipients were moved to a forked message because of con
             if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         } ; 
-        if($useForestWide -AND -not $GcFwide){
+        if(-not $isNonDomainServer -AND $useForestWide -AND -not $GcFwide){
             #region  ; #*------v OPTIONAL CODE TO ENABLE FOREST-WIDE ACTIVEDIRECTORY SUPPORT: v------
             $smsg = "`$GcFwide = Get-ADDomainController -Discover -Service GlobalCatalog" ;
             if($silent){}elseif ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
@@ -3515,6 +3682,14 @@ TRANSFER              | Recipients were moved to a forked message because of con
 
         $eventIDLookupTbl = Initialize-xopEventIDTable ; 
 
+        if($IsEdgeTransport -AND $psise){
+            $smsg = "powershell_ISE UNDER Exchange Edge Transport role!" 
+            $smsg += "`nThis script is likely to fail the get-messagetrackingLog calls with Access Denied errors"
+            $smsg += "`nif run with this combo."
+            $smsg += "`nEXIT POWERSHELL ISE, AND RUN THIS DIRECTLY UNDER EMS FOR EDGE USE"; 
+            $smsg += "`n(bug appears to be a conflict in Remote EMS v EMS access permissions, not resolved yet)" ; 
+            write-warning $msgs ; 
+        } ; 
         # SET DAYS=0 IF USING START/END (they only get used when days is non-0); $platIn.TAG is appended to ticketNO for output vari $vn, and $ofile
         if($Days -AND ($Start -OR $End)){
             write-warning "specified -Days with (-Start -OR -End); If using Start/End, specify -Days 0!" ; 
@@ -3606,7 +3781,13 @@ TRANSFER              | Recipients were moved to a forked message because of con
 
         TRY {
             $OrgName = (Get-OrganizationConfig -ea STOP).name ; 
-            if(($orgname.ToCharArray() | ?{$_ -cmatch '[A-Z]'}).count -gt 1){
+            if($OrgName -eq 'First Organization'){
+                if($TenOrg -AND $IsEdgeTransport){
+                    $OrgTag = "$($TenOrg)edge" ; 
+                } else {
+                    $OrgTag = ($orgname  -replace '[^\w]','') ; 
+                } ; 
+            }elseif(($orgname.ToCharArray() | ?{$_ -cmatch '[A-Z]'}).count -gt 1){
                 $OrgTag = ($orgname.ToCharArray() | ?{$_ -cmatch '[A-Z]'}) -join '' ; #Acroynymize the OrgName on caps
             } else { 
                 $OrgTag = $orgname  -replace '[^\w]','' ; # use orgname with non-\W chars replaced
@@ -3639,10 +3820,28 @@ TRANSFER              | Recipients were moved to a forked message because of con
             } ; 
 
             if($Sender){
-                if($Sender -match $rgxIsPlusAddrSmtpAddr){write-warning "WARNING! Sender $($Sender) HAS PLUS-ADDRESSING, WON'T WORK FOR EXOP RECIPIENTS!"} ; 
-                #$pltGMTL.add("Sender",$Sender) ;
-                $pltGMTL.add('Sender',($Sender -split ' *, *')) ;
-                #$ofile+=",From-$($pltGMTL.Sender.replace("*","ANY"))"  ; 
+                if($Sender -match $rgxIsPlusAddrSmtpAddr){
+                    $smsg = "WARNING! Sender $($Sender) HAS PLUS-ADDRESSING, WON'T WORK FOR EXOP RECIPIENTS!"
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                } ; 
+                $pltGMTL.add("Sender",$Sender) ;
+                <# 2;18 pm 4/28/2025 drop the testing, the param is [string], let an err occur if a bad sender comes in
+                if( ($Sender -split ' *, *') -is [array]){
+                    # get-messagetrackinglog  -Sender is a [string] (not [string[]])!
+                    $smsg = "-Sender specified - $($Sender) - resolves to an ARRAY, not a supported single-address string!" ; 
+                    $smsg += "`nmultipole Senders are _not_ supported for get-messagetrackinglog!" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    throw $smsg ; 
+                    BREAK ; 
+                }else {
+                    #$pltGMTL.add('Sender',($Sender -split ' *, *')) ;
+                    $pltGMTL.add('Sender',($Sender| out-string)) ; 
+                    # this is resulting in an elipses trailing the sender, clearly borked.
+                    #$ofile+=",From-$($pltGMTL.Sender.replace("*","ANY"))"  ; 
+                } ; 
+                #>
             } ;
             if($Recipients){
                 #$pltGMTL.add("Recipients",$Recipients) ;
@@ -3757,8 +3956,6 @@ TRANSFER              | Recipients were moved to a forked message because of con
             $hReports = [ordered]@{} ; 
             #rx10 ;
             $error.clear() ;
-
-    
 
             write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Running Get-MessageTrackingLog w`n$(($pltGMTL|out-string).trim())" ; 
             $Srvrs=Get-ExchangeServer -ea STOP ;
