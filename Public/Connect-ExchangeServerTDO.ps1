@@ -1,106 +1,48 @@
 ﻿# Connect-ExchangeServerTDO.ps1
 
-#region CONNEXOPTDO ; #*------v  v------
-#*------v Function Connect-ExchangeServerTDO v------
-#if(-not(get-command Connect-ExchangeServerTDO -ea 0)){
+
+#region CONNECT_EXCHANGESERVERTDO ; #*------v Connect-ExchangeServerTDO v------
+if(-not(gci function:Connect-ExchangeServerTDO -ea 0)){
     Function Connect-ExchangeServerTDO {
         <#
-            .SYNOPSIS
-            Connect-ExchangeServerTDO.ps1 - Dependancy-less Function that, fed an Exchange server name, or AD SiteName, and optional RoleNames array, 
-            will obtain a list of Exchange servers from AD (in the specified scope), and then run the list attempting to PowershellREmote (REMS) connect to each server, 
-            stopping at the first successful connection.
-            .NOTES
-            Version     : 3.0.3
-            Author      : Todd Kadrie
-            Website     : http://www.toddomation.com
-            Twitter     : @tostka / http://twitter.com/tostka
-            CreatedDate : 2024-05-30
-            FileName    : Connect-ExchangeServerTDO.ps1
-            License     : (none-asserted)
-            Copyright   : (none-asserted)
-            Github      : https://github.com/tostka/verb-Ex2010
-            Tags        : Powershell, ActiveDirectory, Exchange, Discovery
-            AddedCredit : Brian Farnsworth
-            AddedWebsite: https://codeandkeep.com/
-            AddedTwitter: URL
-            AddedCredit : David Paulson
-            AddedWebsite: https://techcommunity.microsoft.com/t5/exchange-team-blog/exchange-health-checker-has-a-new-home/ba-p/2306671
-            AddedTwitter: URL
-            REVISIONS
-            * 2:46 PM 4/22/2025 add: -Version (default to Ex2010), and postfiltered returned ExchangeServers on version. If no -Version, sort on newest Version, then name, -descending.
-            * 4:25 PM 1/15/2025 seems to work at this point, move to rebuild
-            * 4:49 PM 1/9/2025 reworked connect-exchangeserverTdo() to actually use the credentials passed in, and 
-                added the missing import-module $PSS, to _connect-ExOP, to make the session actually functional 
-                for running cmds, wo popping cred prompts. 
-            * 12:24 PM 12/4/2024 removed bracket bnr echos around _connect-ExOP
-            * 3:54 PM 11/26/2024 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
-            * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; 
-                copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
-                includes local snapin detect & load for edge role (simplest EMS load option for Edge role, from David Paulson's original code; no longer published with Ex2010 compat)
-            * 1:30 PM 9/5/2024 added  update-SecurityProtocolTDO() SB to begin
-            * 12:49 PM 6/21/2024 flipped PSS Name to Exchange$($ExchVers[dd])
-            * 11:28 AM 5/30/2024 fixed failure to recognize existing functional PSSession; Made substantial update in logic, validate works fine with other orgs, and in our local orgs.
-            * 4:02 PM 8/28/2023 debuged, updated CBH, renamed connect-ExchangeSErver -> Connect-ExchangeServerTDO (avoid name clashes, pretty common verb-noun combo).
-            * 12:36 PM 8/24/2023 init
-
-            .DESCRIPTION
-            Connect-ExchangeServerTDO.ps1 - Dependancy-less Function that, fed an Exchange server name, or AD SiteName, and optional RoleNames array, 
-            will obtain a list of Exchange servers from AD (in the specified scope), and then run the list attempting to PowershellRemote (REMS) connect to each server, 
-            stopping at the first successful connection.
-
-            Relies upon/requires get-ADExchangeServerTDO(), to return a descriptive summary of the Exchange server(s) revision etc, for connectivity logic.
-            Supports Exchange 2010 through 2019, as implemented.
-        
-            Intent, as contrasted with verb-EXOP/Ex2010 is to have no local module dependancies, when running EXOP into other connected orgs, where syncing profile & supporting modules code can be problematic. 
-            This uses native ADSI calls, which are supported by Windows itself, without need for external ActiveDirectory module etc.
-
-            The particular approach inspired by BF's demo func that accompanied his take on get-adExchangeServer(), which I hybrided with my own existing code for cred-less connectivity. 
-            I added get-OrganizationConfig testing, for connection pre/post confirmation, along with Exchange Server revision code for continutional handling of new-pssession remote powershell EMS connections.
-            Also shifted connection code into _connect-EXOP() internal func.
-            As this doesn't rely on local module presence, it doesn't have to do the usual local remote/local invocation detection you'd do for non-dehydrated on-server EMS (more consistent this way, anyway; 
-            there are only a few cmdlet outputs I'm aware of, that have fundementally broken returns dehydrated, and require local non-remote EMS use to function.
-
-            My core usage would be to paste the function into the BEGIN{} block for a given remote org process, to function as a stricly local ad-hoc function.
-            .PARAMETER name
-            FQDN of a specific Exchange server[-Name EXSERVER.DOMAIN.COM]
-            .PARAMETER discover
-            Boolean paraameter that drives auto-discovery of target Exchange servers for connection (defaults `$true)[-discover:`$false]
-            .PARAMETER credential
-            Use specific Credentials[-Credentials [credential object]
-                .PARAMETER Site
-            Name of specific AD site to be searched for ExchangeServers (defaults to global variable `$TenOrg_ADSiteDefaultName if present)[-Site 'SITENAME']
-            .PARAMETER RoleNames
-            Array of Server 'Role' name strings to be filtered against (MBX|CAS|HUB|UM|MBX|EDGE)[-RoleNames 'HUB','CAS']
-            .PARAMETER TenOrg
-            Tenant Tag (3-letter abbrebiation - defaults to variable `$global:o365_TenOrgDefault if present)[-TenOrg 'XYZ']
-            .INPUTS
-            None. Does not accepted piped input.(.NET types, can add description)
-            .OUTPUTS
-            [system.object] Returns a system object containing a successful PSSession
-            System.Boolean
-            [| get-member the output to see what .NET obj TypeName is returned, to use here]
-            System.Array of System.Object's
-            .EXAMPLE
-            PS> $PSSession = Connect-ExchangeServerTDO -siteName SITENAME -RoleNames @('HUB','CAS') -verbose 
-            Demo's connecting to a functional Hub or CAS server in the SITENAME site with verbose outputs, the `PSSession variable will contain information about the successful connection. Makes automatic Exchangeserver discovery calls into AD (using ADSI) leveraging the separate get-ADExchangeServerTDO()
-            .EXAMPLE
-            PS> TRY{$Site=[System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name}CATCH{$Site=$env:COMPUTERNAME} ;
-            PS> $PSSession = Connect-ExchangeServerTDO -siteName $Site -RoleNames @('HUB','CAS') -verbose ; 
-            Demo including support for EdgeRole, which is detected on it's lack of AD Site specification (which gets fed through to call, by setting the Site to the machine itself).
-            .EXAMPLE
-            PS> $PSSession = Connect-ExchangeServerTDO -siteName SITENAME -RoleNames @('HUB','CAS') -Version Ex2016 -verbose 
-            Demo's connecting to a functional Hub or CAS server Version Ex2016 in the SITENAME site with verbose outputs, the `PSSession variable will contain information about the successful connection. Makes automatic Exchangeserver discovery calls into AD (using ADSI) leveraging the separate get-ADExchangeServerTDO()
-            .LINK
-            https://codeandkeep.com/PowerShell-ActiveDirectory-Exchange-Part1/
-            .LINK
-            https://github.com/Lucifer1993/PLtools/blob/main/HealthChecker.ps1
-            .LINK
-            https://microsoft.github.io/CSS-Exchange/Diagnostics/HealthChecker/
-            .LINK
-            https://bitbucket.org/tostka/powershell/
-            .LINK
-            https://github.com/tostka/verb-Ex2010
-            #>        
+        .SYNOPSIS
+        Connect-ExchangeServerTDO.ps1 - Dependancy-less Function that, fed an Exchange server name, or AD SiteName, and optional RoleNames array, 
+        will obtain a list of Exchange servers from AD (in the specified scope), and then run the list attempting to PowershellREmote (REMS) connect to each server, 
+        stopping at the first successful connection.
+        .NOTES
+        REVISIONS
+        * 10;07 am 4/30/2025 fixed borked edge conn, typo, and rev logic for Ex & role detection in raw PS - lacks evaris for exchange (EMS/REMS only), so leverage reg & stock install loc hunting to discover setup.exe for vers & role confirm).
+        * 2:46 PM 4/22/2025 add: -Version (default to Ex2010), and postfiltered returned ExchangeServers on version. If no -Version, sort on newest Version, then name, -descending.
+        .PARAMETER name
+        FQDN of a specific Exchange server[-Name EXSERVER.DOMAIN.COM]
+        .PARAMETER discover
+        Boolean paraameter that drives auto-discovery of target Exchange servers for connection (defaults `$true)[-discover:`$false]
+        .PARAMETER credential
+        Use specific Credentials[-Credentials [credential object]
+            .PARAMETER Site
+        Name of specific AD site to be searched for ExchangeServers (defaults to global variable `$TenOrg_ADSiteDefaultName if present)[-Site 'SITENAME']
+        .PARAMETER RoleNames
+        Array of Server 'Role' name strings to be filtered against (MBX|CAS|HUB|UM|MBX|EDGE)[-RoleNames 'HUB','CAS']
+        .PARAMETER Version
+        Specific Exchange Server Version to connect to('Ex2019|Ex2016|Ex2013|Ex2010|Ex2007|Ex2003|Ex2000')[-Version 'Ex2016']
+        .PARAMETER TenOrg
+        Tenant Tag (3-letter abbrebiation - defaults to variable `$global:o365_TenOrgDefault if present)[-TenOrg 'XYZ']
+        .INPUTS
+        None. Does not accepted piped input.(.NET types, can add description)
+        .OUTPUTS
+        [system.object] Returns a system object containing a successful PSSession
+        System.Boolean
+        .EXAMPLE
+        PS> $PSSession = Connect-ExchangeServerTDO -siteName SITENAME -RoleNames @('HUB','CAS') -verbose 
+        Demo's connecting to a functional Hub or CAS server in the SITENAME site with verbose outputs, the `PSSession variable will contain information about the successful connection. Makes automatic Exchangeserver discovery calls into AD (using ADSI) leveraging the separate get-ADExchangeServerTDO()
+        .EXAMPLE
+        PS> TRY{$Site=[System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name}CATCH{$Site=$env:COMPUTERNAME} ;
+        PS> $PSSession = Connect-ExchangeServerTDO -siteName $Site -RoleNames @('HUB','CAS') -verbose ; 
+        Demo including support for EdgeRole, which is detected on it's lack of AD Site specification (which gets fed through to call, by setting the Site to the machine itself).
+        .EXAMPLE
+        PS> $PSSession = Connect-ExchangeServerTDO -siteName SITENAME -RoleNames @('HUB','CAS') -Version Ex2016 -verbose 
+        Demo's connecting to a functional Hub or CAS server Version Ex2016 in the SITENAME site with verbose outputs, the `PSSession variable will contain information about the successful connection. Makes automatic Exchangeserver discovery calls into AD (using ADSI) leveraging the separate get-ADExchangeServerTDO()
+        #>        
         [CmdletBinding(DefaultParameterSetName='discover')]
         PARAM(
             [Parameter(Position=0,Mandatory=$true,ParameterSetName='name',HelpMessage="FQDN of a specific Exchange server[-Name EXSERVER.DOMAIN.COM]")]
@@ -141,6 +83,8 @@
 				} ;
 			} ;
                     
+            # 5:15 PM 4/22/2025 on CMW, have to patch version to Ex2016
+
             #*------v Function _connect-ExOP v------
             function _connect-ExOP{
                     [CmdletBinding()]
@@ -344,13 +288,13 @@
                 } ;
                 if($Version){
                     switch ($Version){
-                      'Ex2000'{$rgxExVersNum = '6' } 
-                      'Ex2003'{$rgxExVersNum = '6.5' } 
-                      'Ex2007'{$rgxExVersNum = '8.*' } 
-                      'Ex2010'{$rgxExVersNum = '14.*'} 
-                      'Ex2013'{$rgxExVersNum = '15.0' } 
-                      'Ex2016'{$rgxExVersNum = '15.1'} 
-                      'Ex2019'{$rgxExVersNum = '15.2' } 
+                        'Ex2000'{$rgxExVersNum = '6' } 
+                        'Ex2003'{$rgxExVersNum = '6.5' } 
+                        'Ex2007'{$rgxExVersNum = '8.*' } 
+                        'Ex2010'{$rgxExVersNum = '14.*'} 
+                        'Ex2013'{$rgxExVersNum = '15.0' } 
+                        'Ex2016'{$rgxExVersNum = '15.1'} 
+                        'Ex2019'{$rgxExVersNum = '15.2' } 
                     } ; 
                     $exchServers  = $exchServers | ?{ [double]([regex]::match( $_.version,"Version\s(\d+\.\d+)\s\(Build\s(\d+\.\d+)\)").groups[1].value) -match $rgxExVersNum } ; 
 
@@ -456,6 +400,6 @@
             } ; 
         } ;
     } ;
-#} ; 
-#*------^ END Function Connect-ExchangeServerTDO ^------
-#endregion CONNEXOPTDO ; #*------^ END CONNEXOPTDO ^------
+} ; 
+#endregion CONNECT_EXCHANGESERVERTDO ; #*------^ END Connect-ExchangeServerTDO ^------
+
