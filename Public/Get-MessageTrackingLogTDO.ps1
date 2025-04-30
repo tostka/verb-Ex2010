@@ -18,6 +18,21 @@ function Get-MessageTrackingLogTDO {
     Github      : htt-ps://github.com/tostka/verb-XXX
     Tags        : Powershell,Exchange,MessageTracking,Get-MessageTrackingLog,ActiveDirectory
     REVISIONS
+    * 10;23 am 4/30/2025 - get-ADExchangeServerTDO: * 10;05 am 4/30/2025 fixed code for Edge role in raw PS, missing evaris for Ex: added discovery from reg & stock file system dirs for version etc.
+        - Connect-ExchangeServerTDO: * 10;07 am 4/30/2025 fixed borked edge conn, typo, and rev logic for Ex & role detection in raw PS - lacks evaris for exchange (EMS/REMS only), so leverage reg & stock install loc hunting to discover setup.exe for vers & role confirm).
+        - start-log: made Tag cleanup conditional (on funcs avail; legacy of bringing full start-log into the mix).
+    * 1:35 PM 4/29/2025: added resolve-NetworkLocalTDO() (for vnet); 
+        - Initialize-xopEventIDTable(): * 2;58 pm 4/28/2025 Updated table again, and found Ex2016/19 eventid specifications online, added. Did find that 
+            the online doc doesn't document the edge SendExternal event id (added below, manually).      
+        - ENCODED_CONTANTS block: added eval'd varis: $isLocalExchangeServer, $ByPassLocalExchangeServerTest, $IsEdgeTransport
+        - new NETWORK_INFO block: $netsettings = resolve-NetworkLocalTDO() ;
+        - new $isNonDomainServer test, $isLocalExchangeServer (transport svc & regkey), $IsEdgeTransport (regkey test)
+        - revised $TenOrg forced resolution, to leverage DNS A fqdn suffix steering (collected via new resolve-NetworkLocalTDO())
+        - UseOPAD: skip AD load, $useForestWide, $objforest, $forestdom, $domaincontroller & get-GCFast(), if $isNonDomainServer
+        - added block that tests if($IsEdgeTransport -AND $psise) and warns likely AccessDenied's from ex commands (works fine in EMS outside of ise)
+        - revised $OrgTag resolution, to detect Edge 'First Org' orgname, and substitute in $($TenOrg)edge log name tagging
+        - stripped back Sender array expansion (ported from EXO, which supports mults): gmtl *doesnt* support [string[]]$Sender, throws error.
+        - validated on TTC Ex10 (did CMW hubs & edge below)
     * 3:12 pm 4/28/2025 Noted, get-OrgConfig returns 'First Org... on edge, so coded in TenOrgedge as OrgTag in that niched case (was coming back 'O_FO' ; 
         extensive debugging updates in the services_control BP block, and detection and handling of TenOrg around non-dom-joined edge role machine; 
             Still having issues in psie debugging: throws localizaiton error - appears due to the EMS connection; works fine in raw EMS console on edge. 
@@ -324,11 +339,11 @@ function Get-MessageTrackingLogTDO {
     ) ;
     BEGIN{
 
-        #region FUNCTIONS ; #*======v FUNCTIONS v======
+        #region FUNCTIONS_INTERNAL ; #*======v FUNCTIONS_INTERNAL v======
         # Pull the CUser mod dir out of psmodpaths:
         #$CUModPath = $env:psmodulepath.split(';')|?{$_ -like '*\Users\*'} ;
 
-        #region RESOLVE_ENVIRONMENTTDO ; #*------v RESOLVE_ENVIRONMENTTDO v------
+        #region RESOLVE_ENVIRONMENTTDO ; #*------v resolve-EnvironmentTDO v------
         if(-not(gci function:resolve-EnvironmentTDO -ea 0)){
             #*----------v Function resolve-EnvironmentTDO() v----------
             function resolve-EnvironmentTDO {
@@ -584,7 +599,7 @@ function Get-MessageTrackingLogTDO {
             } ; 
             #*------^ END Function resolve-EnvironmentTDO() ^------ 
         } ;
-        #endregion RESOLVE_ENVIRONMENTTDO ; #*------^ END RESOLVE_ENVIRONMENTTDO ^------
+        #endregion RESOLVE_ENVIRONMENTTDO ; #*------^ END resolve-EnvironmentTDO ^------
     
         #region WRITE_LOG ; #*------v write-log v------
         if(-not(gci function:write-log -ea 0)){
@@ -1156,10 +1171,16 @@ function Get-MessageTrackingLogTDO {
         } ; 
         #endregion WRITE_LOG ; #*------^ END write-log  ^------
 
-        #region SSTARTLOG ; #*------v SIMPLIFIED start-log v------
-        #*------v Start-Log.ps1 v------
-        if(-not(gci function:start-log -ea 0)){
+        #region START_LOG ; #*------v Start-Log v------
+        if(-not(get-command start-log -ea 0)){
             function Start-Log {
+                <#
+                .SYNOPSIS
+                Start-Log.ps1 - Configure base settings for use of write-Log() logging
+                .NOTES
+                REVISIONS
+               * 9:07 AM 4/30/2025 make Tag cleanup conditional on avail of the target vtxt\funcs
+               #>
                 [CmdletBinding()]
                 PARAM(
                     [Parameter(Position=0,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true,HelpMessage="Path to target script (defaults to `$PSCommandPath) [-Path .\path-to\script.ps1]")]
@@ -1184,10 +1205,10 @@ function Get-MessageTrackingLogTDO {
                 if (-not (test-path -path $transcript)) { write-host "Creating missing log dir $($transcript)..." ; mkdir $transcript  ; } ;
                 #$transcript = join-path -path $transcript -childpath "$([system.io.path]::GetFilenameWithoutExtension($Path))" ; 
                 if($Tag){
-                    # clean for fso use - skip if missing functions (common on temp/initial installs)
-                    if(get-command -name Remove-StringDiacritic -ea 0){$Tag = Remove-StringDiacritic -String $Tag} else {write-verbose "Start-Log:skip: missing Remove-StringDiacritic"} ; # verb-text 
-                    if(get-command -name Remove-StringLatinCharacters -ea 0){$Tag = Remove-StringLatinCharacters -String $Tag} else {write-verbose "Start-Log:skip: missing Remove-StringLatinCharacters"} ; # verb-text
-                    if(get-command -name InvalidFileNameChars -ea 0){ $Tag = Remove-InvalidFileNameChars -Name $Tag } else {write-verbose "Start-Log:skip: missing Remove-InvalidFileNameChars"}; # verb-io, (inbound Path is assumed to be filesystem safe)
+                    # clean for fso use, if funcs avail
+                    if((gci function:Remove-StringDiacritic -ea 0)){$Tag = Remove-StringDiacritic -String $Tag } else {write-host "(missing:verb-text\Remove-StringDiacritic, skipping)";}  # verb-text ; 
+                    if((gci function:Remove-StringLatinCharacters -ea 0)){$Tag = Remove-StringLatinCharacters -String $Tag } else {write-host "(missing:verb-textRemove-StringLatinCharacters, skipping)";} # verb-text
+                    if((gci function:Remove-InvalidFileNameChars -ea 0)){$Tag = Remove-InvalidFileNameChars -Name $Tag } else {write-host "(missing:verb-textRemove-InvalidFileNameChars, skipping)";}; # verb-io, (inbound Path is assumed to be filesystem safe)
                     if($TagFirst){
                         $smsg = "(-TagFirst:Building filenames with leading -Tag value)" ; 
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
@@ -1228,21 +1249,9 @@ function Get-MessageTrackingLogTDO {
                 Write-Output $hshRet ;
             }
         } ; 
-        #*------^ END Start-Log.ps1 ^------
-        #endregion SSTARTLOG ; #*------^ END SIMPLIFIED start-log ^------
+        #endregion START_LOG ;  ; #*------^ END start-log ^------
 
-        #region RVARIINVALIDCHARS ; #*------v RVARIINVALIDCHARS v------
-        #*------v Function Remove-InvalidVariableNameChars v------
-        if(-not (gcm Remove-InvalidVariableNameChars -ea 0)){
-            Function Remove-InvalidVariableNameChars ([string]$Name) {
-                ($Name.tochararray() -match '[A-Za-z0-9_]') -join '' | write-output ;
-            };
-        } ;
-        #*------^ END Function Remove-InvalidVariableNameChars ^------
-        #endregion RVARIINVALIDCHARS ; #*------^ END RVARIINVALIDCHARS ^------
-
-        #region CONNEXOPTDO ; #*------v  v------
-        #*------v Function Connect-ExchangeServerTDO v------
+        #region CONNECT_EXCHANGESERVERTDO ; #*------v Connect-ExchangeServerTDO v------
         if(-not(gci function:Connect-ExchangeServerTDO -ea 0)){
             Function Connect-ExchangeServerTDO {
                 <#
@@ -1252,6 +1261,7 @@ function Get-MessageTrackingLogTDO {
                 stopping at the first successful connection.
                 .NOTES
                 REVISIONS
+                * 10;07 am 4/30/2025 fixed borked edge conn, typo, and rev logic for Ex & role detection in raw PS - lacks evaris for exchange (EMS/REMS only), so leverage reg & stock install loc hunting to discover setup.exe for vers & role confirm).
                 * 2:46 PM 4/22/2025 add: -Version (default to Ex2010), and postfiltered returned ExchangeServers on version. If no -Version, sort on newest Version, then name, -descending.
                 .PARAMETER name
                 FQDN of a specific Exchange server[-Name EXSERVER.DOMAIN.COM]
@@ -1370,7 +1380,7 @@ function Get-MessageTrackingLogTDO {
                                         $smsg = "We are on Exchange Edge Transport Server"
                                         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
                                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-                                        c
+                                        $IsEdgeTransport = $true
                                     }
                                     TRY {
                                         Get-ExchangeServer -ErrorAction Stop | Out-Null
@@ -1641,11 +1651,9 @@ function Get-MessageTrackingLogTDO {
                 } ;
             } ;
         } ; 
-        #*------^ END Function Connect-ExchangeServerTDO ^------
-        #endregion CONNEXOPTDO ; #*------^ END CONNEXOPTDO ^------
+        #endregion CONNECT_EXCHANGESERVERTDO ; #*------^ END Connect-ExchangeServerTDO ^------
 
-        #region GADEXSERVERTDO ; #*------v  v------
-        #*------v Function get-ADExchangeServerTDO v------
+        #region GET_ADEXCHANGESERVERTDO ; #*------v get-ADExchangeServerTDO v------
         if(-not(gci function:get-ADExchangeServerTDO -ea 0)){
             Function get-ADExchangeServerTDO {
                 <#
@@ -1672,6 +1680,7 @@ function Get-MessageTrackingLogTDO {
                 AddedWebsite: https://codeandkeep.com/
                 AddedTwitter: URL
                 REVISIONS
+                * 10;05 am 4/30/2025 fixed code for Edge role in raw PS, missing evaris for Ex: added discovery from reg & stock file system dirs for version etc.
                 * 3:57 PM 11/26/2024 updated simple write-host,write-verbose with full pswlt support;  syncd dbg & vx10 copies.
                 * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
                 * 2:05 PM 8/28/2023 REN -> Get-ExchangeServerInSite -> get-ADExchangeServerTDO (aliased orig); to better steer profile-level options - including in cmw org, added -TenOrg, and default Site to constructed vari, targeting new profile $XXX_ADSiteDefault vari; Defaulted -Roles to HUB,CAS as well.
@@ -1895,10 +1904,47 @@ function Get-MessageTrackingLogTDO {
                                 $ErrTrapd=$Error[0] ;
                                 if(($ErrTrapd.Exception -match 'The computer is not in a site.') -AND $env:ExchangeInstallPath){
                                     $smsg = "$($env:computername) is non-ADdomain-connected" ;
-                                    $smsg += "`nand has `$env:ExchangeInstalled populated: Likely Edge Server" ;
+                                    if($env:ExchangeInstalled){
+                                        $smsg += "`nand has `$env:ExchangeInstalled populated: Likely Edge Server" ;
+                                        # unpop'd in native PS, only in EMS/REMS
+                                    } elseif(($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\Setup')) -or
+                                        ($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup')) -or
+                                        $ByPassLocalExchangeServerTest){
+                                        $smsg +="`nand Reg confirms ExchangeServer\v1x\Setup (`$isLocalExchangeServer)" ; 
+                                        if((Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\EdgeTransportRole') -or
+                                                (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole'))
+                                        {
+                                            $smsg +="`nand Reg confirms \v1x\EdgeTransportRole (`$IsEdgeTransport)" ; 
+                                            $IsEdgeTransport = $true
+                                        } ; 
+                                    }  ; 
                                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Prompt }
                                     else{ write-host -foregroundcolor YELLOW "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                    $vers = (get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe").VersionInfo.FileVersionRaw ; 
+                                    # only exists in EMS/REMS, NOT PS raw
+                                    if($vers = (get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe").VersionInfo.FileVersionRaw ){
+                                        <# [PS] C:\scripts>((get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe").VersionInfo.FileVersionRaw )
+                                        Major  Minor  Build  Revision
+                                        -----  -----  -----  --------
+                                        15     1      2507   39
+                                        #>
+                                    }else{
+                                        if($binPath = (resolve-path  "$($env:ProgramFiles)\Microsoft\Exchange Server\V1*\Bin\Setup.exe" -ea 0).path){
+                                            # find setup in stock path discovery (won't work if manual install non-std loc)                                            
+                                        } else { 
+                                            # loop the letter drives checking for progfiles copies
+                                            (get-psdrive -PSProvider FileSystem |?{$_ -match '[D-Z]'}  | select -expand name)|foreach-object{
+                                                $drv = $_ ; 
+                                                if($binPath = (resolve-path  "$($drv)$($env:ProgramFiles.substring(1,($env:ProgramFiles.length-1)))\Microsoft\Exchange Server\V1*\Bin\Setup.exe" -ea 0).path){
+                                                    break ; 
+                                                } ; 
+                                            };
+                                            if($binPath){
+                                                $vers = (get-item $binPath).VersionInfo.FileVersionRaw
+                                            }else {
+
+                                            } ;
+                                        } ; 
+                                    } ; 
                                     $props = @{
                                         Name=$env:computername;
                                         FQDN = ([System.Net.Dns]::gethostentry($env:computername)).hostname;
@@ -2039,12 +2085,11 @@ function Get-MessageTrackingLogTDO {
                 } ;
             } ;
         }
-        #*------^ END Function get-ADExchangeServerTDO ^------ ;
-        #endregion GADEXSERVERTDO ; #*------^ END GADEXSERVERTDO ^------
+        #endregion GET_ADEXCHANGESERVERTDO ;#*------^ END Function get-ADExchangeServerTDO ^------ ;
 
-        #region load_ADMS  ; #*------v load_ADMS v------
+        #region load_ADMS  ; #*------v load-ADMS v------
         if(-not(gci function:load-ADMS -ea 0)){
-            #*------v load-ADMS.ps1 v------
+            
             function load-ADMS {
                 <#
                 .NOTES
@@ -2100,11 +2145,11 @@ function Get-MessageTrackingLogTDO {
                     return $FALSE
                 } # if-E ;
             } ;
-            #*----------^END Function load-ADMS ^----------            
+                       
         } ; 
-        #endregion load_ADMS ; #*------^ END load_ADMS ^------
+        #endregion load_ADMS ; #*----------^END Function load-ADMS ^---------- 
 
-        #region GET_GCFAST ; #*------v GET_GCFAST v------
+        #region GET_GCFAST ; #*------v get-GCFast v------
         if(-not(gci function:get-GCFast -ea 0)){
             function get-GCFast {
                 <#
@@ -2318,9 +2363,9 @@ function Get-MessageTrackingLogTDO {
                     write-host -foregroundcolor yellow  "NO DCS RETURNED BY GET-GCFAST()!";
                     write-output $false ;
                 } ;
-            } 
-        }
-        #endregion GET_GCFAST ; #*------^ END GET_GCFAST ^------
+            }  ; 
+        } ; 
+        #endregion GET_GCFAST ; #*------^ END get-GCFast ^------
 
         #region RESOLVE_NETWORKLOCALTDO ; #*------v resolve-NetworkLocalTDO v------
         #*------v Function resolve-NetworkLocalTDO v------
@@ -2349,8 +2394,7 @@ function Get-MessageTrackingLogTDO {
                 .INPUTS
                 None. Does not accepted piped input.(.NET types, can add description)
                 .OUTPUTS
-                System.PsCustomObject summary of useful Neic descriptors
-                [| get-member the output to see what .NET obj TypeName is returned, to use here]
+                System.PsCustomObject summary of useful Nic descriptors                
                 .EXAMPLE
                 PS> $netsettings = resolve-NetworkLocalTDO ; 
                 Demo run
@@ -2392,8 +2436,7 @@ function Get-MessageTrackingLogTDO {
         #*------^ END Function resolve-NetworkLocalTDO ^------
         #endregion RESOLVE_NETWORKLOCALTDO ; #*------^ END resolve-NetworkLocalTDO ^------
 
-        #region OUT_CLIPBOARD ; #*------v OUT_CLIPBOARD v------
-        #*------v Function out-Clipboard v------
+        #region OUT_CLIPBOARD ; #*------v out-Clipboard v------
         if(-not(gci function:out-Clipboard -ea 0)){
             Function out-Clipboard {
                 [CmdletBinding()]
@@ -2424,10 +2467,9 @@ function Get-MessageTrackingLogTDO {
                 } ; 
             }
         } ; 
-        #*------^ END Function out-Clipboard ^------
-        #endregion OUT_CLIPBOARD ; #*------^ END OUT_CLIPBOARD ^------
+        #endregion OUT_CLIPBOARD ; #*------^ END out-Clipboard ^------
 
-        #region CONVERTFROM_MARKDOWNTABLE ; #*------v CONVERTFROM_MARKDOWNTABLE v------
+        #region CONVERTFROM_MARKDOWNTABLE ; #*------v convertFrom-MarkdownTable v------
         if(-not(gci function:convertFrom-MarkdownTable -ea 0)){
             Function convertFrom-MarkdownTable {
                 <#
@@ -2488,10 +2530,19 @@ function Get-MessageTrackingLogTDO {
                 } ; 
             } ;             
         } ; 
-        #endregion CONVERTFROM_MARKDOWNTABLE ; #*------^ END CONVERTFROM_MARKDOWNTABLE ^------
+        #endregion CONVERTFROM_MARKDOWNTABLE ; #*------^ END convertFrom-MarkdownTable ^------
 
-        #region REMOVE_SMTPPLUSADDRESS ; #*------v REMOVE_SMTPPLUSADDRESS v------
-        #*------v remove-SmtpPlusAddress.ps1 v------
+        #region REMOVE_INVALIDVARIABLENAMECHARS ; #*------v Remove-InvalidVariableNameChars v------
+        #*------v Function Remove-InvalidVariableNameChars v------
+        if(-not (gcm Remove-InvalidVariableNameChars -ea 0)){
+            Function Remove-InvalidVariableNameChars ([string]$Name) {
+                ($Name.tochararray() -match '[A-Za-z0-9_]') -join '' | write-output ;
+            };
+        } ;
+        #*------^ END Function Remove-InvalidVariableNameChars ^------
+        #endregion REMOVE_INVALIDVARIABLENAMECHARS ; #*------^ END Remove-InvalidVariableNameChars ^------
+
+        #region REMOVE_SMTPPLUSADDRESS ; #*------v remove-SmtpPlusAddress v------
         function remove-SmtpPlusAddress {
             <#
             .SYNOPSIS
@@ -2587,78 +2638,77 @@ function Get-MessageTrackingLogTDO {
                 write-verbose  "$((get-date).ToString('HH:mm:ss')):$($sBnr.replace('=v','=^').replace('v=','^='))" ;
             }
         }; 
-        #*------^ remove-SmtpPlusAddress.ps1 ^------
-        #endregion REMOVE_SMTPPLUSADDRESS ; #*------^ END REMOVE_SMTPPLUSADDRESS ^------
+        #endregion REMOVE_SMTPPLUSADDRESS ; #*------^ END remove-SmtpPlusAddress ^------
 
-        #region INITIALIZE_XOPEVENTIDTABLE ; #*------v INITIALIZE_XOPEVENTIDTABLE v------
-        #*------v Initialize-xopEventIDTable.ps1 v------
-        function Initialize-xopEventIDTable {
-            <#
-            .SYNOPSIS
-            Initialize-xopEventIDTable - Builds an indexed hash tabl of Exchange Server Get-MessageTrackingLog EventIDs
-            .NOTES
-            Version     : 1.0.0
-            Author      : Todd Kadrie
-            Website     : http://www.toddomation.com
-            Twitter     : @tostka / http://twitter.com/tostka
-            CreatedDate : 2025-04-22
-            FileName    : Initialize-xopEventIDTable
-            License     : (none asserted)
-            Copyright   : (none asserted)
-            Github      : https://github.com/tostka/verb-Ex2010
-            Tags        : Powershell,EmailAddress,Version
-            AddedCredit : Bruno Lopes (brunokktro )
-            AddedWebsite: https://www.linkedin.com/in/blopesinfo
-            AddedTwitter: @brunokktro / https://twitter.com/brunokktro
-            REVISIONS
-            * 2;58 pm 4/28/2025 Updated table again, and found Ex2016/19 eventid specifications online, added. Did find that 
-            the online doc doesn't document the edge SendExternal event id (added below, manually).             
-            * 1:47 PM 7/9/2024 CBA github field correction
-            * 1:22 PM 5/22/2024init
-            .DESCRIPTION
-            Initialize-xopEventIDTable - Builds an indexed hash tabl of Exchange Server Get-MessageTrackingLog EventIDs
+        #region INITIALIZE_XOPEVENTIDTABLE ; #*------v Initialize-xopEventIDTable v------
+        if(-not(gci function:Initialize-xopEventIDTable -ea 0)){
+            function Initialize-xopEventIDTable {
+                <#
+                .SYNOPSIS
+                Initialize-xopEventIDTable - Builds an indexed hash tabl of Exchange Server Get-MessageTrackingLog EventIDs
+                .NOTES
+                Version     : 1.0.0
+                Author      : Todd Kadrie
+                Website     : http://www.toddomation.com
+                Twitter     : @tostka / http://twitter.com/tostka
+                CreatedDate : 2025-04-22
+                FileName    : Initialize-xopEventIDTable
+                License     : (none asserted)
+                Copyright   : (none asserted)
+                Github      : https://github.com/tostka/verb-Ex2010
+                Tags        : Powershell,EmailAddress,Version
+                AddedCredit : Bruno Lopes (brunokktro )
+                AddedWebsite: https://www.linkedin.com/in/blopesinfo
+                AddedTwitter: @brunokktro / https://twitter.com/brunokktro
+                REVISIONS
+                * 2;58 pm 4/28/2025 Updated table again, and found Ex2016/19 eventid specifications online, added. Did find that 
+                the online doc doesn't document the edge SendExternal event id (added below, manually).             
+                * 1:47 PM 7/9/2024 CBA github field correction
+                * 1:22 PM 5/22/2024init
+                .DESCRIPTION
+                Initialize-xopEventIDTable - Builds an indexed hash tabl of Exchange Server Get-MessageTrackingLog EventIDs
 
-            ## Exchange 2019 EventID reference:
+                ## Exchange 2019 EventID reference:
 
-            [Event types in the message tracking log | Microsoft Learn](https://learn.microsoft.com/en-us/exchange/mail-flow/transport-logs/message-tracking?view=exchserver-2019#event-types-in-the-message-tracking-log)
+                [Event types in the message tracking log | Microsoft Learn](https://learn.microsoft.com/en-us/exchange/mail-flow/transport-logs/message-tracking?view=exchserver-2019#event-types-in-the-message-tracking-log)
 
-            Doesn't include Edge eventid: 
-            SENDEXTERNAL          | A message was sent by SMTP to an external recipient. 
-            Added to the table below
-
-
-            .OUTPUT
-            String
-            .EXAMPLE
-            PS> $eventIDLookupTbl = Initialize-EventIDTable ; 
-            PS> $smsg = "`n`n## EventID Definitions:" ; 
-            PS> $TrackMsgs | group eventid | select -expand Name | foreach-object{                   
-            PS>     $smsg += "`n$(($eventIDLookupTbl[$_] | ft -hidetableheaders |out-string).trim())" ; 
-            PS> } ; 
-            PS> $smsg += "`n`n" ; 
-            PS> if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Prompt } 
-            PS> else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            Demo resolving histogram eventid uniques, to MS documented meansings of each event id in the msgtrack.
-            .EXAMPLE
-            ps> Initialize-xopEventIDTable -EmailAddress 'monitoring+SolarWinds@toro.com;notanemailaddresstoro.com,todd+spam@kadrie.net' -verbose ;
-            PS> 
-            Demo with comma and semicolon delimiting, and an invalid address (to force a regex match fail error).
-            .LINK
-            https://github.com/brunokktro/EmailAddress/blob/master/Get-ExchangeEnvironmentReport.ps1
-            .LINK
-            https://github.com/tostka/verb-Ex2010
-            #>
-            [CmdletBinding()]
-            #[Alias('rvExVers')]
-            PARAM() ;
-            BEGIN {
-                ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
-                $verbose = $($VerbosePreference -eq "Continue")
-                $rgxSMTPAddress = "([0-9a-zA-Z]+[-._+&='])*[0-9a-zA-Z]+@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}" ; 
-                $sBnr="#*======v $($CmdletName): v======" ;
-                write-verbose  "$((get-date).ToString('HH:mm:ss')):$($sBnr)" ;
+                Doesn't include Edge eventid: 
+                "SENDEXTERNAL          | A message was sent by SMTP to sent to the SMTP server responsible to receive the email for the external email address."
+            
+                (needs to be manually spliced in below 'SEND' during updates from source MS documentation)
+            
+                .OUTPUT
+                System.Collections.Hashtable returns an Indexed Hash of EventIDs EventName to Description
+                .EXAMPLE
+                PS> $eventIDLookupTbl = Initialize-EventIDTable ; 
+                PS> $smsg = "`n`n## EventID Definitions:" ; 
+                PS> $TrackMsgs | group eventid | select -expand Name | foreach-object{                   
+                PS>     $smsg += "`n$(($eventIDLookupTbl[$_] | ft -hidetableheaders |out-string).trim())" ; 
+                PS> } ; 
+                PS> $smsg += "`n`n" ; 
+                PS> if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Prompt } 
+                PS> else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                Demo resolving histogram eventid uniques, to MS documented meansings of each event id in the msgtrack.
+                .EXAMPLE
+                ps> Initialize-xopEventIDTable -EmailAddress 'monitoring+SolarWinds@toro.com;notanemailaddresstoro.com,todd+spam@kadrie.net' -verbose ;
+                PS> 
+                Demo with comma and semicolon delimiting, and an invalid address (to force a regex match fail error).
+                .LINK
+                https://github.com/brunokktro/EmailAddress/blob/master/Get-ExchangeEnvironmentReport.ps1
+                .LINK
+                https://github.com/tostka/verb-Ex2010
+                #>
+                [CmdletBinding()]
+                #[Alias('rvExVers')]
+                PARAM() ;
+                BEGIN {
+                    ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+                    $verbose = $($VerbosePreference -eq "Continue")
+                    $rgxSMTPAddress = "([0-9a-zA-Z]+[-._+&='])*[0-9a-zA-Z]+@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}" ; 
+                    $sBnr="#*======v $($CmdletName): v======" ;
+                    write-verbose  "$((get-date).ToString('HH:mm:ss')):$($sBnr)" ;
                 
-                $eventIDsMD = @"
+                    $eventIDsMD = @"
 EventName             | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
 --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 AGENTINFO             | This event is used by transport agents to log custom data.                                                                                                                                                                                                                                                                                                                                                                                                                             
@@ -2696,7 +2746,7 @@ RESUBMIT              | A message was automatically resubmitted from Safety Net.
 RESUBMITDEFER         | A message resubmitted from Safety Net was deferred.                                                                                                                                                                                                                                                                                                                                                                                                                                    
 RESUBMITFAIL          | A message resubmitted from Safety Net failed.                                                                                                                                                                                                                                                                                                                                                                                                                                          
 SEND                  | A message was sent by SMTP between transport services.                                                                                                                                                                                                                                                                                                                                                                                                                                 
-SENDEXTERNAL          | A message was sent by SMTP between to an external recipient.                                                                                                                                                                                                                                                                                                                                                                                                                           
+SENDEXTERNAL          | A message was sent by SMTP to sent to the SMTP server responsible to receive the email for the external email address.                                                                                                                                                                                                                                                                                                                                                                                                                           
 SUBMIT                | The Mailbox Transport Submission service successfully transmitted the message to the Transport service. For SUBMIT events, the source-context property contains the following details:<br/>- MDB: The mailbox database GUID.<br/>- Mailbox: The mailbox GUID.<br/>- Event: The event sequence number.<br/>- MessageClass: The type of message. For example, IPM.Note.<br/>- CreationTime: Date-time of the message submission.<br/>- ClientType: For example, User, OWA, or ActiveSync.
 SUBMITDEFER           | The message transmission from the Mailbox Transport Submission service to the Transport service was deferred.                                                                                                                                                                                                                                                                                                                                                                          
 SUBMITFAIL            | The message transmission from the Mailbox Transport Submission service to the Transport service failed.                                                                                                                                                                                                                                                                                                                                                                                
@@ -2704,29 +2754,30 @@ SUPPRESSED            | The message transmission was suppressed.
 THROTTLE              | The message was throttled.                                                                                                                                                                                                                                                                                                                                                                                                                                                             
 TRANSFER              | Recipients were moved to a forked message because of content conversion, message recipient limits, or agents. Sources include ROUTING or QUEUE.
 "@ ; 
+                    # UPDATE NOTE: MANUAL UNDOCUMENTED ADDITION: "SENDEXTERNAL          | A message was sent by SMTP to sent to the SMTP server responsible to receive the email for the external email address."
+                    # (needs to be manually spliced in below 'SEND' during updates from source MS documentation)
+                    $Object = $eventIDsMD | convertfrom-MarkdownTable ; 
+                    $Key = 'EventName' ; 
+                    $Hashtable = @{}
+                }
+                PROCESS {
+                    Foreach ($Item in $Object){
+                        $Procd++ ; 
+                        $Hashtable[$Item.$Key.ToString()] = $Item ; 
+                        if($ShowProgress -AND ($Procd -eq $Every)){
+                            write-host -NoNewline '.' ; $Procd = 0 
+                        } ; 
+                    } ;                 
+                } # PROC-E
+                END{
+                    $Hashtable | write-output ; 
+                    write-verbose  "$((get-date).ToString('HH:mm:ss')):$($sBnr.replace('=v','=^').replace('v=','^='))" ;
+                }
+            };
+        } ;      
+        #endregion INITIALIZE_XOPEVENTIDTABLE ; #*------^ Initialize-xopEventIDTable ^------
 
-                $Object = $eventIDsMD | convertfrom-MarkdownTable ; 
-                $Key = 'EventName' ; 
-                $Hashtable = @{}
-            }
-            PROCESS {
-                Foreach ($Item in $Object){
-                    $Procd++ ; 
-                    $Hashtable[$Item.$Key.ToString()] = $Item ; 
-                    if($ShowProgress -AND ($Procd -eq $Every)){
-                        write-host -NoNewline '.' ; $Procd = 0 
-                    } ; 
-                } ;                 
-            } # PROC-E
-            END{
-                $Hashtable | write-output ; 
-                write-verbose  "$((get-date).ToString('HH:mm:ss')):$($sBnr.replace('=v','=^').replace('v=','^='))" ;
-            }
-        }; 
-        #*------^ Initialize-xopEventIDTable.ps1 ^------
-        #endregion INITIALIZE_XOPEVENTIDTABLE ; #*------^ END INITIALIZE_XOPEVENTIDTABLE ^------
-
-        #endregion FUNCTIONS ; #*======^ END FUNCTIONS ^======
+        #endregion FUNCTIONS_INTERNAL ; #*======^ END FUNCTIONS_INTERNAL ^======
 
         #region CONSTANTS_AND_ENVIRO ; #*======v CONSTANTS_AND_ENVIRO v======
         #region ENVIRO_DISCOVER ; #*------v ENVIRO_DISCOVER v------
@@ -2847,31 +2898,19 @@ TRANSFER              | Recipients were moved to a forked message because of con
         [array]$SmtpAttachment = $null ;
         #write-verbose "start-Timer:Master" ; 
         $swM = [Diagnostics.Stopwatch]::StartNew() ;
+        # $ByPassLocalExchangeServerTest = $true # rough in, code exists below for exempting service/regkey testing on this variable status. Not yet implemented beyond the exemption code, ported in from orig source.
         #endregion COMMON_CONSTANTS ; #*------^ END COMMON_CONSTANTS ^------
+
         #region LOCAL_CONSTANTS ; #*------v LOCAL_CONSTANTS v------
 
         $DaysLimit = 30 ; # technically no specific limit to Get-MessageTrackingLog, but practical matter they're limited to 30d on the drive
         $rgxIsPlusAddrSmtpAddr = "[+].*@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}" ; 
-
-        #$ComputerName = $env:COMPUTERNAME ;
-        #$NoProf = [bool]([Environment]::GetCommandLineArgs() -like '-noprofile'); # if($NoProf){# do this};
-        # XXXMeta derived constants:
-        # - AADU Licensing group checks
-        # calc the rgxLicGrpName fr the existing $xxxmeta.rgxLicGrpDN: (get-variable tormeta).value.rgxLicGrpDN.split(',')[0].replace('^','').replace('CN=','')
-        #$rgxLicGrpName = (get-variable -name "$($tenorg)meta").value.rgxLicGrpDN.split(',')[0].replace('^','').replace('CN=','')
-        # use the dn vers LicGrouppDN = $null ; # | ?{$_ -match $tormeta.rgxLicGrpDN}
-        #$rgxLicGrpDN = (get-variable -name "$($tenorg)meta").value.rgxLicGrpDN
-
-        # email trigger vari, it will be semi-delimd list of mail-triggering events
-        #$script:PassStatus = $null ;
-        #[array]$SmtpAttachment = $null ;
-
-        # local Constants:
         $prpMTLfta = 'Timestamp','EventId','Sender','Recipients','MessageSubject' ; 
         $prpXCsv = "Timestamp",@{N='TimestampLocal'; E={$_.Timestamp.ToLocalTime()}},"Source","EventId","RelatedRecipientAddress","Sender",@{N='Recipients'; E={$_.Recipients}},"RecipientCount",@{N='RecipientStatus'; E={$_.RecipientStatus}},"MessageSubject","TotalBytes",@{N='Reference'; E={$_.Reference}},"MessageLatency","MessageLatencyType","InternalMessageId","MessageId","ReturnPath","ClientIp","ClientHostname","ServerIp","ServerHostname","ConnectorId","SourceContext","MessageInfo",@{N='EventData'; E={$_.EventData}} ;
         $prpMTFailFL = 'Timestamp','ClientHostname','Source','EventId','Recipients','RecipientStatus','MessageSubject','ReturnPath' ;
         $s24HTimestamp = 'yyyyMMdd-HHmm'
         $sFiletimestamp =  $s24HTimestamp
+        #region LOCAL_CONSTANTS ; #*------^ END LOCAL_CONSTANTS ^------
 
         #region ENCODED_CONTANTS ; #*------v ENCODED_CONTANTS v------
         # ENCODED CONsTANTS & SUPPORT FUNCTIONS:
@@ -2914,7 +2953,7 @@ TRANSFER              | Recipients were moved to a forked message because of con
                             $smsg = "We are on Exchange Server"
                             if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
                             else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-                            $IsEdgeTransport = $true
+                            $IsEdgeTransport = $false
                             if((Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\EdgeTransportRole') -or (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole')){
                                 $smsg = "We are on Exchange Edge Transport Server"
                                 if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
@@ -3113,7 +3152,7 @@ TRANSFER              | Recipients were moved to a forked message because of con
             $UseOPAD = $false ; 
         } 
         if(get-service MSExchangeTransport -ea 0){
-            $isExServer = $true ; 
+            $UseExOP = $true ; 
             if( ($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\Setup')) -or
                     ($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup')) -or $ByPassLocalExchangeServerTest)
                 {
@@ -3123,13 +3162,21 @@ TRANSFER              | Recipients were moved to a forked message because of con
                         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
                         $IsEdgeTransport = $true ; 
+                        if($IsEdgeTransport -AND $psise){
+                            $smsg = "powershell_ISE UNDER Exchange Edge Transport role!" 
+                            $smsg += "`nThis script is likely to fail the get-messagetrackingLog calls etc with Access Denied errors"
+                            $smsg += "`nif run with this combo."
+                            $smsg += "`nEXIT POWERSHELL ISE, AND RUN THIS DIRECTLY UNDER EMS FOR EDGE USE"; 
+                            $smsg += "`n(bug appears to be a conflict in Remote EMS v EMS access permissions, not resolved yet)" ; 
+                            write-warning $smsg ; 
+                        } ; 
                     } else {
                         $IsEdgeTransport = $false ; 
                     } ; 
-                }
+                } ; 
         }else{
-            $isExServer = $false ; 
-        }
+            $isLocalExchangeServer = $false ; 
+        } ; 
         $useO365 = [boolean]($useO365 -OR $useEXO -OR $UseMSOL -OR $UseAAD)
         $UseOP = [boolean]($UseOP -OR $UseExOP -OR $UseOPAD) ;
         #*------^ END STEERING VARIS ^------
@@ -3682,14 +3729,6 @@ TRANSFER              | Recipients were moved to a forked message because of con
 
         $eventIDLookupTbl = Initialize-xopEventIDTable ; 
 
-        if($IsEdgeTransport -AND $psise){
-            $smsg = "powershell_ISE UNDER Exchange Edge Transport role!" 
-            $smsg += "`nThis script is likely to fail the get-messagetrackingLog calls with Access Denied errors"
-            $smsg += "`nif run with this combo."
-            $smsg += "`nEXIT POWERSHELL ISE, AND RUN THIS DIRECTLY UNDER EMS FOR EDGE USE"; 
-            $smsg += "`n(bug appears to be a conflict in Remote EMS v EMS access permissions, not resolved yet)" ; 
-            write-warning $msgs ; 
-        } ; 
         # SET DAYS=0 IF USING START/END (they only get used when days is non-0); $platIn.TAG is appended to ticketNO for output vari $vn, and $ofile
         if($Days -AND ($Start -OR $End)){
             write-warning "specified -Days with (-Start -OR -End); If using Start/End, specify -Days 0!" ; 
