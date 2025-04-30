@@ -1,7 +1,8 @@
 ﻿# get-ADExchangeServerTDO.ps1
 
-#*------v Function get-ADExchangeServerTDO v------
-if(-not(get-command get-ADExchangeServerTDO -ea 0)){
+
+#region GET_ADEXCHANGESERVERTDO ; #*------v get-ADExchangeServerTDO v------
+if(-not(gci function:get-ADExchangeServerTDO -ea 0)){
     Function get-ADExchangeServerTDO {
         <#
         .SYNOPSIS
@@ -27,6 +28,7 @@ if(-not(get-command get-ADExchangeServerTDO -ea 0)){
         AddedWebsite: https://codeandkeep.com/
         AddedTwitter: URL
         REVISIONS
+        * 10;05 am 4/30/2025 fixed code for Edge role in raw PS, missing evaris for Ex: added discovery from reg & stock file system dirs for version etc.
         * 3:57 PM 11/26/2024 updated simple write-host,write-verbose with full pswlt support;  syncd dbg & vx10 copies.
         * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
         * 2:05 PM 8/28/2023 REN -> Get-ExchangeServerInSite -> get-ADExchangeServerTDO (aliased orig); to better steer profile-level options - including in cmw org, added -TenOrg, and default Site to constructed vari, targeting new profile $XXX_ADSiteDefault vari; Defaulted -Roles to HUB,CAS as well.
@@ -250,10 +252,47 @@ if(-not(get-command get-ADExchangeServerTDO -ea 0)){
                         $ErrTrapd=$Error[0] ;
                         if(($ErrTrapd.Exception -match 'The computer is not in a site.') -AND $env:ExchangeInstallPath){
                             $smsg = "$($env:computername) is non-ADdomain-connected" ;
-                            $smsg += "`nand has `$env:ExchangeInstalled populated: Likely Edge Server" ;
+                            if($env:ExchangeInstalled){
+                                $smsg += "`nand has `$env:ExchangeInstalled populated: Likely Edge Server" ;
+                                # unpop'd in native PS, only in EMS/REMS
+                            } elseif(($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\Setup')) -or
+                                ($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup')) -or
+                                $ByPassLocalExchangeServerTest){
+                                $smsg +="`nand Reg confirms ExchangeServer\v1x\Setup (`$isLocalExchangeServer)" ; 
+                                if((Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\EdgeTransportRole') -or
+                                        (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole'))
+                                {
+                                    $smsg +="`nand Reg confirms \v1x\EdgeTransportRole (`$IsEdgeTransport)" ; 
+                                    $IsEdgeTransport = $true
+                                } ; 
+                            }  ; 
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Prompt }
                             else{ write-host -foregroundcolor YELLOW "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            $vers = (get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe").VersionInfo.FileVersionRaw ; 
+                            # only exists in EMS/REMS, NOT PS raw
+                            if($vers = (get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe").VersionInfo.FileVersionRaw ){
+                                <# [PS] C:\scripts>((get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe").VersionInfo.FileVersionRaw )
+                                Major  Minor  Build  Revision
+                                -----  -----  -----  --------
+                                15     1      2507   39
+                                #>
+                            }else{
+                                if($binPath = (resolve-path  "$($env:ProgramFiles)\Microsoft\Exchange Server\V1*\Bin\Setup.exe" -ea 0).path){
+                                    # find setup in stock path discovery (won't work if manual install non-std loc)                                            
+                                } else { 
+                                    # loop the letter drives checking for progfiles copies
+                                    (get-psdrive -PSProvider FileSystem |?{$_ -match '[D-Z]'}  | select -expand name)|foreach-object{
+                                        $drv = $_ ; 
+                                        if($binPath = (resolve-path  "$($drv)$($env:ProgramFiles.substring(1,($env:ProgramFiles.length-1)))\Microsoft\Exchange Server\V1*\Bin\Setup.exe" -ea 0).path){
+                                            break ; 
+                                        } ; 
+                                    };
+                                    if($binPath){
+                                        $vers = (get-item $binPath).VersionInfo.FileVersionRaw
+                                    }else {
+
+                                    } ;
+                                } ; 
+                            } ; 
                             $props = @{
                                 Name=$env:computername;
                                 FQDN = ([System.Net.Dns]::gethostentry($env:computername)).hostname;
@@ -394,4 +433,4 @@ if(-not(get-command get-ADExchangeServerTDO -ea 0)){
         } ;
     } ;
 }
-#*------^ END Function get-ADExchangeServerTDO ^------ ;
+#endregion GET_ADEXCHANGESERVERTDO ;#*------^ END Function get-ADExchangeServerTDO ^------ ;
