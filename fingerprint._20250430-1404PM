@@ -565,9 +565,7 @@ Get-MessageTrackingLogTDO:Source
 Get-MessageTrackingLogTDO:TransportTrafficType
 Get-MessageTrackingLogTDO:Connectorid
 Get-MessageTrackingLogTDO:Server
-Get-MessageTrackingLogTDO:Version
 Get-MessageTrackingLogTDO:ResultSize
-Get-MessageTrackingLogTDO:DetailLimit
 Get-MessageTrackingLogTDO:Tag
 Get-MessageTrackingLogTDO:SimpleTrack
 Get-MessageTrackingLogTDO:DoExports
