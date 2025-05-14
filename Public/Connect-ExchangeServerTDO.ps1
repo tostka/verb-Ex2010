@@ -1,6 +1,5 @@
 ﻿# Connect-ExchangeServerTDO.ps1
 
-
 #region CONNECT_EXCHANGESERVERTDO ; #*------v Connect-ExchangeServerTDO v------
 if(-not(gci function:Connect-ExchangeServerTDO -ea 0)){
     Function Connect-ExchangeServerTDO {
@@ -11,8 +10,23 @@ if(-not(gci function:Connect-ExchangeServerTDO -ea 0)){
         stopping at the first successful connection.
         .NOTES
         REVISIONS
+        * 3:58 PM 5/14/2025 restored prior dropped earlier rev history (routinely trim for psparamt inclu)
         * 10;07 am 4/30/2025 fixed borked edge conn, typo, and rev logic for Ex & role detection in raw PS - lacks evaris for exchange (EMS/REMS only), so leverage reg & stock install loc hunting to discover setup.exe for vers & role confirm).
         * 2:46 PM 4/22/2025 add: -Version (default to Ex2010), and postfiltered returned ExchangeServers on version. If no -Version, sort on newest Version, then name, -descending.
+        * 4:25 PM 1/15/2025 seems to work at this point, move to rebuild
+        * 4:49 PM 1/9/2025 reworked connect-exchangeserverTdo() to actually use the credentials passed in, and 
+        added the missing import-module $PSS, to _connect-ExOP, to make the session actually functional 
+        for running cmds, wo popping cred prompts. 
+        * 12:24 PM 12/4/2024 removed bracket bnr echos around _connect-ExOP
+        * 3:54 PM 11/26/2024 integrated back TLS fixes, and ExVersNum flip from June; syncd dbg & vx10 copies.
+        * 12:57 PM 6/11/2024 Validated, Ex2010 & Ex2019, hub, mail & edge roles: tested ☑️ on CMW mail role (Curly); and Jumpbox; 
+        copied in CBH from repo copy, which has been updated/debugged compat on CMW Edge 
+        includes local snapin detect & load for edge role (simplest EMS load option for Edge role, from David Paulson's original code; no longer published with Ex2010 compat)
+        * 1:30 PM 9/5/2024 added  update-SecurityProtocolTDO() SB to begin
+        * 12:49 PM 6/21/2024 flipped PSS Name to Exchange$($ExchVers[dd])
+        * 11:28 AM 5/30/2024 fixed failure to recognize existing functional PSSession; Made substantial update in logic, validate works fine with other orgs, and in our local orgs.
+        * 4:02 PM 8/28/2023 debuged, updated CBH, renamed connect-ExchangeSErver -> Connect-ExchangeServerTDO (avoid name clashes, pretty common verb-noun combo).
+        * 12:36 PM 8/24/2023 init
         .PARAMETER name
         FQDN of a specific Exchange server[-Name EXSERVER.DOMAIN.COM]
         .PARAMETER discover
@@ -67,22 +81,22 @@ if(-not(gci function:Connect-ExchangeServerTDO -ea 0)){
         BEGIN{
             $Verbose = ($VerbosePreference -eq 'Continue') ;
             $CurrentVersionTlsLabel = [Net.ServicePointManager]::SecurityProtocol ; # Tls, Tls11, Tls12 ('Tls' == TLS1.0)  ;
-			write-verbose "PRE: `$CurrentVersionTlsLabel : $($CurrentVersionTlsLabel )" ;
-			# psv6+ already covers, test via the SslProtocol parameter presense
-			if ('SslProtocol' -notin (Get-Command Invoke-RestMethod).Parameters.Keys) {
-				$currentMaxTlsValue = [Math]::Max([Net.ServicePointManager]::SecurityProtocol.value__,[Net.SecurityProtocolType]::Tls.value__) ;
-				write-verbose "`$currentMaxTlsValue : $($currentMaxTlsValue )" ;
-				$newerTlsTypeEnums = [enum]::GetValues('Net.SecurityProtocolType') | Where-Object { $_ -gt $currentMaxTlsValue }
-				if($newerTlsTypeEnums){
-					write-verbose "Appending upgraded/missing TLS `$enums:`n$(($newerTlsTypeEnums -join ','|out-string).trim())" ;
-				} else {
-					write-verbose "Current TLS `$enums are up to date with max rev available on this machine" ;
-				};
-				$newerTlsTypeEnums | ForEach-Object {
-					[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
-				} ;
-			} ;
-                    
+      write-verbose "PRE: `$CurrentVersionTlsLabel : $($CurrentVersionTlsLabel )" ;
+      # psv6+ already covers, test via the SslProtocol parameter presense
+      if ('SslProtocol' -notin (Get-Command Invoke-RestMethod).Parameters.Keys) {
+        $currentMaxTlsValue = [Math]::Max([Net.ServicePointManager]::SecurityProtocol.value__,[Net.SecurityProtocolType]::Tls.value__) ;
+        write-verbose "`$currentMaxTlsValue : $($currentMaxTlsValue )" ;
+        $newerTlsTypeEnums = [enum]::GetValues('Net.SecurityProtocolType') | Where-Object { $_ -gt $currentMaxTlsValue }
+        if($newerTlsTypeEnums){
+          write-verbose "Appending upgraded/missing TLS `$enums:`n$(($newerTlsTypeEnums -join ','|out-string).trim())" ;
+        } else {
+          write-verbose "Current TLS `$enums are up to date with max rev available on this machine" ;
+        };
+        $newerTlsTypeEnums | ForEach-Object {
+          [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
+        } ;
+      } ;
+            
             # 5:15 PM 4/22/2025 on CMW, have to patch version to Ex2016
 
             #*------v Function _connect-ExOP v------
@@ -173,9 +187,9 @@ if(-not(gci function:Connect-ExchangeServerTDO -ea 0)){
                                         }else{
                                             $Global:ExInstall = (Get-ItemProperty HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup).MsiInstallPath
                                         }
-        
+
                                         $Global:ExBin = $Global:ExInstall + "\Bin"
-        
+
                                         $smsg = ("Set ExInstall: {0}" -f $Global:ExInstall)
                                         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
                                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
@@ -288,13 +302,13 @@ if(-not(gci function:Connect-ExchangeServerTDO -ea 0)){
                 } ;
                 if($Version){
                     switch ($Version){
-                        'Ex2000'{$rgxExVersNum = '6' } 
-                        'Ex2003'{$rgxExVersNum = '6.5' } 
-                        'Ex2007'{$rgxExVersNum = '8.*' } 
-                        'Ex2010'{$rgxExVersNum = '14.*'} 
-                        'Ex2013'{$rgxExVersNum = '15.0' } 
-                        'Ex2016'{$rgxExVersNum = '15.1'} 
-                        'Ex2019'{$rgxExVersNum = '15.2' } 
+                      'Ex2000'{$rgxExVersNum = '6' } 
+                      'Ex2003'{$rgxExVersNum = '6.5' } 
+                      'Ex2007'{$rgxExVersNum = '8.*' } 
+                      'Ex2010'{$rgxExVersNum = '14.*'} 
+                      'Ex2013'{$rgxExVersNum = '15.0' } 
+                      'Ex2016'{$rgxExVersNum = '15.1'} 
+                      'Ex2019'{$rgxExVersNum = '15.2' } 
                     } ; 
                     $exchServers  = $exchServers | ?{ [double]([regex]::match( $_.version,"Version\s(\d+\.\d+)\s\(Build\s(\d+\.\d+)\)").groups[1].value) -match $rgxExVersNum } ; 
 
@@ -400,6 +414,5 @@ if(-not(gci function:Connect-ExchangeServerTDO -ea 0)){
             } ; 
         } ;
     } ;
-} ; 
+#} ; 
 #endregion CONNECT_EXCHANGESERVERTDO ; #*------^ END Connect-ExchangeServerTDO ^------
-
