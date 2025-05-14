@@ -2,7 +2,7 @@
 
 
 #region GET_ADEXCHANGESERVERTDO ; #*------v get-ADExchangeServerTDO v------
-if(-not(gci function:get-ADExchangeServerTDO -ea 0)){
+#if(-not(gi function:get-ADExchangeServerTDO -ea 0)){
     Function get-ADExchangeServerTDO {
         <#
         .SYNOPSIS
@@ -230,7 +230,7 @@ if(-not(gci function:get-ADExchangeServerTDO -ea 0)){
                     else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
                     #$bLocalEdge = $true ; 
                     $SiteName = $null ; 
-                    
+                
                 } ; 
                 If($siteName){
                     $smsg = "Getting Site: $siteName" ;
@@ -252,47 +252,10 @@ if(-not(gci function:get-ADExchangeServerTDO -ea 0)){
                         $ErrTrapd=$Error[0] ;
                         if(($ErrTrapd.Exception -match 'The computer is not in a site.') -AND $env:ExchangeInstallPath){
                             $smsg = "$($env:computername) is non-ADdomain-connected" ;
-                            if($env:ExchangeInstalled){
-                                $smsg += "`nand has `$env:ExchangeInstalled populated: Likely Edge Server" ;
-                                # unpop'd in native PS, only in EMS/REMS
-                            } elseif(($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\Setup')) -or
-                                ($isLocalExchangeServer = (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\Setup')) -or
-                                $ByPassLocalExchangeServerTest){
-                                $smsg +="`nand Reg confirms ExchangeServer\v1x\Setup (`$isLocalExchangeServer)" ; 
-                                if((Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v14\EdgeTransportRole') -or
-                                        (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v15\EdgeTransportRole'))
-                                {
-                                    $smsg +="`nand Reg confirms \v1x\EdgeTransportRole (`$IsEdgeTransport)" ; 
-                                    $IsEdgeTransport = $true
-                                } ; 
-                            }  ; 
+                            $smsg += "`nand has `$env:ExchangeInstalled populated: Likely Edge Server" ;
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Prompt }
                             else{ write-host -foregroundcolor YELLOW "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            # only exists in EMS/REMS, NOT PS raw
-                            if($vers = (get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe").VersionInfo.FileVersionRaw ){
-                                <# [PS] C:\scripts>((get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe").VersionInfo.FileVersionRaw )
-                                Major  Minor  Build  Revision
-                                -----  -----  -----  --------
-                                15     1      2507   39
-                                #>
-                            }else{
-                                if($binPath = (resolve-path  "$($env:ProgramFiles)\Microsoft\Exchange Server\V1*\Bin\Setup.exe" -ea 0).path){
-                                    # find setup in stock path discovery (won't work if manual install non-std loc)                                            
-                                } else { 
-                                    # loop the letter drives checking for progfiles copies
-                                    (get-psdrive -PSProvider FileSystem |?{$_ -match '[D-Z]'}  | select -expand name)|foreach-object{
-                                        $drv = $_ ; 
-                                        if($binPath = (resolve-path  "$($drv)$($env:ProgramFiles.substring(1,($env:ProgramFiles.length-1)))\Microsoft\Exchange Server\V1*\Bin\Setup.exe" -ea 0).path){
-                                            break ; 
-                                        } ; 
-                                    };
-                                    if($binPath){
-                                        $vers = (get-item $binPath).VersionInfo.FileVersionRaw
-                                    }else {
-
-                                    } ;
-                                } ; 
-                            } ; 
+                            $vers = (get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe").VersionInfo.FileVersionRaw ; 
                             $props = @{
                                 Name=$env:computername;
                                 FQDN = ([System.Net.Dns]::gethostentry($env:computername)).hostname;
@@ -306,12 +269,12 @@ if(-not(gci function:get-ADExchangeServerTDO -ea 0)){
                                 ResponseTime = if($rsp){$rsp.ResponseTime} else { 0} ;
                                 NOTE = "This summary object, returned for a non-AD-connected EDGE server, *approximates* what would be returned on an AD-connected server" ;
                             } ;
-                            
+                        
                             $smsg = "(-NoTest:Defaulting Fast:`$true)" ;
                             if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
                             else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
                             $props.add('Fast',$true) ;
-                            
+                        
                             return (New-Object -TypeName PsObject -Property $props) ;
                         }elseif(-not $env:ExchangeInstallPath){
                             $smsg = "Non-Domain Joined machine, with NO ExchangeInstallPath e-vari: `nExchange is not installed locally: local computer resolution fails:`nPlease specify an explicit -Server, or -SiteName" ;
@@ -432,5 +395,5 @@ if(-not(gci function:get-ADExchangeServerTDO -ea 0)){
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         } ;
     } ;
-}
+#}
 #endregion GET_ADEXCHANGESERVERTDO ;#*------^ END Function get-ADExchangeServerTDO ^------ ;
