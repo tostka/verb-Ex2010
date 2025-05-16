@@ -230,7 +230,7 @@
                     else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
                     #$bLocalEdge = $true ; 
                     $SiteName = $null ; 
-                
+    
                 } ; 
                 If($siteName){
                     $smsg = "Getting Site: $siteName" ;
@@ -269,12 +269,12 @@
                                 ResponseTime = if($rsp){$rsp.ResponseTime} else { 0} ;
                                 NOTE = "This summary object, returned for a non-AD-connected EDGE server, *approximates* what would be returned on an AD-connected server" ;
                             } ;
-                        
+            
                             $smsg = "(-NoTest:Defaulting Fast:`$true)" ;
                             if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
                             else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
                             $props.add('Fast',$true) ;
-                        
+            
                             return (New-Object -TypeName PsObject -Property $props) ;
                         }elseif(-not $env:ExchangeInstallPath){
                             $smsg = "Non-Domain Joined machine, with NO ExchangeInstallPath e-vari: `nExchange is not installed locally: local computer resolution fails:`nPlease specify an explicit -Server, or -SiteName" ;
