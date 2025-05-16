@@ -1,7 +1,7 @@
 ﻿# Connect-ExchangeServerTDO.ps1
 
 #region CONNECT_EXCHANGESERVERTDO ; #*------v Connect-ExchangeServerTDO v------
-if(-not(gci function:Connect-ExchangeServerTDO -ea 0)){
+#if(-not(gci function:Connect-ExchangeServerTDO -ea 0)){
     Function Connect-ExchangeServerTDO {
         <#
         .SYNOPSIS
@@ -27,7 +27,7 @@ if(-not(gci function:Connect-ExchangeServerTDO -ea 0)){
         * 11:28 AM 5/30/2024 fixed failure to recognize existing functional PSSession; Made substantial update in logic, validate works fine with other orgs, and in our local orgs.
         * 4:02 PM 8/28/2023 debuged, updated CBH, renamed connect-ExchangeSErver -> Connect-ExchangeServerTDO (avoid name clashes, pretty common verb-noun combo).
         * 12:36 PM 8/24/2023 init
-        .PARAMETER name
+         .PARAMETER name
         FQDN of a specific Exchange server[-Name EXSERVER.DOMAIN.COM]
         .PARAMETER discover
         Boolean paraameter that drives auto-discovery of target Exchange servers for connection (defaults `$true)[-discover:`$false]
@@ -96,7 +96,7 @@ if(-not(gci function:Connect-ExchangeServerTDO -ea 0)){
           [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
         } ;
       } ;
-            
+    
             # 5:15 PM 4/22/2025 on CMW, have to patch version to Ex2016
 
             #*------v Function _connect-ExOP v------
