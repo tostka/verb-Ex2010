@@ -21,6 +21,7 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
         AddedWebsite:
         AddedTwitter:
         REVISIONS
+        * 1:01 PM 5/19/2025 rem'd $prefVaris dump (blank values, throws errors)
         3:35 PM 5/16/2025 spliced over local dep internal_funcs (out of the main paramt block) ;  dbgd, few minor fixes; but substantially working
         * 8:16 AM 5/15/2025 init
         .DESCRIPTION
@@ -1250,7 +1251,7 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
             $rPSBoundParameters = $PSBoundParameters ;
             #>
             #region PREF_VARI_DUMP ; #*------v PREF_VARI_DUMP v------
-            $script:prefVaris = @{
+            <#$script:prefVaris = @{
                 whatifIsPresent = $whatif.IsPresent
                 whatifPSBoundParametersContains = $rPSBoundParameters.ContainsKey('WhatIf') ;
                 whatifPSBoundParameters = $rPSBoundParameters['WhatIf'] ;
@@ -1271,6 +1272,7 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
                 VerbosePSBoundParametersUnboundArgumentContains = '-Verbose' -in $rPSBoundParameters.UnboundArguments
             } ;
             write-verbose "`n$(($script:prefVaris.GetEnumerator() | Sort-Object Key | Format-Table Key,Value -AutoSize|out-string).trim())`n" ;
+            #>
             #endregion PREF_VARI_DUMP ; #*------^ END PREF_VARI_DUMP ^------
             #region RV_ENVIRO ; #*------v RV_ENVIRO v------
             <#

@@ -5,26 +5,26 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 6.5.1
+Version     : 6.5.2
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
-CreatedDate : 1/16.5.10
+CreatedDate : 1/16.5.20
 FileName    : VERB-Ex2010.psm1
 License     : MIT
-Copyright   : (c) 1/16.5.10 Todd Kadrie
+Copyright   : (c) 1/16.5.20 Todd Kadrie
 Github      : https://github.com/tostka
 REVISIONS
 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
 * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
-* 1/16.5.10 - 1.0.0.0
+* 1/16.5.20 - 1.0.0.0
 # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
 # 11:34 AM 12/30/2019 ran vsc alias-expansion
 # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
 # 10:19 AM 11/1/2019 trimmed some whitespace
 # 10:05 AM 10/31/2019 added sample load/call info
-# 12:02 PM 5/6.5.19 added cx10,rx10,dx10 aliases
-# 11:29 AM 5/6.5.19 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+# 12:02 PM 5/6.5.29 added cx10,rx10,dx10 aliases
+# 11:29 AM 5/6.5.29 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
 # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
 # 4:15 PM 3/24/2018 updated pshhelp
 # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
@@ -3738,6 +3738,7 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
         AddedWebsite:
         AddedTwitter:
         REVISIONS
+        * 1:01 PM 5/19/2025 rem'd $prefVaris dump (blank values, throws errors)
         3:35 PM 5/16/2025 spliced over local dep internal_funcs (out of the main paramt block) ;  dbgd, few minor fixes; but substantially working
         * 8:16 AM 5/15/2025 init
         .DESCRIPTION
@@ -4967,7 +4968,7 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
             $rPSBoundParameters = $PSBoundParameters ;
             #>
             #region PREF_VARI_DUMP ; #*------v PREF_VARI_DUMP v------
-            $script:prefVaris = @{
+            <#$script:prefVaris = @{
                 whatifIsPresent = $whatif.IsPresent
                 whatifPSBoundParametersContains = $rPSBoundParameters.ContainsKey('WhatIf') ;
                 whatifPSBoundParameters = $rPSBoundParameters['WhatIf'] ;
@@ -4988,6 +4989,7 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
                 VerbosePSBoundParametersUnboundArgumentContains = '-Verbose' -in $rPSBoundParameters.UnboundArguments
             } ;
             write-verbose "`n$(($script:prefVaris.GetEnumerator() | Sort-Object Key | Format-Table Key,Value -AutoSize|out-string).trim())`n" ;
+            #>
             #endregion PREF_VARI_DUMP ; #*------^ END PREF_VARI_DUMP ^------
             #region RV_ENVIRO ; #*------v RV_ENVIRO v------
             <#
