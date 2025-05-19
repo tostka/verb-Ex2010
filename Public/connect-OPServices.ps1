@@ -1697,13 +1697,20 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
             if($pltRX10.Credential){
                 $ret_ccOPs.CredentialOP = $pltRX10.Credential ; 
             }else{
-                $smsg = "UNABLE TO RESOLVE A CREDENTIAL SET FOR Connect-ExchangeServerTDO!" ; 
-                $smsg += "`n$(($pltRX10|out-string).trim())" ; 
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                throw $smsg ; 
-                BREAK ; 
-            }
+                if($UseOP -eq $false){
+                    $smsg = "-UseOP:$($useOP): Disabled OnPrem (cross-org?): Expected blank credential set fOR Connect-ExchangeServerTDO!" ; 
+                    $smsg += "`n$(($pltRX10|out-string).trim())" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                } else {
+                    $smsg = "UNABLE TO RESOLVE A CREDENTIAL SET FOR Connect-ExchangeServerTDO!" ; 
+                    $smsg += "`n$(($pltRX10|out-string).trim())" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    throw $smsg ; 
+                    BREAK ; 
+                } ; 
+            } ; 
 
         } ; # BEG-E
         PROCESS {
