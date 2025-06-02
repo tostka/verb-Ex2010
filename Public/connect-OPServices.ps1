@@ -21,7 +21,8 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
         AddedWebsite:
         AddedTwitter:
         REVISIONS
-        * 1:01 PM 5/19/2025 rem'd $prefVaris dump (blank values, throws errors)
+        * 4:36 PM 6/2/2025 updated CBH demo to cover cross org fails, wo breaking cloud run (against MGDomain updates .ps1s)
+        * 2:56 PM 5/19/2025 updated cross-org access fail, to rnot say missing creds ; rem'd $prefVaris dump (blank values, throws errors)
         3:35 PM 5/16/2025 spliced over local dep internal_funcs (out of the main paramt block) ;  dbgd, few minor fixes; but substantially working
         * 8:16 AM 5/15/2025 init
         .DESCRIPTION
@@ -65,30 +66,151 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
         Typical function pass, using get-command to return the definition/scriptblock for the subject function.
         .EXAMPLE
         PS> write-verbose "Typically from the BEGIN{} block of an Advanced Function, or immediately after PARAM() block" ;
-        PS> $Verbose = [boolean]($VerbosePreference -eq 'Continue') ;
-        PS> $rPSCmdlet = $PSCmdlet ;
-        PS> $rPSScriptRoot = $PSScriptRoot ;
-        PS> $rPSCommandPath = $PSCommandPath ;
-        PS> $rMyInvocation = $MyInvocation ;
-        PS> $rPSBoundParameters = $PSBoundParameters ;
-        PS> $pltRvEnv=[ordered]@{
-        PS>     PSCmdletproxy = $rPSCmdlet ;
-        PS>     PSScriptRootproxy = $rPSScriptRoot ;
-        PS>     PSCommandPathproxy = $rPSCommandPath ;
-        PS>     MyInvocationproxy = $rMyInvocation ;
-        PS>     PSBoundParametersproxy = $rPSBoundParameters
-        PS>     verbose = [boolean]($PSBoundParameters['Verbose'] -eq $true) ;
-        PS> } ;
-        PS> $rvEnv = resolve-EnvironmentTDO @pltRVEnv ;
-        PS> if($rvEnv.isScript){
-        PS>     if($rvEnv.PSCommandPathproxy){ $prxPath = $rvEnv.PSCommandPathproxy }
-        PS>     elseif($script:PSCommandPath){$prxPath = $script:PSCommandPath}
-        PS>     elseif($rPSCommandPath){$prxPath = $rPSCommandPath} ;
-        PS>     $PermsRqd = connect-OPServices -Path $prxPath  ;
-        PS> } ;
-        PS> if($rvEnv.isFunc){
-        PS>     $PermsRqd = connect-OPServices -Path (gcm -name $rvEnv.FuncName).definition ;
-        PS> } ;
+        PS> #region CONNECT_OPSERVICES ; #*======v CONNECT_OPSERVICES v======
+        PS> #$useOP = $false ; 
+        PS> if($useOP){
+        PS>     $pltCcOPSvcs=[ordered]@{
+        PS>         # environment parameters:
+        PS>         EnvSummary = $rvEnv ;
+        PS>         NetSummary = $netsettings ;
+        PS>         XoPSummary = $lclExOP ;
+        PS>         # service choices
+        PS>         UseExOP = $true ;
+        PS>         useForestWide = $true ;
+        PS>         useExopNoDep = $false ;
+        PS>         ExopVers = 'Ex2010' ;
+        PS>         UseOPAD = $true ;
+        PS>         useExOPVers = $useExOPVers; # 'Ex2010' ;
+        PS>         # Service Connection parameters
+        PS>         TenOrg = $TenOrg ; # $global:o365_TenOrgDefault ;
+        PS>         Credential = $Credential ;
+        PS>         #[ValidateSet("SID","ESVC","LSVC")]
+        PS>         UserRole = $UserRole ; # @('SID','ESVC') ;
+        PS>         # svcAcct use: @('ESvcCBA','CSvcCBA','SIDCBA')
+        PS>         silent = $silent ;
+        PS>     } ;
+        PS>     
+        PS>     write-verbose "(Purge no value keys from splat)" ;
+        PS>     $mts = $pltCcOPSvcs.GetEnumerator() |?{$_.value -eq $null} ; $mts |%{$pltCcOPSvcs.remove($_.Name)} ; rv mts -ea 0 ;
+        PS>     if((get-command connect-OPServices -EA STOP).parameters.ContainsKey('whatif')){
+        PS>         $pltCcOPSvcsnDSR.add('whatif',$($whatif))
+        PS>     } ;
+        PS>     $smsg = "connect-OPServices w`n$(($pltCcOPSvcs|out-string).trim())" ;
+        PS>     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        PS>     $ret_CcOPSvcs = connect-OPServices @pltCcOPSvcs ; 
+        PS>     
+        PS>     # #region CONFIRM_SPLAT2RETURN ; #*------v CONFIRM_SPLAT2RETURN v------
+        PS>     # matches each: $plt.useXXX:$true to matching returned $ret.hasXXX:$true
+        PS>     $vplt = $pltCcOPSvcs ; $vret = 'ret_CcOPSvcs' ;  ; $ACtionCommand = 'connect-OPServices' ; 
+        PS>     $vplt.GetEnumerator() |?{$_.key -match '^use' -ANd $_.value -match $true} | foreach-object{
+        PS>         $pltkey = $_ ;
+        PS>         $smsg = "$(($pltkey | ft -HideTableHeaders name,value|out-string).trim())" ; 
+        PS>         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+        PS>         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        PS>         $vtests = @() ;  $vFailMsgs = @()  ; 
+        PS>         $tprop = $pltkey.name -replace '^use','has';
+        PS>         if($rProp = (gv $vret).Value.psobject.properties | ?{$_.name -match $tprop}){
+        PS>             $smsg = "$(($rprop | ft -HideTableHeaders name,value |out-string).trim())" ; 
+        PS>             if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+        PS>             else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        PS>             if($rprop.Value -eq $pltkey.value){
+        PS>                 $vtests += $true ; 
+        PS>                 $smsg = "Validated: $($pltKey.name):$($pltKey.value) => $($rprop.name):$($rprop.value)" ;
+        PS>                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Success } 
+        PS>                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        PS>                 #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+        PS>             } else {
+        PS>                 $smsg = "NOT VALIDATED: $($pltKey.name):$($pltKey.value) => $($rprop.name):$($rprop.value)" ;
+        PS>                 $vtests += $false ; 
+        PS>                 $vFailMsgs += "`n$($smsg)" ; 
+        PS>                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>                 else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>             };
+        PS>         } else{
+        PS>             $smsg = "Unable to locate: $($pltKey.name):$($pltKey.value) to any matching $($rprop.name)!)" ;
+        PS>             $smsg = "" ; 
+        PS>             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>         } ; 
+        PS>     } ; 
+        PS>     if($useOP -AND $vtests -notcontains $false){
+        PS>         $smsg = "==> $($ACtionCommand): confirmed specified connections *all* successful " ; 
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Success } 
+        PS>         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        PS>         #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+        PS>     }elseif($vtests -contains $false -AND (gv -name "$($tenorg)meta").value.o365_opdomain.split('.')[0].toupper() -ne $env:userdomain){
+        PS>         $smsg = "==> $($ACtionCommand): FAILED SOME SPECIFIED CONNECTIONS" ; 
+        PS>         $smsg += "`nCROSS-ORG ONPREM CONNECTION: ATTEMPTING TO CONNECT TO ONPREM '$((gv -name "$($tenorg)meta").value.o365_Prefix)' $((gv -name "$($tenorg)meta").value.o365_opdomain.split('.')[0].toupper()) domain, FROM $($env:userdomain)!" ;
+        PS>         $smsg += "`nEXPECTED ERROR, SKIPPING ONPREM ACCESS STEPS (force `$useOP:$false)" ;
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>         $useOP = $false ; 
+        PS>     } else {
+        PS>         $smsg = "==> $($ACtionCommand): FAILED SOME SPECIFIED CONNECTIONS" ; 
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>             
+        PS>         throw $smsg ; 
+        PS>             
+        PS>         #-=-=-=-=-=-=-=-=
+        PS>         $sdEmail.SMTPSubj = "FAIL Rpt:$($ScriptBaseName):$(get-date -format 'yyyyMMdd-HHmmtt')"
+        PS>         $sdEmail.SmtpBody = "`n===Processing Summary:" ;
+        PS>         if($vFailMsgs){
+        PS>             $sdEmail.SmtpBody += "`n$(($vFailMsgs|out-string).trim())" ; 
+        PS>         } ; 
+        PS>         $sdEmail.SmtpBody += "`n" ;
+        PS>         if($SmtpAttachment){
+        PS>             $sdEmail.SmtpAttachment = $SmtpAttachment
+        PS>             $sdEmail.smtpBody +="`n(Logs Attached)" ;
+        PS>         };
+        PS>         $sdEmail.SmtpBody += "Pass Completed $([System.DateTime]::Now)" ;
+        PS>         $smsg = "Send-EmailNotif w`n$(($sdEmail|out-string).trim())" ;
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        PS>         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        PS>         Send-EmailNotif @sdEmail ;
+        PS>         #-=-=-=-=-=-=-=-=
+        PS>             
+        PS>         #throw $smsg ; 
+        PS>         BREAK ; 
+        PS>     } ; 
+        PS>     #endregion CONFIRM_SPLAT2RETURN ; #*------^ END CONFIRM_SPLAT2RETURN ^------
+        PS>     #region CONFIRM_OPFORESTWIDE ; #*------v CONFIRM_OPFORESTWIDE v------    
+        PS>     if($useOP -AND $ret_ccOPs.hasForestWide -AND $ret_ccOPs.AdGcFwide){
+        PS>         $smsg = "==> $($ACtionCommand): confirmed has BOTH .hasForestWide & .AdGcFwide ($($ret_ccOPs.AdGcFwide))" ; 
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Success } 
+        PS>         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        PS>         #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+        PS>     }elseif(-not $useOP){
+        PS>         $smsg = "`nCROSS-ORG ONPREM CONNECTION: ATTEMPTING TO CONNECT TO ONPREM '$((gv -name "$($tenorg)meta").value.o365_Prefix)' $((gv -name "$($tenorg)meta").value.o365_opdomain.split('.')[0].toupper()) domain, FROM $($env:userdomain)!" ;
+        PS>         $smsg += "`nEXPECTED ERROR, SKIPPING ONPREM FORESTWIDE SPEC" ;
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>     } else{
+        PS>         $smsg = "==> $($ACtionCommand): MISSING CRITICAL FORESTWIDE SUPPORT COMPONENT:" ; 
+        PS>         if(-not $ret_ccOPs.hasForestWide){
+        PS>             $smsg += "`n----->$($ACtionCommand): MISSING .hasForestWide (Set-AdServerSettings -ViewEntireForest `$True) " ; 
+        PS>         } ; 
+        PS>         if(-not $ret_ccOPs.AdGcFwide){
+        PS>             $smsg += "`n----->$($ACtionCommand): MISSING .AdGcFwide GC!:`n((Get-ADDomainController -Discover -Service GlobalCatalog).hostname):326) " ; 
+        PS>         } ; 
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>         $smsg = "MISSING SOME KEY CONNECTIONS. DO YOU WANT TO IGNORE, AND CONTINUE WITH CONNECTED SERVICES?" ;
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>         $bRet=Read-Host "Enter YYY to continue. Anything else will exit"  ;
+        PS>         if ($bRet.ToUpper() -eq "YYY") {
+        PS>             $smsg = "(Moving on), WITH THE FOLLOW PARTIAL CONNECTION STATUS" ;
+        PS>             $smsg += "`n`n$(($ret_CcOPSvcs|out-string).trim())" ; 
+        PS>             write-host -foregroundcolor green $smsg  ;
+        PS>         } else {
+        PS>             throw $smsg ; 
+        PS>             break ; #exit 1
+        PS>         } ;         
+        PS>     }; 
+        PS>     #endregion CONFIRM_OPFORESTWIDE ; #*------^ END CONFIRM_OPFORESTWIDE ^------
+        PS> } ; 
+        PS> #endregion CONNECT_OPSERVICES ; #*======^ END CONNECT_OPSERVICES ^======        
         Demo leveraging resolve-environmentTDO outputs
         .LINK
         https://bitbucket.org/tostka/verb-dev/
