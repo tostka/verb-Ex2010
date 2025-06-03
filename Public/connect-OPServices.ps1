@@ -21,6 +21,7 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
         AddedWebsite:
         AddedTwitter:
         REVISIONS
+        * 9:00 AM 6/3/2025 revised CBH demo, properly handle cross-org conn attempts, incl forestwide spec recovery
         * 4:36 PM 6/2/2025 updated CBH demo to cover cross org fails, wo breaking cloud run (against MGDomain updates .ps1s)
         * 2:56 PM 5/19/2025 updated cross-org access fail, to rnot say missing creds ; rem'd $prefVaris dump (blank values, throws errors)
         3:35 PM 5/16/2025 spliced over local dep internal_funcs (out of the main paramt block) ;  dbgd, few minor fixes; but substantially working
@@ -65,8 +66,7 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
         PS> $PermsRqd = connect-OPServices -scriptblock (gcm -name connect-OPServices).definition ;
         Typical function pass, using get-command to return the definition/scriptblock for the subject function.
         .EXAMPLE
-        PS> write-verbose "Typically from the BEGIN{} block of an Advanced Function, or immediately after PARAM() block" ;
-        PS> #region CONNECT_OPSERVICES ; #*======v CONNECT_OPSERVICES v======
+        PS> #region CALL_CONNECT_OPSERVICES ; #*======v CALL_CONNECT_OPSERVICES v======
         PS> #$useOP = $false ; 
         PS> if($useOP){
         PS>     $pltCcOPSvcs=[ordered]@{
@@ -99,7 +99,7 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
         PS>     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         PS>     $ret_CcOPSvcs = connect-OPServices @pltCcOPSvcs ; 
         PS>     
-        PS>     # #region CONFIRM_SPLAT2RETURN ; #*------v CONFIRM_SPLAT2RETURN v------
+        PS>     # #region CONFIRM_CCOPRETURN ; #*------v CONFIRM_CCOPRETURN v------
         PS>     # matches each: $plt.useXXX:$true to matching returned $ret.hasXXX:$true
         PS>     $vplt = $pltCcOPSvcs ; $vret = 'ret_CcOPSvcs' ;  ; $ACtionCommand = 'connect-OPServices' ; 
         PS>     $vplt.GetEnumerator() |?{$_.key -match '^use' -ANd $_.value -match $true} | foreach-object{
@@ -138,21 +138,22 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
         PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Success } 
         PS>         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         PS>         #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-        PS>     }elseif($vtests -contains $false -AND (gv -name "$($tenorg)meta").value.o365_opdomain.split('.')[0].toupper() -ne $env:userdomain){
+        PS>     }elseif($vtests -contains $false -AND (get-variable ret_CcOPSvcs) -AND (gv -name "$($tenorg)meta").value.o365_opdomain.split('.')[0].toupper() -ne $env:userdomain){
         PS>         $smsg = "==> $($ACtionCommand): FAILED SOME SPECIFIED CONNECTIONS" ; 
         PS>         $smsg += "`nCROSS-ORG ONPREM CONNECTION: ATTEMPTING TO CONNECT TO ONPREM '$((gv -name "$($tenorg)meta").value.o365_Prefix)' $((gv -name "$($tenorg)meta").value.o365_opdomain.split('.')[0].toupper()) domain, FROM $($env:userdomain)!" ;
         PS>         $smsg += "`nEXPECTED ERROR, SKIPPING ONPREM ACCESS STEPS (force `$useOP:$false)" ;
         PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
         PS>         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
         PS>         $useOP = $false ; 
+        PS>     }elseif(-not $useOP -AND -not (get-variable ret_CcOPSvcs)){
+        PS>         $smsg = "-useOP: $($useOP), skipped connect-OPServices" ; 
+        PS>         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+        PS>         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
         PS>     } else {
         PS>         $smsg = "==> $($ACtionCommand): FAILED SOME SPECIFIED CONNECTIONS" ; 
+        PS>         $smsg += "`n`$ret_CcOPSvcs:`n$(($ret_CcOPSvcs|out-string).trim())" ; 
         PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
         PS>         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-        PS>             
-        PS>         throw $smsg ; 
-        PS>             
-        PS>         #-=-=-=-=-=-=-=-=
         PS>         $sdEmail.SMTPSubj = "FAIL Rpt:$($ScriptBaseName):$(get-date -format 'yyyyMMdd-HHmmtt')"
         PS>         $sdEmail.SmtpBody = "`n===Processing Summary:" ;
         PS>         if($vFailMsgs){
@@ -168,29 +169,28 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
         PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
         PS>         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         PS>         Send-EmailNotif @sdEmail ;
-        PS>         #-=-=-=-=-=-=-=-=
-        PS>             
-        PS>         #throw $smsg ; 
+        PS>         throw $smsg ; 
         PS>         BREAK ; 
         PS>     } ; 
-        PS>     #endregion CONFIRM_SPLAT2RETURN ; #*------^ END CONFIRM_SPLAT2RETURN ^------
+        PS>     #endregion CONFIRM_CCOPRETURN ; #*------^ END CONFIRM_CCOPRETURN ^------
         PS>     #region CONFIRM_OPFORESTWIDE ; #*------v CONFIRM_OPFORESTWIDE v------    
-        PS>     if($useOP -AND $ret_ccOPs.hasForestWide -AND $ret_ccOPs.AdGcFwide){
-        PS>         $smsg = "==> $($ACtionCommand): confirmed has BOTH .hasForestWide & .AdGcFwide ($($ret_ccOPs.AdGcFwide))" ; 
+        PS>     if($useOP -AND $pltCcOPSvcs.useForestWide -AND $ret_CcOPSvcs.hasForestWide -AND $ret_CcOPSvcs.AdGcFwide){
+        PS>         $smsg = "==> $($ACtionCommand): confirmed has BOTH .hasForestWide & .AdGcFwide ($($ret_CcOPSvcs.AdGcFwide))" ; 
         PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Success } 
         PS>         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        PS>         #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-        PS>     }elseif(-not $useOP){
+        PS>         #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success        
+        PS>     }elseif($pltCcOPSvcs.useForestWide -AND (get-variable ret_CcOPSvcs) -AND (gv -name "$($tenorg)meta").value.o365_opdomain.split('.')[0].toupper() -ne $env:userdomain){
         PS>         $smsg = "`nCROSS-ORG ONPREM CONNECTION: ATTEMPTING TO CONNECT TO ONPREM '$((gv -name "$($tenorg)meta").value.o365_Prefix)' $((gv -name "$($tenorg)meta").value.o365_opdomain.split('.')[0].toupper()) domain, FROM $($env:userdomain)!" ;
         PS>         $smsg += "`nEXPECTED ERROR, SKIPPING ONPREM FORESTWIDE SPEC" ;
         PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
         PS>         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-        PS>     } else{
+        PS>         $useOP = $false ; 
+        PS>     }elseif($useOP -AND $pltCcOPSvcs.useForestWide -AND -NOT $ret_CcOPSvcs.hasForestWide){
         PS>         $smsg = "==> $($ACtionCommand): MISSING CRITICAL FORESTWIDE SUPPORT COMPONENT:" ; 
-        PS>         if(-not $ret_ccOPs.hasForestWide){
+        PS>         if(-not $ret_CcOPSvcs.hasForestWide){
         PS>             $smsg += "`n----->$($ACtionCommand): MISSING .hasForestWide (Set-AdServerSettings -ViewEntireForest `$True) " ; 
         PS>         } ; 
-        PS>         if(-not $ret_ccOPs.AdGcFwide){
+        PS>         if(-not $ret_CcOPSvcs.AdGcFwide){
         PS>             $smsg += "`n----->$($ACtionCommand): MISSING .AdGcFwide GC!:`n((Get-ADDomainController -Discover -Service GlobalCatalog).hostname):326) " ; 
         PS>         } ; 
         PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
@@ -210,7 +210,7 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
         PS>     }; 
         PS>     #endregion CONFIRM_OPFORESTWIDE ; #*------^ END CONFIRM_OPFORESTWIDE ^------
         PS> } ; 
-        PS> #endregion CONNECT_OPSERVICES ; #*======^ END CONNECT_OPSERVICES ^======        
+        PS> #endregion CALL_CONNECT_OPSERVICES ; #*======^ END CALL_CONNECT_OPSERVICES ^======             
         Demo leveraging resolve-environmentTDO outputs
         .LINK
         https://bitbucket.org/tostka/verb-dev/
