@@ -5,26 +5,26 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 6.5.3
+Version     : 6.5.4
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
-CreatedDate : 1/16.5.30
+CreatedDate : 1/16.5.40
 FileName    : VERB-Ex2010.psm1
 License     : MIT
-Copyright   : (c) 1/16.5.30 Todd Kadrie
+Copyright   : (c) 1/16.5.40 Todd Kadrie
 Github      : https://github.com/tostka
 REVISIONS
 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
 * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
-* 1/16.5.30 - 1.0.0.0
+* 1/16.5.40 - 1.0.0.0
 # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
 # 11:34 AM 12/30/2019 ran vsc alias-expansion
 # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
 # 10:19 AM 11/1/2019 trimmed some whitespace
 # 10:05 AM 10/31/2019 added sample load/call info
-# 12:02 PM 5/6.5.39 added cx10,rx10,dx10 aliases
-# 11:29 AM 5/6.5.39 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+# 12:02 PM 5/6.5.49 added cx10,rx10,dx10 aliases
+# 11:29 AM 5/6.5.49 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
 # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
 # 4:15 PM 3/24/2018 updated pshhelp
 # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
@@ -3738,7 +3738,9 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
         AddedWebsite:
         AddedTwitter:
         REVISIONS
-        * 1:01 PM 5/19/2025 rem'd $prefVaris dump (blank values, throws errors)
+        * 9:00 AM 6/3/2025 revised CBH demo, properly handle cross-org conn attempts, incl forestwide spec recovery
+        * 4:36 PM 6/2/2025 updated CBH demo to cover cross org fails, wo breaking cloud run (against MGDomain updates .ps1s)
+        * 2:56 PM 5/19/2025 updated cross-org access fail, to rnot say missing creds ; rem'd $prefVaris dump (blank values, throws errors)
         3:35 PM 5/16/2025 spliced over local dep internal_funcs (out of the main paramt block) ;  dbgd, few minor fixes; but substantially working
         * 8:16 AM 5/15/2025 init
         .DESCRIPTION
@@ -3781,31 +3783,151 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
         PS> $PermsRqd = connect-OPServices -scriptblock (gcm -name connect-OPServices).definition ;
         Typical function pass, using get-command to return the definition/scriptblock for the subject function.
         .EXAMPLE
-        PS> write-verbose "Typically from the BEGIN{} block of an Advanced Function, or immediately after PARAM() block" ;
-        PS> $Verbose = [boolean]($VerbosePreference -eq 'Continue') ;
-        PS> $rPSCmdlet = $PSCmdlet ;
-        PS> $rPSScriptRoot = $PSScriptRoot ;
-        PS> $rPSCommandPath = $PSCommandPath ;
-        PS> $rMyInvocation = $MyInvocation ;
-        PS> $rPSBoundParameters = $PSBoundParameters ;
-        PS> $pltRvEnv=[ordered]@{
-        PS>     PSCmdletproxy = $rPSCmdlet ;
-        PS>     PSScriptRootproxy = $rPSScriptRoot ;
-        PS>     PSCommandPathproxy = $rPSCommandPath ;
-        PS>     MyInvocationproxy = $rMyInvocation ;
-        PS>     PSBoundParametersproxy = $rPSBoundParameters
-        PS>     verbose = [boolean]($PSBoundParameters['Verbose'] -eq $true) ;
-        PS> } ;
-        PS> $rvEnv = resolve-EnvironmentTDO @pltRVEnv ;
-        PS> if($rvEnv.isScript){
-        PS>     if($rvEnv.PSCommandPathproxy){ $prxPath = $rvEnv.PSCommandPathproxy }
-        PS>     elseif($script:PSCommandPath){$prxPath = $script:PSCommandPath}
-        PS>     elseif($rPSCommandPath){$prxPath = $rPSCommandPath} ;
-        PS>     $PermsRqd = connect-OPServices -Path $prxPath  ;
-        PS> } ;
-        PS> if($rvEnv.isFunc){
-        PS>     $PermsRqd = connect-OPServices -Path (gcm -name $rvEnv.FuncName).definition ;
-        PS> } ;
+        PS> #region CALL_CONNECT_OPSERVICES ; #*======v CALL_CONNECT_OPSERVICES v======
+        PS> #$useOP = $false ; 
+        PS> if($useOP){
+        PS>     $pltCcOPSvcs=[ordered]@{
+        PS>         # environment parameters:
+        PS>         EnvSummary = $rvEnv ;
+        PS>         NetSummary = $netsettings ;
+        PS>         XoPSummary = $lclExOP ;
+        PS>         # service choices
+        PS>         UseExOP = $true ;
+        PS>         useForestWide = $true ;
+        PS>         useExopNoDep = $false ;
+        PS>         ExopVers = 'Ex2010' ;
+        PS>         UseOPAD = $true ;
+        PS>         useExOPVers = $useExOPVers; # 'Ex2010' ;
+        PS>         # Service Connection parameters
+        PS>         TenOrg = $TenOrg ; # $global:o365_TenOrgDefault ;
+        PS>         Credential = $Credential ;
+        PS>         #[ValidateSet("SID","ESVC","LSVC")]
+        PS>         UserRole = $UserRole ; # @('SID','ESVC') ;
+        PS>         # svcAcct use: @('ESvcCBA','CSvcCBA','SIDCBA')
+        PS>         silent = $silent ;
+        PS>     } ;
+        PS>     
+        PS>     write-verbose "(Purge no value keys from splat)" ;
+        PS>     $mts = $pltCcOPSvcs.GetEnumerator() |?{$_.value -eq $null} ; $mts |%{$pltCcOPSvcs.remove($_.Name)} ; rv mts -ea 0 ;
+        PS>     if((get-command connect-OPServices -EA STOP).parameters.ContainsKey('whatif')){
+        PS>         $pltCcOPSvcsnDSR.add('whatif',$($whatif))
+        PS>     } ;
+        PS>     $smsg = "connect-OPServices w`n$(($pltCcOPSvcs|out-string).trim())" ;
+        PS>     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        PS>     $ret_CcOPSvcs = connect-OPServices @pltCcOPSvcs ; 
+        PS>     
+        PS>     # #region CONFIRM_CCOPRETURN ; #*------v CONFIRM_CCOPRETURN v------
+        PS>     # matches each: $plt.useXXX:$true to matching returned $ret.hasXXX:$true
+        PS>     $vplt = $pltCcOPSvcs ; $vret = 'ret_CcOPSvcs' ;  ; $ACtionCommand = 'connect-OPServices' ; 
+        PS>     $vplt.GetEnumerator() |?{$_.key -match '^use' -ANd $_.value -match $true} | foreach-object{
+        PS>         $pltkey = $_ ;
+        PS>         $smsg = "$(($pltkey | ft -HideTableHeaders name,value|out-string).trim())" ; 
+        PS>         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+        PS>         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        PS>         $vtests = @() ;  $vFailMsgs = @()  ; 
+        PS>         $tprop = $pltkey.name -replace '^use','has';
+        PS>         if($rProp = (gv $vret).Value.psobject.properties | ?{$_.name -match $tprop}){
+        PS>             $smsg = "$(($rprop | ft -HideTableHeaders name,value |out-string).trim())" ; 
+        PS>             if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+        PS>             else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        PS>             if($rprop.Value -eq $pltkey.value){
+        PS>                 $vtests += $true ; 
+        PS>                 $smsg = "Validated: $($pltKey.name):$($pltKey.value) => $($rprop.name):$($rprop.value)" ;
+        PS>                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Success } 
+        PS>                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        PS>                 #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+        PS>             } else {
+        PS>                 $smsg = "NOT VALIDATED: $($pltKey.name):$($pltKey.value) => $($rprop.name):$($rprop.value)" ;
+        PS>                 $vtests += $false ; 
+        PS>                 $vFailMsgs += "`n$($smsg)" ; 
+        PS>                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>                 else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>             };
+        PS>         } else{
+        PS>             $smsg = "Unable to locate: $($pltKey.name):$($pltKey.value) to any matching $($rprop.name)!)" ;
+        PS>             $smsg = "" ; 
+        PS>             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>         } ; 
+        PS>     } ; 
+        PS>     if($useOP -AND $vtests -notcontains $false){
+        PS>         $smsg = "==> $($ACtionCommand): confirmed specified connections *all* successful " ; 
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Success } 
+        PS>         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        PS>         #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+        PS>     }elseif($vtests -contains $false -AND (get-variable ret_CcOPSvcs) -AND (gv -name "$($tenorg)meta").value.o365_opdomain.split('.')[0].toupper() -ne $env:userdomain){
+        PS>         $smsg = "==> $($ACtionCommand): FAILED SOME SPECIFIED CONNECTIONS" ; 
+        PS>         $smsg += "`nCROSS-ORG ONPREM CONNECTION: ATTEMPTING TO CONNECT TO ONPREM '$((gv -name "$($tenorg)meta").value.o365_Prefix)' $((gv -name "$($tenorg)meta").value.o365_opdomain.split('.')[0].toupper()) domain, FROM $($env:userdomain)!" ;
+        PS>         $smsg += "`nEXPECTED ERROR, SKIPPING ONPREM ACCESS STEPS (force `$useOP:$false)" ;
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>         $useOP = $false ; 
+        PS>     }elseif(-not $useOP -AND -not (get-variable ret_CcOPSvcs)){
+        PS>         $smsg = "-useOP: $($useOP), skipped connect-OPServices" ; 
+        PS>         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+        PS>         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        PS>     } else {
+        PS>         $smsg = "==> $($ACtionCommand): FAILED SOME SPECIFIED CONNECTIONS" ; 
+        PS>         $smsg += "`n`$ret_CcOPSvcs:`n$(($ret_CcOPSvcs|out-string).trim())" ; 
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>         $sdEmail.SMTPSubj = "FAIL Rpt:$($ScriptBaseName):$(get-date -format 'yyyyMMdd-HHmmtt')"
+        PS>         $sdEmail.SmtpBody = "`n===Processing Summary:" ;
+        PS>         if($vFailMsgs){
+        PS>             $sdEmail.SmtpBody += "`n$(($vFailMsgs|out-string).trim())" ; 
+        PS>         } ; 
+        PS>         $sdEmail.SmtpBody += "`n" ;
+        PS>         if($SmtpAttachment){
+        PS>             $sdEmail.SmtpAttachment = $SmtpAttachment
+        PS>             $sdEmail.smtpBody +="`n(Logs Attached)" ;
+        PS>         };
+        PS>         $sdEmail.SmtpBody += "Pass Completed $([System.DateTime]::Now)" ;
+        PS>         $smsg = "Send-EmailNotif w`n$(($sdEmail|out-string).trim())" ;
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        PS>         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        PS>         Send-EmailNotif @sdEmail ;
+        PS>         throw $smsg ; 
+        PS>         BREAK ; 
+        PS>     } ; 
+        PS>     #endregion CONFIRM_CCOPRETURN ; #*------^ END CONFIRM_CCOPRETURN ^------
+        PS>     #region CONFIRM_OPFORESTWIDE ; #*------v CONFIRM_OPFORESTWIDE v------    
+        PS>     if($useOP -AND $pltCcOPSvcs.useForestWide -AND $ret_CcOPSvcs.hasForestWide -AND $ret_CcOPSvcs.AdGcFwide){
+        PS>         $smsg = "==> $($ACtionCommand): confirmed has BOTH .hasForestWide & .AdGcFwide ($($ret_CcOPSvcs.AdGcFwide))" ; 
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Success } 
+        PS>         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        PS>         #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success        
+        PS>     }elseif($pltCcOPSvcs.useForestWide -AND (get-variable ret_CcOPSvcs) -AND (gv -name "$($tenorg)meta").value.o365_opdomain.split('.')[0].toupper() -ne $env:userdomain){
+        PS>         $smsg = "`nCROSS-ORG ONPREM CONNECTION: ATTEMPTING TO CONNECT TO ONPREM '$((gv -name "$($tenorg)meta").value.o365_Prefix)' $((gv -name "$($tenorg)meta").value.o365_opdomain.split('.')[0].toupper()) domain, FROM $($env:userdomain)!" ;
+        PS>         $smsg += "`nEXPECTED ERROR, SKIPPING ONPREM FORESTWIDE SPEC" ;
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>         $useOP = $false ; 
+        PS>     }elseif($useOP -AND $pltCcOPSvcs.useForestWide -AND -NOT $ret_CcOPSvcs.hasForestWide){
+        PS>         $smsg = "==> $($ACtionCommand): MISSING CRITICAL FORESTWIDE SUPPORT COMPONENT:" ; 
+        PS>         if(-not $ret_CcOPSvcs.hasForestWide){
+        PS>             $smsg += "`n----->$($ACtionCommand): MISSING .hasForestWide (Set-AdServerSettings -ViewEntireForest `$True) " ; 
+        PS>         } ; 
+        PS>         if(-not $ret_CcOPSvcs.AdGcFwide){
+        PS>             $smsg += "`n----->$($ACtionCommand): MISSING .AdGcFwide GC!:`n((Get-ADDomainController -Discover -Service GlobalCatalog).hostname):326) " ; 
+        PS>         } ; 
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>         $smsg = "MISSING SOME KEY CONNECTIONS. DO YOU WANT TO IGNORE, AND CONTINUE WITH CONNECTED SERVICES?" ;
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        PS>         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        PS>         $bRet=Read-Host "Enter YYY to continue. Anything else will exit"  ;
+        PS>         if ($bRet.ToUpper() -eq "YYY") {
+        PS>             $smsg = "(Moving on), WITH THE FOLLOW PARTIAL CONNECTION STATUS" ;
+        PS>             $smsg += "`n`n$(($ret_CcOPSvcs|out-string).trim())" ; 
+        PS>             write-host -foregroundcolor green $smsg  ;
+        PS>         } else {
+        PS>             throw $smsg ; 
+        PS>             break ; #exit 1
+        PS>         } ;         
+        PS>     }; 
+        PS>     #endregion CONFIRM_OPFORESTWIDE ; #*------^ END CONFIRM_OPFORESTWIDE ^------
+        PS> } ; 
+        PS> #endregion CALL_CONNECT_OPSERVICES ; #*======^ END CALL_CONNECT_OPSERVICES ^======             
         Demo leveraging resolve-environmentTDO outputs
         .LINK
         https://bitbucket.org/tostka/verb-dev/
@@ -15808,6 +15930,107 @@ Function remove-EMSLocalModule {
 #*------^ remove-EMSLocalModule.ps1 ^------
 
 
+#*------v remove-SmtpPlusAddress.ps1 v------
+function remove-SmtpPlusAddress {
+        <#
+        .SYNOPSIS
+        remove-SmtpPlusAddress - Strips any Plus address Tag present in an smtp address, and returns the base address
+        .NOTES
+        Version     : 1.0.0
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 2024-05-22
+        FileName    : remove-SmtpPlusAddress.ps1
+        License     : (none asserted)
+        Copyright   : (none asserted)
+        Github      : https://github.com/tostka/verb-Ex2010
+        Tags        : Powershell,EmailAddress,Version
+        AddedCredit : Bruno Lopes (brunokktro )
+        AddedWebsite: https://www.linkedin.com/in/blopesinfo
+        AddedTwitter: @brunokktro / https://twitter.com/brunokktro
+        REVISIONS
+        * 2:37 PM 6/2/2025 add to vx10 ; 
+        * 1:47 PM 7/9/2024 CBA github field correction
+        * 1:22 PM 5/22/2024init
+        .DESCRIPTION
+        remove-SmtpPlusAddress - Strips any Plus address Tag present in an smtp address, and returns the base address
+
+        Plus Addressing is supported in Exchange Online, Gmail, and other select hosts. 
+        It is *not* supported for Exchange Server onprem. Any + addressed email will read as an unresolvable email address. 
+        Supporting systems will truncate the local part (in front of the @), after the +, to resolve the email address for normal routing:
+
+        monitoring+whatever@domain.tld, is cleaned down to: monitor@domain.tld. 
+
+        .PARAMETER EmailAddress
+        SMTP Email Address
+        .OUTPUT
+        String
+        .EXAMPLE
+        PS> 
+        PS> $returned = remove-SmtpPlusAddress -EmailAddress 'monitoring+SolarWinds@toro.com';  
+        PS> $returned ; 
+        Demo retrieving get-EmailAddress, assigning to output, processing it for version info, and expanding the populated returned values to local variables. 
+        .EXAMPLE
+        ps> remove-SmtpPlusAddress -EmailAddress 'monitoring+SolarWinds@toro.com;notanemailaddresstoro.com,todd+spam@kadrie.net' -verbose ;
+        Demo with comma and semicolon delimiting, and an invalid address (to force a regex match fail error).
+        .LINK
+        https://github.com/brunokktro/EmailAddress/blob/master/Get-ExchangeEnvironmentReport.ps1
+        .LINK
+        https://github.com/tostka/verb-Ex2010
+        #>
+        [CmdletBinding()]
+        #[Alias('rvExVers')]
+        PARAM(
+            [Parameter(Mandatory = $true,Position=0,HelpMessage="Object returned by a get-EmailAddress command[-EmailAddress `$ExObject]")]
+                [string[]]$EmailAddress
+        ) ;
+        BEGIN {
+            ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+            $verbose = $($VerbosePreference -eq "Continue")
+            $rgxSMTPAddress = "([0-9a-zA-Z]+[-._+&='])*[0-9a-zA-Z]+@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}" ; 
+            $sBnr="#*======v $($CmdletName): v======" ;
+            write-verbose  "$((get-date).ToString('HH:mm:ss')):$($sBnr)" ;
+            if($EmailAddress -match ','){
+                $smsg = "(comma detected, attempting split on commas)" ; 
+                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                $EmailAddress = $EmailAddress.split(',') ; 
+            } ; 
+            if($EmailAddress -match ';'){
+                $smsg = "(semi-colon detected, attempting split on semicolons)" ; 
+                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                $EmailAddress = $EmailAddress.split(';') ; 
+            } ; 
+        }
+        PROCESS {
+            foreach ($item in $EmailAddress){
+                if($item -match $rgxSMTPAddress){
+                    if($item.split('@')[0].contains('+')){
+                        write-verbose  "Remove Plus Addresses from: $($item)" ; 
+                        $lpart,$domain = $item.split('@') ; 
+                        $item = "$($lpart.split('+')[0])@$($domain)" ; 
+                        $smsg = "Cleaned Address: $($item)" ; 
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    }
+                    $item | write-output ; 
+                } else { 
+                    write-warning  "$($item)`ndoes not match a standard SMTP Email Address (skipping):`n$($rgxSmtpAddress)" ; 
+                    continue ;
+                } ; 
+            } ;     
+        
+        } # PROC-E
+        END{
+            write-verbose  "$((get-date).ToString('HH:mm:ss')):$($sBnr.replace('=v','=^').replace('v=','^='))" ;
+        }
+    }
+
+#*------^ remove-SmtpPlusAddress.ps1 ^------
+
+
 #*------v resolve-ExchangeServerVersionTDO.ps1 v------
 function resolve-ExchangeServerVersionTDO {
     <#
@@ -16900,7 +17123,7 @@ PARAM() ;
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup,Connect-Ex2010,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,Connect-Ex2010XO,Connect-ExchangeServerTDO,_connect-ExOP,connect-OPServices,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,2b4,2b4c,fb4,cx10cmw,cx10tol,cx10tor,disable-ForestView,Disconnect-Ex2010,enable-ForestView,get-ADExchangeServerTDO,get-DAGDatabaseCopyStatus,Get-ExchServerFromExServersGroup,get-ExRootSiteOUs,get-MailboxDatabaseQuotas,Get-MessageTrackingLogTDO,resolve-EnvironmentTDO,write-log,Start-Log,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,resolve-NetworkLocalTDO,out-Clipboard,convertFrom-MarkdownTable,Remove-InvalidVariableNameChars,remove-SmtpPlusAddress,Initialize-xopEventIDTable,2b4,2b4c,fb4,get-UserMailADSummary,get-xopServerAdminDisplayVersion,import-EMSLocalModule,Initialize-xopEventIDTable,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxGenericTOR,_cleanup,new-MailboxShared,preview-EAPUpdate,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,resolve-ExchangeServerVersionTDO,resolve-RecipientEAP,rx10cmw,rx10tol,rx10tor,test-ExOPPSession,test-EXOPConnection,test-LocalExchangeInfoTDO,toggle-ForestView -Alias *
+Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup,Connect-Ex2010,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,Connect-Ex2010XO,Connect-ExchangeServerTDO,_connect-ExOP,connect-OPServices,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,2b4,2b4c,fb4,cx10cmw,cx10tol,cx10tor,disable-ForestView,Disconnect-Ex2010,enable-ForestView,get-ADExchangeServerTDO,get-DAGDatabaseCopyStatus,Get-ExchServerFromExServersGroup,get-ExRootSiteOUs,get-MailboxDatabaseQuotas,Get-MessageTrackingLogTDO,resolve-EnvironmentTDO,write-log,Start-Log,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,resolve-NetworkLocalTDO,out-Clipboard,convertFrom-MarkdownTable,Remove-InvalidVariableNameChars,remove-SmtpPlusAddress,Initialize-xopEventIDTable,2b4,2b4c,fb4,get-UserMailADSummary,get-xopServerAdminDisplayVersion,import-EMSLocalModule,Initialize-xopEventIDTable,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxGenericTOR,_cleanup,new-MailboxShared,preview-EAPUpdate,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,remove-SmtpPlusAddress,resolve-ExchangeServerVersionTDO,resolve-RecipientEAP,rx10cmw,rx10tol,rx10tor,test-ExOPPSession,test-EXOPConnection,test-LocalExchangeInfoTDO,toggle-ForestView -Alias *
 
 
 
@@ -16908,8 +17131,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUJoAuDwhREgbwE90aaGnGarL9
-# P9ygggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUyb/cOdvTmnZ29cBo0GNqZJ0d
+# 1regggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -16924,9 +17147,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQxssYN
-# OwiFAW87C9+1eKkVJ8q37DANBgkqhkiG9w0BAQEFAASBgDYzTk4qHho1pPz746ih
-# UOdXbRIw1VxJhuYOQoIyNraCqLqFjMmmgQdhkxF1h3gwtsaZX0RgJ0DfN5YlS7I8
-# 8c+hXnE7ToDhYJEKXB6Ip3mbs83lNLyjaesClRsrThbAZk8vUtEMsyUz0j2iTL2Z
-# cD0xLBnQvfJyGp/26mLzB8sS
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQeOYKB
+# SOWt7V5Hy22cPucxXC7/ADANBgkqhkiG9w0BAQEFAASBgFw9fpXJa6QvDLyYQcGM
+# aKc/L9Kwud+ZR4poEUZnpJJV1Kk2QpR8DveKTlCdGbIXprEzBgsx0wlfcBQF4V9B
+# iWvl0UKe4Z6WstSDJl5oqMmnG8Wv1ZKqriDM+WsJnz+nTRx4fP2iLQMSMcWzEZSo
+# 8YxKADkAwdeZB5PLAyrMPidA
 # SIG # End signature block
