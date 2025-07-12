@@ -19,6 +19,13 @@ function get-xopServerAdminDisplayVersion {
     AddedWebsite: https://thesysadminchannel.com/get-exchange-cumulative-update-version-and-build-numbers-using-powershell/
     AddedTwitter: URL
     REVISION
+    * 2:58 PM 7/12/2025 updated BuildToProductName indexed hash to specs posted as of 04/25/2025 at https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates
+            Maxes reflected in this script, as of that time:
+             - Exchange Server SE RTM 	July 1, 2025 	15.2.2562.17 	15.02.2562.017
+             - Exchange Server 2019 CU15 May25HU 	May 29, 2025 	15.2.1748.26 	15.02.1748.026
+             - Exchange Server 2016 CU23 May25HU 	May 29, 2025 	15.1.2507.57 	15.01.2507.057
+             - Exchange Server 2013 CU23 Mar23SU 	March 14, 2023 	15.0.1497.48 	15.00.1497.048
+             - Update Rollup 32 for Exchange Server 2010 SP3 	March 2, 2021 	14.3.513.0 	14.03.0513.000
     * 11:06 AM 4/4/2025:
         - udpated CBH (updates more extensive demos);
         - add: -GetServiceUpdate; echo's last BuildTable date, and url to screen; 
@@ -145,6 +152,9 @@ function get-xopServerAdminDisplayVersion {
         $smsg += "`n(update from:$($BuildTableUpedateUrl))" ;
         write-host -foregroundcolor yellow $smsg ; 
         $BuildToProductName = @{
+            '15.2.2562.17' = 'Exchange Server SE RTM'
+            '15.2.1748.26' = 'Exchange Server 2019 CU15 May25HU'
+            '15.2.1748.24' =  'Exchange Server 2019 CU15 Apr25HU'
             '15.2.1748.10' = 	'Exchange Server 2019 CU15 (2025H1)'
             '15.2.1544.14' = 	'Exchange Server 2019 CU14 Nov24SUv2'
             '15.2.1544.13' = 	'Exchange Server 2019 CU14 Nov24SU'
@@ -217,6 +227,8 @@ function get-xopServerAdminDisplayVersion {
             '15.2.221.18' = 	'Exchange Server 2019 RTM Mar21SU'
             '15.2.221.12' = 	'Exchange Server 2019 RTM'
             '15.2.196.0' = 	'Exchange Server 2019 Preview'
+            '15.1.2507.57' = 	'Exchange Server 2016 CU23 May25HU'
+            '15.1.2507.55' = 	'Exchange Server 2016 CU23 Apr25HU'
             '15.1.2507.44' = 	'Exchange Server 2016 CU23 Nov24SUv2'
             '15.1.2507.43' = 	'Exchange Server 2016 CU23 Nov24SU'
             '15.1.2507.39' = 	'Exchange Server 2016 CU23 Apr24HU'
