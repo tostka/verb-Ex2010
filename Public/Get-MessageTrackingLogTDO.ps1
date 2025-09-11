@@ -18,6 +18,7 @@ function Get-MessageTrackingLogTDO {
     Github      : htt-ps://github.com/tostka/verb-XXX
     Tags        : Powershell,Exchange,MessageTracking,Get-MessageTrackingLog,ActiveDirectory
     REVISIONS
+    * 10:28 AM 9/11/2025 found it writing epcsv to modules install dir: enviro_discover block & resolve-EnvironmentTDO() to latest parammt vers. Now exports properly to d:\scripts\ on jb.
     * 10;23 am 4/30/2025 - get-ADExchangeServerTDO: * 10;05 am 4/30/2025 fixed code for Edge role in raw PS, missing evaris for Ex: added discovery from reg & stock file system dirs for version etc.
         - Connect-ExchangeServerTDO: * 10;07 am 4/30/2025 fixed borked edge conn, typo, and rev logic for Ex & role detection in raw PS - lacks evaris for exchange (EMS/REMS only), so leverage reg & stock install loc hunting to discover setup.exe for vers & role confirm).
         - start-log: made Tag cleanup conditional (on funcs avail; legacy of bringing full start-log into the mix).
@@ -344,50 +345,29 @@ function Get-MessageTrackingLogTDO {
         #$CUModPath = $env:psmodulepath.split(';')|?{$_ -like '*\Users\*'} ;
 
         #region RESOLVE_ENVIRONMENTTDO ; #*------v resolve-EnvironmentTDO v------
-        if(-not(gci function:resolve-EnvironmentTDO -ea 0)){
-            #*----------v Function resolve-EnvironmentTDO() v----------
+        if(-not(gi function:resolve-EnvironmentTDO -ea 0)){
             function resolve-EnvironmentTDO {
                 <#
                     .SYNOPSIS
                     resolve-EnvironmentTDO.ps1 - Resolves local environment into usable Script or Function-descriptive values (for reuse in logging and i/o access)
                     .NOTES
-                    Version     : 0.0.2
-                    Author      : Todd Kadrie
-                    Website     : http://www.toddomation.com
-                    Twitter     : @tostka / http://twitter.com/tostka
-                    CreatedDate : 2025-04-04
-                    FileName    : resolve-EnvironmentTDO.ps1
-                    License     : (non asserted)
-                    Copyright   : (non asserted)
-                    Github      : https://github.com/tostka/verb-ex2010
-                    Tags        : Powershell,ExchangeServer,Version
-                    AddedCredit : theSysadminChannel
-                    AddedWebsite: https://thesysadminchannel.com/get-exchange-cumulative-update-version-and-build-numbers-using-powershell/
-                    AddedTwitter: URL
+                 
                     REVISION
-                    * 4:13 PM 4/4/2025 init
-                    .EXAMPLE
-                    PS> write-verbose "Typically from the BEGIN{} block of an Advanced Function, or immediately after PARAM() block" ; 
-                    PS> $Verbose = [boolean]($VerbosePreference -eq 'Continue') ;
-                    PS> $rPSCmdlet = $PSCmdlet ;
-                    PS> $rPSScriptRoot = $PSScriptRoot ;
-                    PS> $rPSCommandPath = $PSCommandPath ;
-                    PS> $rMyInvocation = $MyInvocation ;
-                    PS> $rPSBoundParameters = $PSBoundParameters ;
-                    PS> $pltRvEnv=[ordered]@{
-                    PS>     PSCmdletproxy = $rPSCmdlet ;
-                    PS>     PSScriptRootproxy = $rPSScriptRoot ;
-                    PS>     PSCommandPathproxy = $rPSCommandPath ;
-                    PS>     MyInvocationproxy = $rMyInvocation ;
-                    PS>     PSBoundParametersproxy = $rPSBoundParameters
-                    PS>     verbose = [boolean]($PSBoundParameters['Verbose'] -eq $true) ;
-                    PS> } ;
-                    PS> write-verbose "(Purge no value keys from splat)" ;
-                    PS> $mts = $pltRVEnv.GetEnumerator() |?{$_.value -eq $null} ; $mts |%{$pltRVEnv.remove($_.Name)} ; rv mts -ea 0 ;
-                    PS> $smsg = "resolve-EnvironmentTDO w`n$(($pltRVEnv|out-string).trim())" ;
-                    PS> if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    PS> $rvEnv = resolve-EnvironmentTDO @pltRVEnv ;  
-                    PS> write-host "Returned `$rvEnv:`n$(($rvEnv|out-string).trim())" ; 
+                    * 4:44 PM 5/23/2025 updated the splats to psv2/psv3 support (dyn build; prev was psv3 only)
+
+                    .DESCRIPTION
+
+                    .PARAMETER PSCmdletproxy
+                    Proxied Powershell Automatic Variable object that represents the cmdlet or advanced function that’s being run. (passed by external assignment to a variable, which is then passed to this function)
+                    .PARAMETER PSScriptRootproxy
+                    Proxied Powershell Automatic Variable that contains the full path to the script that invoked the current command. The value of this property is populated only when the caller is a script. (passed by external assignment to a variable, which is then passed to this function).
+                    .PARAMETER PSCommandPathproxy
+                    Proxied Powershell Automatic Variable that contains the full path and file name of the script that’s being run. This variable is valid in all scripts. (passed by external assignment to a variable, which is then passed to this function).
+                    .PARAMETER MyInvocationproxy
+                    Proxied Powershell Automatic Variable that contains information about the current command, such as the name, parameters, parameter values, and information about how the command was started, called, or invoked, such as the name of the script that called the current command. (passed by external assignment to a variable, which is then passed to this function).
+                    .PARAMETER PSBoundParametersproxy
+                    Proxied Powershell Automatic Variable that contains a dictionary of the parameters that are passed to a script or function and their current values. This variable has a value only in a scope where parameters are declared, such as a script or function. You can use it to display or change the current values of parameters or to pass parameter values to another script or function. (passed by external assignment to a variable, which is then passed to this function).
+                
                 #>
                 [Alias('resolve-Environment')]
                 [CmdletBinding()]
@@ -597,7 +577,6 @@ function Get-MessageTrackingLogTDO {
                     } ; 
                 }
             } ; 
-            #*------^ END Function resolve-EnvironmentTDO() ^------ 
         } ;
         #endregion RESOLVE_ENVIRONMENTTDO ; #*------^ END resolve-EnvironmentTDO ^------
     
@@ -2781,6 +2760,7 @@ TRANSFER              | Recipients were moved to a forked message because of con
 
         #region CONSTANTS_AND_ENVIRO ; #*======v CONSTANTS_AND_ENVIRO v======
         #region ENVIRO_DISCOVER ; #*------v ENVIRO_DISCOVER v------
+        push-TLSLatest
         $Verbose = [boolean]($VerbosePreference -eq 'Continue') ; 
         $rPSCmdlet = $PSCmdlet ; # an object that represents the cmdlet or advanced function that's being run. Available on functions w CmdletBinding (& $args will not be available). (Blank on non-CmdletBinding/Non-Adv funcs).
         $rPSScriptRoot = $PSScriptRoot ; # the full path of the executing script's parent directory., PS2: valid only in script modules (.psm1). PS3+:it's valid in all scripts. (Funcs: ParentDir of the file that hosts the func)
@@ -2791,7 +2771,31 @@ TRANSFER              | Recipients were moved to a forked message because of con
         # - Ps3+:$MyInvocation.PSCommandPath : full path and filename of the script that invoked the current command. The value of this property is populated only when the caller is a script (blank on funcs & Advfuncs)
         #     ** note: above pair contain information about the _invoker or calling script_, not the current script
         $rPSBoundParameters = $PSBoundParameters ; 
-        # splatted resolve-EnvironmentTDO CALL: 
+        #region PREF_VARI_DUMP ; #*------v PREF_VARI_DUMP v------
+        <#$script:prefVaris = @{
+            whatifIsPresent = $whatif.IsPresent
+            whatifPSBoundParametersContains = $rPSBoundParameters.ContainsKey('WhatIf') ; 
+            whatifPSBoundParameters = $rPSBoundParameters['WhatIf'] ;
+            WhatIfPreferenceIsPresent = $WhatIfPreference.IsPresent ; # -eq $true
+            WhatIfPreferenceValue = $WhatIfPreference;
+            WhatIfPreferenceParentScopeValue = (Get-Variable WhatIfPreference -Scope 1).Value ;
+            ConfirmPSBoundParametersContains = $rPSBoundParameters.ContainsKey('Confirm') ; 
+            ConfirmPSBoundParameters = $rPSBoundParameters['Confirm'];
+            ConfirmPreferenceIsPresent = $ConfirmPreference.IsPresent ; # -eq $true
+            ConfirmPreferenceValue = $ConfirmPreference ;
+            ConfirmPreferenceParentScopeValue = (Get-Variable ConfirmPreference -Scope 1).Value ; 
+            VerbosePSBoundParametersContains = $rPSBoundParameters.ContainsKey('Confirm') ; 
+            VerbosePSBoundParameters = $rPSBoundParameters['Verbose'] ;
+            VerbosePreferenceIsPresent = $VerbosePreference.IsPresent ; # -eq $true
+            VerbosePreferenceValue = $VerbosePreference ;
+            VerbosePreferenceParentScopeValue = (Get-Variable VerbosePreference -Scope 1).Value;
+            VerboseMyInvContains = '-Verbose' -in $rPSBoundParameters.UnboundArguments ; 
+            VerbosePSBoundParametersUnboundArgumentContains = '-Verbose' -in $rPSBoundParameters.UnboundArguments 
+        } ;
+        write-verbose "`n$(($script:prefVaris.GetEnumerator() | Sort-Object Key | Format-Table Key,Value -AutoSize|out-string).trim())`n" ; 
+        #>
+        #endregion PREF_VARI_DUMP ; #*------^ END PREF_VARI_DUMP ^------
+        #region RV_ENVIRO ; #*------v RV_ENVIRO v------
         $pltRvEnv=[ordered]@{
             PSCmdletproxy = $rPSCmdlet ; 
             PSScriptRootproxy = $rPSScriptRoot ; 
@@ -2801,13 +2805,99 @@ TRANSFER              | Recipients were moved to a forked message because of con
             verbose = [boolean]($PSBoundParameters['Verbose'] -eq $true) ; 
         } ;
         write-verbose "(Purge no value keys from splat)" ; 
-        $mts = $pltRVEnv.GetEnumerator() |?{$_.value -eq $null} ; $mts |%{$pltRVEnv.remove($_.Name)} ; rv mts -ea 0 ; 
+        $mts = $pltRVEnv.GetEnumerator() |?{$_.value -eq $null} ; $mts |%{$pltRVEnv.remove($_.Name)} ; rv mts -ea 0 -whatif:$false -confirm:$false; 
         $smsg = "resolve-EnvironmentTDO w`n$(($pltRVEnv|out-string).trim())" ; 
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        if(get-command resolve-EnvironmentTDO -ea STOP){}ELSE{
+            $smsg = "UNABLE TO gcm resolve-EnvironmentTDO!" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+            BREAK ; 
+        } ; 
         $rvEnv = resolve-EnvironmentTDO @pltRVEnv ; 
         $smsg = "`$rvEnv returned:`n$(($rvEnv |out-string).trim())" ; 
         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        #endregion RV_ENVIRO ; #*------^ END RV_ENVIRO ^------
+        #region NETWORK_INFO ; #*======v NETWORK_INFO v======
+        if(get-command resolve-NetworkLocalTDO  -ea STOP){}ELSE{
+            $smsg = "UNABLE TO gcm resolve-NetworkLocalTDO !" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+            BREAK ; 
+        } ; 
+        $netsettings = resolve-NetworkLocalTDO ; 
+        if($env:Userdomain){ 
+            switch($env:Userdomain){
+                'CMW'{
+                    #$logon_SID = $CMW_logon_SID 
+                }
+                'TORO'{
+                    #$o365_SIDUpn = $o365_Toroco_SIDUpn ; 
+                    #$logon_SID = $TOR_logon_SID ; 
+                }
+                $env:COMPUTERNAME{
+                    $smsg = "%USERDOMAIN% -EQ %COMPUTERNAME%: $($env:computername) => non-domain-connected, likely edge role Ex server!" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    if($netsettings.Workgroup){
+                        $smsg = "WorkgroupName:$($netsettings.Workgroup)" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;                    
+                    } ; 
+                } ; 
+                default{
+                    $smsg = "$($env:userdomain):UNRECOGIZED/UNCONFIGURED USER DOMAIN STRING!" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    THROW $SMSG 
+                    BREAK ; 
+                }
+            } ; 
+        } ;  # $env:Userdomain-E
+        #endregion NETWORK_INFO ; #*======^ END NETWORK_INFO ^======
+        #region OS_INFO ; #*------v OS_INFO v------
+        <# os detect, covers Server 2016, 2008 R2, Windows 10, 11
+        if (get-command get-ciminstance -ea 0) {$OS = (Get-ciminstance -class Win32_OperatingSystem)} else {$Os = Get-WMIObject -class Win32_OperatingSystem } ;
+        #$isWorkstationOS = $isServerOS = $isW2010 = $isW2011 = $isS2016 = $isS2008R2 = $false ;
+        write-host "Detected:`$Os.Name:$($OS.name)`n`$Os.Version:$($Os.Version)" ;
+        if ($OS.name -match 'Microsoft\sWindows\sServer') {
+            $isServerOS = $true ;
+            if ($os.name -match 'Microsoft\sWindows\sServer\s2016'){$isS2016 = $true ;} ;
+            if ($os.name -match 'Microsoft\sWindows\sServer\s2008\sR2') { $isS2008R2 = $true ; } ;
+        } else { 
+            if ($os.name -match '^Microsoft\sWindows\s11') {
+                $isWorkstationOS = $true ;
+                if ($os.name -match 'Microsoft\sWindows\s11') { $isW2011 = $true ; } ;
+            } elseif ($os.name -match '^Microsoft\sWindows\s10') {
+                $isWorkstationOS = $true ; $isW2010 = $true
+            } else {
+                $isWorkstationOS = $true ;
+            } ;         
+        } ; 
+        #>
+        #endregion OS_INFO ; #*------^ END OS_INFO ^------
+        #region TEST_EXOPLOCAL ; #*------v TEST_EXOPLOCAL v------
+        if(get-command test-LocalExchangeInfoTDO -ea STOP){}ELSE{
+            $smsg = "UNABLE TO gcm test-LocalExchangeInfoTDO !" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+            BREAK ; 
+        } ; 
+        $lclExOP = test-LocalExchangeInfoTDO ; 
+        write-verbose "Expand returned NoteProperty properties into matching local variables" ; 
+        if($host.version.major -gt 2){
+            $lclExOP.PsObject.Properties | ?{$_.membertype -eq 'NoteProperty'} | foreach-object{set-variable -name $_.name -value $_.value -verbose -whatif:$false -Confirm:$false ;} ;
+        }else{
+            write-verbose "Psv2 lacks the above expansion capability; just create simpler variable set" ; 
+            $ExVers = $lclExOP.ExVers ; $isLocalExchangeServer = $lclExOP.isLocalExchangeServer ; $IsEdgeTransport = $lclExOP.IsEdgeTransport ;
+        } ;
+        #
+        #endregion TEST_EXOPLOCAL ; #*------^ END TEST_EXOPLOCAL ^------
+
         <#
         #region PsParams ; #*------v PSPARAMS v------
         $PSParameters = New-Object -TypeName PSObject -Property $rPSBoundParameters ;
@@ -2839,8 +2929,21 @@ TRANSFER              | Recipients were moved to a forked message because of con
             throw $smsg ;
         };     
         #>
-        #endregion PsParams ; #*------^ END PSPARAMS ^------
-    
+        #endregion PsParams ; #*------^ END PSPARAMS ^------    
+        #endregion ENVIRO_DISCOVER ; #*------^ END ENVIRO_DISCOVER ^------
+        #region TEST_EXOPLOCAL ; #*------v TEST_EXOPLOCAL v------
+        #
+        #$XoPSummary = test-LocalExchangeInfoTDO ;
+        write-verbose "Expand returned NoteProperty properties into matching local variables" ;
+        if($host.version.major -gt 2){
+            $XoPSummary.PsObject.Properties | ?{$_.membertype -eq 'NoteProperty'} | foreach-object{set-variable -name $_.name -value $_.value -verbose -whatif:$false -Confirm:$false ;} ;
+        }else{
+            write-verbose "Psv2 lacks the above expansion capability; just create simpler variable set" ;
+            $ExVers = $XoPSummary.ExVers ; $isLocalExchangeServer = $XoPSummary.isLocalExchangeServer ; $IsEdgeTransport = $XoPSummary.IsEdgeTransport ;
+        } ;
+        #endregion TEST_EXOPLOCAL ; #*------^ END TEST_EXOPLOCAL ^------
+        #
+
         #endregion ENVIRO_DISCOVER ; #*------^ END ENVIRO_DISCOVER ^------
         #region TLS_LATEST_FORCE ; #*------v TLS_LATEST_FORCE v------
         $CurrentVersionTlsLabel = [Net.ServicePointManager]::SecurityProtocol ; # Tls, Tls11, Tls12 ('Tls' == TLS1.0)  ;
