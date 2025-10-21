@@ -143,7 +143,8 @@ function get-xopServerAdminDisplayVersion {
     BEGIN {
         # when updating $BuildToProductName table (below), also record date of last update here (echos to console, for awareness on results)
         [datetime]$lastBuildTableUpedate = '3/26/2025' ; 
-        $BuildTableUpedateUrl = 'https://docs.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-date' ; 
+        $BuildTableUpedateUrl = 'https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates'
+        #'https://docs.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-date' ; 
         #Creating the hash table with build numbers and cumulative updates
         # updated as of 9:56 AM 3/26/2025 to curr https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates?view=exchserver-2019
         # also using unmodified MS Build names, from the chart (changing just burns time)
