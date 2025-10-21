@@ -10,6 +10,7 @@
         stopping at the first successful connection.
         .NOTES
         REVISIONS
+        * 3:48 PM 10/21/2025 updated CBH for post-import tests on call
         * 3:58 PM 5/14/2025 restored prior dropped earlier rev history (routinely trim for psparamt inclu)
         * 10;07 am 4/30/2025 fixed borked edge conn, typo, and rev logic for Ex & role detection in raw PS - lacks evaris for exchange (EMS/REMS only), so leverage reg & stock install loc hunting to discover setup.exe for vers & role confirm).
         * 2:46 PM 4/22/2025 add: -Version (default to Ex2010), and postfiltered returned ExchangeServers on version. If no -Version, sort on newest Version, then name, -descending.
@@ -52,6 +53,35 @@
         .EXAMPLE
         PS> TRY{$Site=[System.DirectoryServices.ActiveDirectory.ActiveDirectorySite]::GetComputerSite().Name}CATCH{$Site=$env:COMPUTERNAME} ;
         PS> $PSSession = Connect-ExchangeServerTDO -siteName $Site -RoleNames @('HUB','CAS') -verbose ; 
+        PS> write-verbose "discover and import session" ; 
+        PS> $cmd = $null; $cmd = get-command 'Get-OrganizationConfig' -erroraction 0 ;
+        PS> if(-not $cmd){
+        PS>     if($ExPSS = get-pssession | ? { $_.ConfigurationName -eq 'Microsoft.Exchange' -AND $_.State -eq 'Opened' -AND $_.Availability -eq 'Available' } | sort id -Descending | select -first 1 ){
+        PS>         TRY{
+        PS>             $ExIPSS = Import-PSSession $ExPSS -allowclobber -ea STOP ;
+        PS>             $cmd = $null; $cmd = get-command 'Get-OrganizationConfig' -erroraction stop ;
+        PS>             $smsg = "Connected to: $($expss.computername)" ;
+        PS>             if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+        PS>                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        PS>                 #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+        PS>             } ;
+        PS>         } CATCH {
+        PS>             $ErrTrapd=$Error[0] ;
+        PS>             $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+        PS>             if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+        PS>                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        PS>             } ;
+        PS>             BREAK ;
+        PS>         } ;
+        PS>     } ;  
+        PS> } else {
+        PS>     $smsg = "Connected to: $($expss.computername)" ;
+        PS>     if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+        PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        PS>         #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+        PS>     } ;
+        PS> } ;                      
+        PS> 
         Demo including support for EdgeRole, which is detected on it's lack of AD Site specification (which gets fed through to call, by setting the Site to the machine itself).
         .EXAMPLE
         PS> $PSSession = Connect-ExchangeServerTDO -siteName SITENAME -RoleNames @('HUB','CAS') -Version Ex2016 -verbose 
