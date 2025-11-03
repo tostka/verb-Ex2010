@@ -1,6 +1,6 @@
 ﻿# Resolve-xopBuildSemVersToTextNameTDO.ps1
 
-    #region GET_FILEVERSIONTDO ; #*------v Resolve-xopBuildSemVersToTextNameTDO v------
+    #region RESOLVE_XOPBUILDSEMVERSTOTEXTNAMETDO ; #*------v Resolve-xopBuildSemVersToTextNameTDO v------
     Function Resolve-xopBuildSemVersToTextNameTDO {
         <#
         .SYNOPSIS
@@ -20,6 +20,7 @@
         AddedWebsite: http://eightwone.com
         AddedTwitter: URL
         REVISIONS
+        * 9:24 AM 10/22/2025 FIXED REGION TAGS
         * 10:22 AM 9/25/2025 ADD: -AllVersions to return the raw versions table ; added IsInstallable field, to tag installable base RTM/SP/CU releases; 
             CBH: add fields specs for -AllVersions; 
             add: demos for postfiltering -AllVersions returned data to find installable 
@@ -686,4 +687,4 @@ Exchange Server 4.0 Standard Edition                       | 6/11/1996       | 4
         };  # PROC-E
         END {}
     } ; 
-    #endregion GET_FILEVERSIONTDO ; #*------^ END Resolve-xopBuildSemVersToTextNameTDO ^------
+    #endregion RESOLVE_XOPBUILDSEMVERSTOTEXTNAMETDO ; #*------^ END Resolve-xopBuildSemVersToTextNameTDO ^------
