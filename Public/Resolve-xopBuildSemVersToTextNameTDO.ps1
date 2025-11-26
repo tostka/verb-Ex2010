@@ -16,10 +16,12 @@
         Copyright   : (none asserted)
         Github      : https://github.com/tostka/verb-ex2010
         Tags        : Powershell,Exchange,ExchangeServer,Install,Patch,Maintenance
-        AddedCredit : Michel de Rooij / michel@eightwone.com
-        AddedWebsite: http://eightwone.com
+        AddedCredit : 
+        AddedWebsite: 
         AddedTwitter: URL
         REVISIONS
+        * 10:27 AM 11/24/2025 updated CBH, ref to xopBuilLibrary.psm1\Get-SetupTextVersionTDO, for clarity, updated table to reflect lastest SE, 2019 & 2016 builds:
+            EXSE_RTM_Oct25SU EX2019_CU15_Oct25SU EX2016_CU23_Oct25SU (rest are unmodified); pulled irrelev AddedCredit ref to 821's similar limited vers (below)
         * 9:24 AM 10/22/2025 FIXED REGION TAGS
         * 10:22 AM 9/25/2025 ADD: -AllVersions to return the raw versions table ; added IsInstallable field, to tag installable base RTM/SP/CU releases; 
             CBH: add fields specs for -AllVersions; 
@@ -30,9 +32,9 @@
         * 4:25 PM 9/23/2025 flipped -Version [string]->[version], does it's own type validation; updated table added NickName in format: EX[vers]_[SpCU]_[HuSu]
         * 4:02 PM 9/22/2025 init; Updated BuildToProductName indexed hash to specs posted as of 04/25/2025 at https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates
             Maxes reflected in this script, as of that time:
-             - Exchange Server SE RTM Sep25HU 	September 8, 2025 	15.2.2562.27 	15.02.2562.027
-             - Exchange Server 2019 CU15 Sep25HU 	September 8, 2025 	15.2.1748.37 	15.02.1748.037
-             - Exchange Server 2016 CU23 Sep25HU 	September 8, 2025 	15.1.2507.59 	15.01.2507.059
+             - Exchange Server SE RTM Oct25SU 	October 14, 2025 	15.2.2562.29 	15.02.2562.029
+             - Exchange Server 2019 CU15 Oct25SU 	October 14, 2025 	15.2.1748.39 	15.02.1748.039
+             -    Exchange Server 2016 CU23 Oct25SU 	October 14, 2025 	15.1.2507.61 	15.01.2507.061
              - Exchange Server 2013 CU23 Mar23SU 	March 14, 2023 	15.0.1497.48 	15.00.1497.048
              - Update Rollup 32 for Exchange Server 2010 SP3 	March 2, 2021 	14.3.513.0 	14.03.0513.000
              - Update Rollup 23 for Exchange Server 2007 SP3 	March 21, 2017 	8.3.517.0 	8.03.0517.000
@@ -45,6 +47,15 @@
         .DESCRIPTION
         Resolve-xopBuildSemVersToTextNameTDO - Resolves Exchange Server SemanticVersion BuildNumber to MS Build/Release information details
         
+            > Note: xopBuildLibrary.psm1\Get-SetupTextVersionTDO is another option of much more limited utility: 
+            > Duped from install-Exchange15-TTC.ps1, solely to support out of band calls to that function:
+            > - Works with a static array of recent builds of installable RTM/SP/CU builds. 
+            > - by contrast verb-ex2010\xopBuildSemVersToTextNameTDO() covers every version of Exchange Server back to 4.0, including every SU & HU. Issue between the two, 
+            >     is Resolve-xopBuildSemVersToTextNameTDO's ProductName reflects MS's version doc page string; 
+            >     while xopBuildLibrary.psm1\Get-SetupTextVersion() returns a non-standard name for the same build/CU 
+            >     ('Exchange Server 2016 CU23 (2022H1)' v 'Exchange Server 2016 Cumulative Update 23')
+            >     Retaining both, to avoid changing rev version strings already stored in server build state .xml files
+
         -AllVersions fields (and those in use in source table):
         - Most, aside from PatchBasis, NickName & 'IsInstallable' are the field names and data directly lifted from the source MS table above
         - ProductName | the "official" MS name for the RTM/SP/CU/SU/HU release (ReleaseToManuf,ServicePack,CumulativeUpdate,ServiceUpdate,HotfixUpdate)
@@ -313,9 +324,11 @@
             $xopBuilds = @"
 ProductName                                                | ReleaseDate     | BuildNumberShort | BuildNumberLong | PatchBasis                           | NickName              | IsInstallable
 ---------------------------------------------------------- | --------------- | ---------------- | --------------- | ------------------------------------ | --------------------- | -------------
+Exchange Server SE RTM Oct25SU                             | 10/14/2025      | 15.2.2562.29 	  | 15.02.2562.029  | Exchange Server SE RTM               | EXSE_RTM_Oct25SU
 Exchange Server SE RTM Sep25HU                             | 9/8/2025        | 15.2.2562.27     | 15.02.2562.027  | Exchange Server SE RTM               | EXSE_RTM_Sep25HU      |
 Exchange Server SE RTM Aug25SU                             | 8/12/2025       | 15.2.2562.20     | 15.02.2562.020  | Exchange Server SE RTM               | EXSE_RTM_Aug25SU      |
 Exchange Server SE RTM                                     | 7/1/2025        | 15.2.2562.17     | 15.02.2562.017  | Exchange Server SE RTM               | EXSE_RTM              | TRUE
+Exchange Server 2019 CU15 Oct25SU 	                       | 10/14/2025      | 15.2.1748.39   	| 15.02.1748.039  | Exchange Server 2019 CU15            | EX2019_CU15_Oct25SU   |
 Exchange Server 2019 CU15 Sep25HU                          | 9/8/2025        | 15.2.1748.37     | 15.02.1748.037  | Exchange Server 2019 CU15            | EX2019_CU15_Sep25HU   |
 Exchange Server 2019 CU15 Aug25SU                          | 8/12/2025       | 15.2.1748.36     | 15.02.1748.036  | Exchange Server 2019 CU15            | EX2019_CU15_Aug25SU   |
 Exchange Server 2019 CU15 May25HU                          | 5/29/2025       | 15.2.1748.26     | 15.02.1748.026  | Exchange Server 2019 CU15            | EX2019_CU15_May25HU   |
@@ -396,6 +409,7 @@ Exchange Server 2019 CU1                                   | 2/12/2019       | 1
 Exchange Server 2019 RTM Mar21SU                           | 3/2/2021        | 15.2.221.18      | 15.02.0221.018  | Exchange Server 2019 RTM             | EX2019_RTM_Mar21SU    |
 Exchange Server 2019 RTM                                   | 10/22/2018      | 15.2.221.12      | 15.02.0221.012  | Exchange Server 2019 RTM             | EX2019_RTM            | TRUE
 Exchange Server 2019 Preview                               | 7/24/2018       | 15.2.196.0       | 15.02.0196.000  | Exchange Server 2019 Preview         | EX2019_Preview        |
+Exchange Server 2016 CU23 Oct25SU 	                       | 10/14/2025 	   | 15.1.2507.61 	  | 15.01.2507.061  | Exchange Server 2016 CU23            | EX2016_CU23_Oct25SU   |
 Exchange Server 2016 CU23 Sep25HU                          | 9/8/2025        | 15.1.2507.59     | 15.01.2507.059  | Exchange Server 2016 CU23            | EX2016_CU23_Sep25HU   |
 Exchange Server 2016 CU23 Aug25SU                          | 8/12/2025       | 15.1.2507.58     | 15.01.2507.058  | Exchange Server 2016 CU23            | EX2016_CU23_Aug25SU   |
 Exchange Server 2016 CU23 May25HU                          | 5/29/2025       | 15.1.2507.57     | 15.01.2507.057  | Exchange Server 2016 CU23            | EX2016_CU23_May25HU   |
