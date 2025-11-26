@@ -1,327 +1,329 @@
 ﻿# Resolve-xopBuildSemVersToTextNameTDO.ps1
 
-    #region RESOLVE_XOPBUILDSEMVERSTOTEXTNAMETDO ; #*------v Resolve-xopBuildSemVersToTextNameTDO v------
-    Function Resolve-xopBuildSemVersToTextNameTDO {
-        <#
-        .SYNOPSIS
-        Resolve-xopBuildSemVersToTextNameTDO - Resolves Exchange Server SemanticVersion BuildNumber to MS Build/Release information details
-        .NOTES
-        Version     : 0.0.
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 20250711-0423PM
-        FileName    : Resolve-xopBuildSemVersToTextNameTDO.ps1
-        License     : (none asserted)
-        Copyright   : (none asserted)
-        Github      : https://github.com/tostka/verb-ex2010
-        Tags        : Powershell,Exchange,ExchangeServer,Install,Patch,Maintenance
-        AddedCredit : 
-        AddedWebsite: 
-        AddedTwitter: URL
-        REVISIONS
-        * 10:27 AM 11/24/2025 updated CBH, ref to xopBuilLibrary.psm1\Get-SetupTextVersionTDO, for clarity, updated table to reflect lastest SE, 2019 & 2016 builds:
-            EXSE_RTM_Oct25SU EX2019_CU15_Oct25SU EX2016_CU23_Oct25SU (rest are unmodified); pulled irrelev AddedCredit ref to 821's similar limited vers (below)
-        * 9:24 AM 10/22/2025 FIXED REGION TAGS
-        * 10:22 AM 9/25/2025 ADD: -AllVersions to return the raw versions table ; added IsInstallable field, to tag installable base RTM/SP/CU releases; 
-            CBH: add fields specs for -AllVersions; 
-            add: demos for postfiltering -AllVersions returned data to find installable 
-        * 4:07 PM 9/24/2025 flip return from [hashtable] to [pscustomobject]; 
-             add alias & param alias for install-Exchange15-TTC.ps1\Get-FileVersion() emulation; pull -LongBuildNumber: the shift to [system.version]$Version obviates differences: 
-            it autoflattens zero-pads to short format when .tostring()'d. So all compares are effectively to the shortversionnumber, regardless of input format.
-        * 4:25 PM 9/23/2025 flipped -Version [string]->[version], does it's own type validation; updated table added NickName in format: EX[vers]_[SpCU]_[HuSu]
-        * 4:02 PM 9/22/2025 init; Updated BuildToProductName indexed hash to specs posted as of 04/25/2025 at https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates
-            Maxes reflected in this script, as of that time:
-             - Exchange Server SE RTM Oct25SU 	October 14, 2025 	15.2.2562.29 	15.02.2562.029
-             - Exchange Server 2019 CU15 Oct25SU 	October 14, 2025 	15.2.1748.39 	15.02.1748.039
-             -    Exchange Server 2016 CU23 Oct25SU 	October 14, 2025 	15.1.2507.61 	15.01.2507.061
-             - Exchange Server 2013 CU23 Mar23SU 	March 14, 2023 	15.0.1497.48 	15.00.1497.048
-             - Update Rollup 32 for Exchange Server 2010 SP3 	March 2, 2021 	14.3.513.0 	14.03.0513.000
-             - Update Rollup 23 for Exchange Server 2007 SP3 	March 21, 2017 	8.3.517.0 	8.03.0517.000
-             - Exchange Server 2003 post-SP2 	August 2008 	6.5.7654.4
-             - Exchange 2000 Server post-SP3 	August 2008 	6.0.6620.7
-             - Exchange Server version 5.5 SP4 	November 1, 2000 	5.5.2653
-             - Exchange Server 5.0 SP2 	February 19, 1998 	5.0.1460
-             - Exchange Server 4.0 SP5 	May 5, 1998 	4.0.996
+#region RESOLVE_XOPBUILDSEMVERSTOTEXTNAMETDO ; #*------v Resolve-xopBuildSemVersToTextNameTDO v------
+Function Resolve-xopBuildSemVersToTextNameTDO {
+    <#
+    .SYNOPSIS
+    Resolve-xopBuildSemVersToTextNameTDO - Resolves Exchange Server SemanticVersion BuildNumber to MS Build/Release information details
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 20250711-0423PM
+    FileName    : Resolve-xopBuildSemVersToTextNameTDO.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-ex2010
+    Tags        : Powershell,Exchange,ExchangeServer,Install,Patch,Maintenance
+    AddedCredit : 
+    AddedWebsite: 
+    AddedTwitter: URL
+    REVISIONS
+    * 2:58 PM 11/26/2025 fixed bug in $Version -OR $AllVersions test: pre-blanked $smsg (failing when it inherited data from calling ap)
+    * 10:27 AM 11/24/2025 updated CBH, ref to xopBuilLibrary.psm1\Get-SetupTextVersionTDO, for clarity, updated table to reflect lastest SE, 2019 & 2016 builds:
+        EXSE_RTM_Oct25SU EX2019_CU15_Oct25SU EX2016_CU23_Oct25SU (rest are unmodified); pulled irrelev AddedCredit ref to 821's similar limited vers (below)
+    * 9:24 AM 10/22/2025 FIXED REGION TAGS
+    * 10:22 AM 9/25/2025 ADD: -AllVersions to return the raw versions table ; added IsInstallable field, to tag installable base RTM/SP/CU releases; 
+        CBH: add fields specs for -AllVersions; 
+        add: demos for postfiltering -AllVersions returned data to find installable 
+    * 4:07 PM 9/24/2025 flip return from [hashtable] to [pscustomobject]; 
+         add alias & param alias for install-Exchange15-TTC.ps1\Get-FileVersion() emulation; pull -LongBuildNumber: the shift to [system.version]$Version obviates differences: 
+        it autoflattens zero-pads to short format when .tostring()'d. So all compares are effectively to the shortversionnumber, regardless of input format.
+    * 4:25 PM 9/23/2025 flipped -Version [string]->[version], does it's own type validation; updated table added NickName in format: EX[vers]_[SpCU]_[HuSu]
+    * 4:02 PM 9/22/2025 init; Updated BuildToProductName indexed hash to specs posted as of 04/25/2025 at https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates
+        Maxes reflected in this script, as of that time:
+         - Exchange Server SE RTM Oct25SU 	October 14, 2025 	15.2.2562.29 	15.02.2562.029
+         - Exchange Server 2019 CU15 Oct25SU 	October 14, 2025 	15.2.1748.39 	15.02.1748.039
+         -    Exchange Server 2016 CU23 Oct25SU 	October 14, 2025 	15.1.2507.61 	15.01.2507.061
+         - Exchange Server 2013 CU23 Mar23SU 	March 14, 2023 	15.0.1497.48 	15.00.1497.048
+         - Update Rollup 32 for Exchange Server 2010 SP3 	March 2, 2021 	14.3.513.0 	14.03.0513.000
+         - Update Rollup 23 for Exchange Server 2007 SP3 	March 21, 2017 	8.3.517.0 	8.03.0517.000
+         - Exchange Server 2003 post-SP2 	August 2008 	6.5.7654.4
+         - Exchange 2000 Server post-SP3 	August 2008 	6.0.6620.7
+         - Exchange Server version 5.5 SP4 	November 1, 2000 	5.5.2653
+         - Exchange Server 5.0 SP2 	February 19, 1998 	5.0.1460
+         - Exchange Server 4.0 SP5 	May 5, 1998 	4.0.996
 
-        .DESCRIPTION
-        Resolve-xopBuildSemVersToTextNameTDO - Resolves Exchange Server SemanticVersion BuildNumber to MS Build/Release information details
+    .DESCRIPTION
+    Resolve-xopBuildSemVersToTextNameTDO - Resolves Exchange Server SemanticVersion BuildNumber to MS Build/Release information details
+    
+        > Note: xopBuildLibrary.psm1\Get-SetupTextVersionTDO is another option of much more limited utility: 
+        > Duped from install-Exchange15-TTC.ps1, solely to support out of band calls to that function:
+        > - Works with a static array of recent builds of installable RTM/SP/CU builds. 
+        > - by contrast verb-ex2010\xopBuildSemVersToTextNameTDO() covers every version of Exchange Server back to 4.0, including every SU & HU. Issue between the two, 
+        >     is Resolve-xopBuildSemVersToTextNameTDO's ProductName reflects MS's version doc page string; 
+        >     while xopBuildLibrary.psm1\Get-SetupTextVersion() returns a non-standard name for the same build/CU 
+        >     ('Exchange Server 2016 CU23 (2022H1)' v 'Exchange Server 2016 Cumulative Update 23')
+        >     Retaining both, to avoid changing rev version strings already stored in server build state .xml files
+
+    -AllVersions fields (and those in use in source table):
+    - Most, aside from PatchBasis, NickName & 'IsInstallable' are the field names and data directly lifted from the source MS table above
+    - ProductName | the "official" MS name for the RTM/SP/CU/SU/HU release (ReleaseToManuf,ServicePack,CumulativeUpdate,ServiceUpdate,HotfixUpdate)
+    - ReleaseDate | documented release date
+    - BuildNumberShort | SemanticVersion string with 0-padding removed
+    - BuildNumberLong |  SemanticVersion string with 0-padding intact
+    - PatchBasis | The most recent full IsInstallable RTM/SP/CU prior to a given HU,SU 'patch'
+    - NickName | converted from ProductName: 1) subst 'EX' for 'Exchange\sServer', 2) Move 'Update\sRollup\s\d+' prefix to suffix, 3) subst '_' for '\s', 4) remove parenthesis, 5) replace 'Standard\sEdition' w 'SE'
+    - IsInstallable | represents an RTM, SP or CU release in setup.exe-installable ISO or CAB availablility: e.g. the baseline installs that get patched with later CU/SU/HU updates to reach fully patched status.
+
+    ## To Update `$xopBuilds table in this function to current published specs:
+
+    1. Review https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates for updates
+    2. Copy updates across releases (each is in a separate subtable, listed in descending release order) into the xopTable
+        - Simplest accomplished by using Excel to do formatting and editing and appending the entries into proper placese
+        - Be sure to construct NickName, note the PatchBasis, and specify IsInstallable status (if it's an RTM, SP or CU)
+        - Then File > Save As a csv unicode encoded. 
+        - then import and reparse the csv into markdowntable format, used as the data source in the xopBuilds inputs below:
+        ``````powershell
+        $builds = import-csv -path c:\pathto\UpdatedBuilds.csv ; 
+        $builds | verb-io\convertto-Markdowntable ; 
+        ```
+        - copy the displayed console markdown table to clipboard, and paste into the $xopBuilds hashtable between @" and "@.
+        Update the $lastBuildTableUpedate below to reflect the date of update: Note, 
+        the date displayed at the top of the table, as of 9/25/2025, is *not* the 
+        latest update time, it's the original time the article was posted.  
+
+        There is no visible timestamp on the page to indicate last content update, simply you will find later revs at the tops of the tables on the page. 
+
+    .PARAMETER Version
+    Exchange Version in Semantic Version Number format (n.n.n.n)[-Version '8.0.708.3']
+    .PARAMETER AllVersions
+    Switch to return all versions information to pipeline[-AllVersions]
+    .INPUTS
+    None, no piped input.
+    .OUTPUTS
+    System.Object summary of Exchange server build specifications.
+    .EXAMPLE
+    PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version '8.0.708.3' ; 
+    PS> $VersInfo ; 
+    
+        ProductName      : Update Rollup 1 for Exchange Server 2007
+        ReleaseDate      : 4/17/2007
+        BuildNumberShort : 8.0.708.3
+        BuildNumberLong  : 8.00.0708.003
+        PatchBasis       : Exchange Server 2007 RTM
+        NickName         : EX2007_UR1
+        IsInstallable    : 
+
+    Demo resolving a Semantic Version string to specific release/build details
+    .EXAMPLE
+    PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version '8.0.708.3' ; 
+    PS> $VersInfo.ProductName ;
+
+        Update Rollup 1 for Exchange Server 2007
+
+    Demo resolving semversion to equivelent ProductName string property of the Build returned
+    .EXAMPLE
+    PS> $SourcePath = 'D:\cab\ExchangeServer2016-x64-CU23-ISO\unpacked' ; 
+    PS> $ExSetupVersion = (Get-Command "$($SourcePath)\Setup\ServerRoles\Common\ExSetup.exe").FileVersionInfo.ProductVersion ; 
+    PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version $ExSetupVersion ; 
+    PS> $VersInfo | fl * ; 
+
+        ProductName      : Exchange Server 2016 CU23 (2022H1)
+        ReleaseDate      : 4/20/2022
+        BuildNumberShort : 15.1.2507.6
+        BuildNumberLong  : 15.01.2507.006
+        PatchBasis       : Exchange Server 2016 CU23
+        NickName         : EX2016_CU23_2022H1
+        IsInstallable    : TRUE
+
+    Demo resolving details of local CAB source ExSetup.exe build details.
+    .EXAMPLE
+    PS> $ExSetupVersion = (Get-Command ExSetup.exe).FileVersionInfo.ProductVersion ; 
+    PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version $ExSetupVersion ; 
+    PS> $VersInfo | fl * ; 
+
+        ProductName      : Update Rollup 30 for Exchange Server 2010 SP3
+        ProductName      : Exchange Server 2016 CU23 May25HU
+        ReleaseDate      : 5/29/2025
+        BuildNumberShort : 15.1.2507.57
+        BuildNumberLong  : 15.01.2507.057
+        PatchBasis       : Exchange Server 2016 CU23
+        NickName         : EX2016_CU23_May25HU
+        IsInstallable    : 
+
+    Demo resolving details of local installed Exchange Server bin build details to determine installed CU/SP/RTM base build (by resolving installed Exchanage ExSetup.exe's presence in the local Path evari). Note: This reflects latest patch level (SP/CU/SU/HU)        
+    .EXAMPLE
+    PS> $ExBinVersion = (Get-Command "$($env:ExchangeInstallPath)Bin\Microsoft.Exchange.Directory.TopologyService.exe").FileVersionInfo.ProductVersion ; 
+    PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version $ExBinVersion ; 
+    PS> $VersInfo | fl * ; 
+
+        ProductName      : Exchange Server 2016 CU23 May25HU
+        ReleaseDate      : 5/29/2025
+        BuildNumberShort : 15.1.2507.57
+        BuildNumberLong  : 15.01.2507.057
+        PatchBasis       : Exchange Server 2016 CU23
+        NickName         : EX2016_CU23_May25HU
+        IsInstallable    : 
+
+    Demo resolving installed ADTopology service .exe to obtain current installed patch revision (will match the much easier tolocate bin dir ExSetup.exe)
+    .EXAMPLE
+    PS> $VersTable = Resolve-xopBuildSemVersToTextNameTDO -AllVersions
+    PS> $VersTable |?{$_.isinstallable -AND $_.NickName -match '^EX2019'} | ft -a 
+
+        -AllVersions: Returning full builds table to pipeline (for post-filtering)
+
+        ProductName                        ReleaseDate BuildNumberShort BuildNumberLong PatchBasis                NickName           IsInstallable
+        -----------                        ----------- ---------------- --------------- ----------                --------           -------------
+        Exchange Server 2019 CU15 (2025H1) 2/10/2025   15.2.1748.10     15.02.1748.010  Exchange Server 2019 CU15 EX2019_CU15_2025H1 TRUE         
+        Exchange Server 2019 CU14 (2024H1) 2/13/2024   15.2.1544.4      15.02.1544.004  Exchange Server 2019 CU14 EX2019_CU14_2024H1 TRUE         
+        Exchange Server 2019 CU13 (2023H1) 5/3/2023    15.2.1258.12     15.02.1258.012  Exchange Server 2019 CU13 EX2019_CU13_2023H1 TRUE         
+        Exchange Server 2019 CU12 (2022H1) 4/20/2022   15.2.1118.7      15.02.1118.007  Exchange Server 2019 CU12 EX2019_CU12_2022H1 TRUE         
+        Exchange Server 2019 CU11          9/28/2021   15.2.986.5       15.02.0986.005  Exchange Server 2019 CU11 EX2019_CU11        TRUE         
+        Exchange Server 2019 CU10          6/29/2021   15.2.922.7       15.02.0922.007  Exchange Server 2019 CU10 EX2019_CU10        TRUE         
+        Exchange Server 2019 CU9           3/16/2021   15.2.858.5       15.02.0858.005  Exchange Server 2019 CU9  EX2019_CU9         TRUE         
+        Exchange Server 2019 CU8           12/15/2020  15.2.792.3       15.02.0792.003  Exchange Server 2019 CU8  EX2019_CU8         TRUE         
+        Exchange Server 2019 CU7           9/15/2020   15.2.721.2       15.02.0721.002  Exchange Server 2019 CU7  EX2019_CU7         TRUE         
+        Exchange Server 2019 CU6           6/16/2020   15.2.659.4       15.02.0659.004  Exchange Server 2019 CU6  EX2019_CU6         TRUE         
+        Exchange Server 2019 CU5           3/17/2020   15.2.595.3       15.02.0595.003  Exchange Server 2019 CU5  EX2019_CU5         TRUE         
+        Exchange Server 2019 CU4           12/17/2019  15.2.529.5       15.02.0529.005  Exchange Server 2019 CU4  EX2019_CU4         TRUE         
+        Exchange Server 2019 CU3           9/17/2019   15.2.464.5       15.02.0464.005  Exchange Server 2019 CU3  EX2019_CU3         TRUE         
+        Exchange Server 2019 CU2           6/18/2019   15.2.397.3       15.02.0397.003  Exchange Server 2019 CU2  EX2019_CU2         TRUE         
+        Exchange Server 2019 CU1           2/12/2019   15.2.330.5       15.02.0330.005  Exchange Server 2019 CU1  EX2019_CU1         TRUE         
+        Exchange Server 2019 RTM           10/22/2018  15.2.221.12      15.02.0221.012  Exchange Server 2019 RTM  EX2019_RTM         TRUE      
+
+    Demo returning AllVersions table, and post-filtering for installable Exchange 2019 versions 
+    .EXAMPLE
+    PS> $VersTable = Resolve-xopBuildSemVersToTextNameTDO -AllVersions
+    PS> $VersTable |?{$_.NickName -match '^EX2019' -AND $_.isinstallable -ne $true} | select -first 1 
+
+        ProductName      : Exchange Server 2019 CU15 Sep25HU
+        ReleaseDate      : 9/8/2025
+        BuildNumberShort : 15.2.1748.37
+        BuildNumberLong  : 15.02.1748.037
+        PatchBasis       : Exchange Server 2019 CU15
+        NickName         : EX2019_CU15_Sep25HU
+        IsInstallable    : 
+
+    Demo returning AllVersions table, and post-filtering for most recent Exchange 2019 patch versions         
+    .LINK
+    https://github.com/tostka/verb-ex2010        
+    .LINK
+    https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates
+    #>
+    [CmdletBinding()]
+    #[alias('Get-DetectedFileVersion')]
+    PARAM(
+        [Parameter(Mandatory=$false,HelpMessage = "Exchange Version in Semantic Version Number format (n.n.n.n)[-Version '8.0.708.3']")]                
+            [alias('FileVersion')]
+            [version]$Version,
+        [Parameter(Mandatory=$false,HelpMessage = "Switch to return all versions information to pipeline[-AllVersions]")]                
+            [switch]$AllVersions
+    ) ;        
+    BEGIN {
+        $smsg = $null ; 
+        if(-not ($Version -OR $AllVersions)){$smsg = "Neither -Version or -AllVersions specified`nPlease specify one or the other" } ; 
+        if($Version -AND $AllVersions){$smsg = "BOTH -Version & -AllVersions specified`nPlease specify one or the other" } ; 
+        # XXXXXX 4:15 PM 9/24/2025
+        if($smsg){
+            write-warning $smsg ; 
+            throw ; 
+            break ; 
+        } ; 
+
+        # when updating $BuildToProductName table (below), also record date of last update here (echos to console, for awareness on results)
+        [datetime]$lastBuildTableUpedate = '2025-11-26' ; 
+        $BuildTableUpedateUrl = 'https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates'
+        #'https://docs.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-date' ; 
+        #Creating the hash table with build numbers and cumulative updates
+        # updated as of 9:56 AM 3/26/2025 to curr https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates?view=exchserver-2019
+        # also using unmodified MS Build names, from the chart (changing just burns time)
+        $smsg = "NOTE:`$BuildToProductName table was last updated on $($lastBuildTableUpedate.ToShortDateString())" ; 
+        $smsg += "`n(update from:$($BuildTableUpedateUrl))" ;
+        write-host -foregroundcolor yellow $smsg ; 
+
+        #region CONVERTFROM_MARKDOWNTABLE ; #*------v convertfrom-markdowntable v------
+        if(-not (gcm convertfrom-markdowntable -ea 0)){
+                                                                                                                                                                                                                                                                                                                                                    function convertFrom-MarkdownTable{
+            <#
+            .SYNOPSIS
+            convertFrom-MarkdownTable.ps1 - Converts a Markdown table to a PowerShell object.
+            .NOTES
+            Version     : 1.0.3
+            Author      : Todd Kadrie
+            Website     : http://www.toddomation.com
+            Twitter     : @tostka / http://twitter.com/tostka
+            CreatedDate : 2021-06-21
+            FileName    : convertFrom-MarkdownTable.ps1
+            License     : MIT License
+            Copyright   : (c) 2024 Todd Kadrie
+            Github      : https://github.com/tostka/verb-io
+            Tags        : Powershell,Markdown,Input,Conversion
+            REVISION
+            * 9:33 AM 4/11/2025 add alias: cfmdt (reflects standard verbalias)
+            * 12:33 PM 5/17/2024 fixed odd bug, was failing to trim trailing | on some rows, which caused convertfrom-csv to drop that column.
+            * 9:04 AM 9/27/2023 cbh demo output tweaks (unindented, results in 1st line de-indent and rest indented.
+            * 10:35 AM 2/21/2022 CBH example ps> adds 
+            * 12:42 PM 6/22/2021 bug workaround: empty fields in source md table (|data||data|) cause later (export-csv|convertto-csv) to create a csv with *missing* delimiting comma on the problem field ;  added trim of each field content, and CBH example for creation of a csv from mdtable input; added aliases
+            * 5:40 PM 6/21/2021 init
+            .DESCRIPTION
+            convertFrom-MarkdownTable.ps1 - Converts a Markdown table to a PowerShell object.
+            Also supports convesion of variant 'border' md table syntax (e.g. each line wrapped in outter pipe | chars)
+            Intent is as a simpler alternative to here-stringinputs for csv building. 
+            .PARAMETER markdowntext
+            Markdown-formated table to be converted into an object [-markdowntext 'title text']
+            .INPUTS
+            Accepts piped input.
+            .OUTPUTS
+            System.Object[]
+           .EXAMPLE
+           PS> $svcs = Get-Service Bits,Winrm | select status,name,displayname | 
+              convertTo-MarkdownTable -border | ConvertFrom-MarkDownTable ;  
+           Convert Service listing to and back from MD table, demo's working around border md table syntax (outter pipe-wrapped lines)
+          .EXAMPLE
+           PS> $mdtable = @"
+        |EmailAddress|DisplayName|Groups|Ticket|
+        |---|---|---|---|
+        |da.pope@vatican.org||CardinalDL@vatican.org|999999|
+        |bozo@clown.com|Bozo Clown|SillyDL;SmartDL|000001|
+        "@ ; 
+              $of = ".\out-csv-$(get-date -format 'yyyyMMdd-HHmmtt').csv" ; 
+              $mdtable | convertfrom-markdowntable | export-csv -path $of -notype ;
+              cat $of ;
+
+                "EmailAddress","DisplayName","Groups","Ticket"
+                "da.pope@vatican.org","","CardinalDL@vatican.org","999999"
+                "bozo@clown.com","Bozo Clown","SillyDL;SmartDL","000001"
+
+            Example simpler method for building csv input files fr mdtable syntax, without PSCustomObjects, hashes, or invoked object creation.
+            .EXAMPLE
+            PS> $mdtable | convertFrom-MarkdownTable | convertTo-MarkdownTable -border ; 
+            Example to expand and dress up a simple md table, leveraging both convertfrom-mtd and convertto-mtd (which performs space padding to align pipe columns)
+            .LINK
+            https://github.com/tostka/verb-IO
+            #>
+            [CmdletBinding()]
+            [alias('convertfrom-mdt','in-markdowntable','in-mdt','cfmdt')]    
+            Param (
+                [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true,HelpMessage="Markdown-formated table to be converted into an object [-markdowntext 'title text']")]
+                $markdowntext
+            ) ;
+            PROCESS {
+                $content = @() ; 
+                if(($markdowntext|measure).count -eq 1){$markdowntext  = $markdowntext -split '\n' } ;
+                # # bug, empty fields (||) when exported (export-csv|convertto-csv) -> broken csv (missing delimiting comma between 2 fields). 
+                # workaround : flip empty field => \s. The $object still comes out properly $null on the field, but the change cause export-csv of the resulting obj to no longer output a broken csv.(weird)
+                $markdowntext  = $markdowntext -replace '\|\|','| |' ; 
+                $content = $markdowntext  | ?{$_ -notmatch "--" } ;
+            } ;  
+            END {
+                # trim lead/trail '| from each line (borders) ; remove empty lines; foreach
+                #$PsObj = $content.trim('|')| where-object{$_} | ForEach-Object{ 
+                # 11:19 AM 5/17/2024 issue, it's not triming trailing '|' on "THROTTLE |The message was throttled.|problem|":
+                $PsObj = $content.trim('|').trimend('|')| where-object{$_} | ForEach-Object{ 
+                    #$_.split('|').trim() -join '|' ; # split fields and trim leading/trailing spaces from each , then re-join with '|'
+                    # still coming through with a surviving trailing |, though the leading border is gone (causes to drop trailing cell)
+                    # filter populated, trim start/end spaces, and refilter pop'd then join result - that seems to have fixed the bug
+                    ($_.split('|') | where-object{$_} | foreach-object{$_.trim()} |where-object{$_} )  -join '|' ; 
+                } | ConvertFrom-Csv -Delimiter '|'; # convert to object
+                $PsObj | write-output ; 
+            } ; # END-E
+        } ; 
+        } ; 
+        #endregion CONVERTFROM_MARKDOWNTABLE ; #*------^ END convertFrom-MarkdownTable ^------
         
-            > Note: xopBuildLibrary.psm1\Get-SetupTextVersionTDO is another option of much more limited utility: 
-            > Duped from install-Exchange15-TTC.ps1, solely to support out of band calls to that function:
-            > - Works with a static array of recent builds of installable RTM/SP/CU builds. 
-            > - by contrast verb-ex2010\xopBuildSemVersToTextNameTDO() covers every version of Exchange Server back to 4.0, including every SU & HU. Issue between the two, 
-            >     is Resolve-xopBuildSemVersToTextNameTDO's ProductName reflects MS's version doc page string; 
-            >     while xopBuildLibrary.psm1\Get-SetupTextVersion() returns a non-standard name for the same build/CU 
-            >     ('Exchange Server 2016 CU23 (2022H1)' v 'Exchange Server 2016 Cumulative Update 23')
-            >     Retaining both, to avoid changing rev version strings already stored in server build state .xml files
-
-        -AllVersions fields (and those in use in source table):
-        - Most, aside from PatchBasis, NickName & 'IsInstallable' are the field names and data directly lifted from the source MS table above
-        - ProductName | the "official" MS name for the RTM/SP/CU/SU/HU release (ReleaseToManuf,ServicePack,CumulativeUpdate,ServiceUpdate,HotfixUpdate)
-        - ReleaseDate | documented release date
-        - BuildNumberShort | SemanticVersion string with 0-padding removed
-        - BuildNumberLong |  SemanticVersion string with 0-padding intact
-        - PatchBasis | The most recent full IsInstallable RTM/SP/CU prior to a given HU,SU 'patch'
-        - NickName | converted from ProductName: 1) subst 'EX' for 'Exchange\sServer', 2) Move 'Update\sRollup\s\d+' prefix to suffix, 3) subst '_' for '\s', 4) remove parenthesis, 5) replace 'Standard\sEdition' w 'SE'
-        - IsInstallable | represents an RTM, SP or CU release in setup.exe-installable ISO or CAB availablility: e.g. the baseline installs that get patched with later CU/SU/HU updates to reach fully patched status.
-
-        ## To Update `$xopBuilds table in this function to current published specs:
-
-        1. Review https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates for updates
-        2. Copy updates across releases (each is in a separate subtable, listed in descending release order) into the xopTable
-            - Simplest accomplished by using Excel to do formatting and editing and appending the entries into proper placese
-            - Be sure to construct NickName, note the PatchBasis, and specify IsInstallable status (if it's an RTM, SP or CU)
-            - Then File > Save As a csv unicode encoded. 
-            - then import and reparse the csv into markdowntable format, used as the data source in the xopBuilds inputs below:
-            ``````powershell
-            $builds = import-csv -path c:\pathto\UpdatedBuilds.csv ; 
-            $builds | verb-io\convertto-Markdowntable ; 
-            ```
-            - copy the displayed console markdown table to clipboard, and paste into the $xopBuilds hashtable between @" and "@.
-            Update the $lastBuildTableUpedate below to reflect the date of update: Note, 
-            the date displayed at the top of the table, as of 9/25/2025, is *not* the 
-            latest update time, it's the original time the article was posted.  
-
-            There is no visible timestamp on the page to indicate last content update, simply you will find later revs at the tops of the tables on the page. 
-
-        .PARAMETER Version
-        Exchange Version in Semantic Version Number format (n.n.n.n)[-Version '8.0.708.3']
-        .PARAMETER AllVersions
-        Switch to return all versions information to pipeline[-AllVersions]
-        .INPUTS
-        None, no piped input.
-        .OUTPUTS
-        System.Object summary of Exchange server build specifications.
-        .EXAMPLE
-        PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version '8.0.708.3' ; 
-        PS> $VersInfo ; 
-        
-            ProductName      : Update Rollup 1 for Exchange Server 2007
-            ReleaseDate      : 4/17/2007
-            BuildNumberShort : 8.0.708.3
-            BuildNumberLong  : 8.00.0708.003
-            PatchBasis       : Exchange Server 2007 RTM
-            NickName         : EX2007_UR1
-            IsInstallable    : 
-
-        Demo resolving a Semantic Version string to specific release/build details
-        .EXAMPLE
-        PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version '8.0.708.3' ; 
-        PS> $VersInfo.ProductName ;
-
-            Update Rollup 1 for Exchange Server 2007
-
-        Demo resolving semversion to equivelent ProductName string property of the Build returned
-        .EXAMPLE
-        PS> $SourcePath = 'D:\cab\ExchangeServer2016-x64-CU23-ISO\unpacked' ; 
-        PS> $ExSetupVersion = (Get-Command "$($SourcePath)\Setup\ServerRoles\Common\ExSetup.exe").FileVersionInfo.ProductVersion ; 
-        PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version $ExSetupVersion ; 
-        PS> $VersInfo | fl * ; 
-
-            ProductName      : Exchange Server 2016 CU23 (2022H1)
-            ReleaseDate      : 4/20/2022
-            BuildNumberShort : 15.1.2507.6
-            BuildNumberLong  : 15.01.2507.006
-            PatchBasis       : Exchange Server 2016 CU23
-            NickName         : EX2016_CU23_2022H1
-            IsInstallable    : TRUE
-
-        Demo resolving details of local CAB source ExSetup.exe build details.
-        .EXAMPLE
-        PS> $ExSetupVersion = (Get-Command ExSetup.exe).FileVersionInfo.ProductVersion ; 
-        PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version $ExSetupVersion ; 
-        PS> $VersInfo | fl * ; 
-
-            ProductName      : Update Rollup 30 for Exchange Server 2010 SP3
-            ProductName      : Exchange Server 2016 CU23 May25HU
-            ReleaseDate      : 5/29/2025
-            BuildNumberShort : 15.1.2507.57
-            BuildNumberLong  : 15.01.2507.057
-            PatchBasis       : Exchange Server 2016 CU23
-            NickName         : EX2016_CU23_May25HU
-            IsInstallable    : 
-
-        Demo resolving details of local installed Exchange Server bin build details to determine installed CU/SP/RTM base build (by resolving installed Exchanage ExSetup.exe's presence in the local Path evari). Note: This reflects latest patch level (SP/CU/SU/HU)        
-        .EXAMPLE
-        PS> $ExBinVersion = (Get-Command "$($env:ExchangeInstallPath)Bin\Microsoft.Exchange.Directory.TopologyService.exe").FileVersionInfo.ProductVersion ; 
-        PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version $ExBinVersion ; 
-        PS> $VersInfo | fl * ; 
-
-            ProductName      : Exchange Server 2016 CU23 May25HU
-            ReleaseDate      : 5/29/2025
-            BuildNumberShort : 15.1.2507.57
-            BuildNumberLong  : 15.01.2507.057
-            PatchBasis       : Exchange Server 2016 CU23
-            NickName         : EX2016_CU23_May25HU
-            IsInstallable    : 
-
-        Demo resolving installed ADTopology service .exe to obtain current installed patch revision (will match the much easier tolocate bin dir ExSetup.exe)
-        .EXAMPLE
-        PS> $VersTable = Resolve-xopBuildSemVersToTextNameTDO -AllVersions
-        PS> $VersTable |?{$_.isinstallable -AND $_.NickName -match '^EX2019'} | ft -a 
-
-            -AllVersions: Returning full builds table to pipeline (for post-filtering)
-
-            ProductName                        ReleaseDate BuildNumberShort BuildNumberLong PatchBasis                NickName           IsInstallable
-            -----------                        ----------- ---------------- --------------- ----------                --------           -------------
-            Exchange Server 2019 CU15 (2025H1) 2/10/2025   15.2.1748.10     15.02.1748.010  Exchange Server 2019 CU15 EX2019_CU15_2025H1 TRUE         
-            Exchange Server 2019 CU14 (2024H1) 2/13/2024   15.2.1544.4      15.02.1544.004  Exchange Server 2019 CU14 EX2019_CU14_2024H1 TRUE         
-            Exchange Server 2019 CU13 (2023H1) 5/3/2023    15.2.1258.12     15.02.1258.012  Exchange Server 2019 CU13 EX2019_CU13_2023H1 TRUE         
-            Exchange Server 2019 CU12 (2022H1) 4/20/2022   15.2.1118.7      15.02.1118.007  Exchange Server 2019 CU12 EX2019_CU12_2022H1 TRUE         
-            Exchange Server 2019 CU11          9/28/2021   15.2.986.5       15.02.0986.005  Exchange Server 2019 CU11 EX2019_CU11        TRUE         
-            Exchange Server 2019 CU10          6/29/2021   15.2.922.7       15.02.0922.007  Exchange Server 2019 CU10 EX2019_CU10        TRUE         
-            Exchange Server 2019 CU9           3/16/2021   15.2.858.5       15.02.0858.005  Exchange Server 2019 CU9  EX2019_CU9         TRUE         
-            Exchange Server 2019 CU8           12/15/2020  15.2.792.3       15.02.0792.003  Exchange Server 2019 CU8  EX2019_CU8         TRUE         
-            Exchange Server 2019 CU7           9/15/2020   15.2.721.2       15.02.0721.002  Exchange Server 2019 CU7  EX2019_CU7         TRUE         
-            Exchange Server 2019 CU6           6/16/2020   15.2.659.4       15.02.0659.004  Exchange Server 2019 CU6  EX2019_CU6         TRUE         
-            Exchange Server 2019 CU5           3/17/2020   15.2.595.3       15.02.0595.003  Exchange Server 2019 CU5  EX2019_CU5         TRUE         
-            Exchange Server 2019 CU4           12/17/2019  15.2.529.5       15.02.0529.005  Exchange Server 2019 CU4  EX2019_CU4         TRUE         
-            Exchange Server 2019 CU3           9/17/2019   15.2.464.5       15.02.0464.005  Exchange Server 2019 CU3  EX2019_CU3         TRUE         
-            Exchange Server 2019 CU2           6/18/2019   15.2.397.3       15.02.0397.003  Exchange Server 2019 CU2  EX2019_CU2         TRUE         
-            Exchange Server 2019 CU1           2/12/2019   15.2.330.5       15.02.0330.005  Exchange Server 2019 CU1  EX2019_CU1         TRUE         
-            Exchange Server 2019 RTM           10/22/2018  15.2.221.12      15.02.0221.012  Exchange Server 2019 RTM  EX2019_RTM         TRUE      
-
-        Demo returning AllVersions table, and post-filtering for installable Exchange 2019 versions 
-        .EXAMPLE
-        PS> $VersTable = Resolve-xopBuildSemVersToTextNameTDO -AllVersions
-        PS> $VersTable |?{$_.NickName -match '^EX2019' -AND $_.isinstallable -ne $true} | select -first 1 
-
-            ProductName      : Exchange Server 2019 CU15 Sep25HU
-            ReleaseDate      : 9/8/2025
-            BuildNumberShort : 15.2.1748.37
-            BuildNumberLong  : 15.02.1748.037
-            PatchBasis       : Exchange Server 2019 CU15
-            NickName         : EX2019_CU15_Sep25HU
-            IsInstallable    : 
-
-        Demo returning AllVersions table, and post-filtering for most recent Exchange 2019 patch versions         
-        .LINK
-        https://github.com/tostka/verb-ex2010        
-        .LINK
-        https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates
-        #>
-        [CmdletBinding()]
-        #[alias('Get-DetectedFileVersion')]
-        PARAM(
-            [Parameter(Mandatory=$false,HelpMessage = "Exchange Version in Semantic Version Number format (n.n.n.n)[-Version '8.0.708.3']")]                
-                [alias('FileVersion')]
-                [version]$Version,
-            [Parameter(Mandatory=$false,HelpMessage = "Switch to return all versions information to pipeline[-AllVersions]")]                
-                [switch]$AllVersions
-        ) ;        
-        BEGIN {
-            if(-not ($Version -OR $AllVersions)){$smsg = "Neither -Version or -AllVersions specified`nPlease specify one or the other" } ; 
-            if($Version -AND $AllVersions){$smsg = "BOTH -Version & -AllVersions specified`nPlease specify one or the other" } ; 
-            # XXXXXX 4:15 PM 9/24/2025
-            if($smsg){
-                write-warning $smsg ; 
-                throw ; 
-                break ; 
-            } ; 
-
-            # when updating $BuildToProductName table (below), also record date of last update here (echos to console, for awareness on results)
-            [datetime]$lastBuildTableUpedate = '9/22/2025' ; 
-            $BuildTableUpedateUrl = 'https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates'
-            #'https://docs.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-date' ; 
-            #Creating the hash table with build numbers and cumulative updates
-            # updated as of 9:56 AM 3/26/2025 to curr https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates?view=exchserver-2019
-            # also using unmodified MS Build names, from the chart (changing just burns time)
-            $smsg = "NOTE:`$BuildToProductName table was last updated on $($lastBuildTableUpedate.ToShortDateString())" ; 
-            $smsg += "`n(update from:$($BuildTableUpedateUrl))" ;
-            write-host -foregroundcolor yellow $smsg ; 
-
-            #region CONVERTFROM_MARKDOWNTABLE ; #*------v convertfrom-markdowntable v------
-            if(-not (gcm convertfrom-markdowntable -ea 0)){
-                                                                                                                                                                                                                                                                                                                                                        function convertFrom-MarkdownTable{
-                <#
-                .SYNOPSIS
-                convertFrom-MarkdownTable.ps1 - Converts a Markdown table to a PowerShell object.
-                .NOTES
-                Version     : 1.0.3
-                Author      : Todd Kadrie
-                Website     : http://www.toddomation.com
-                Twitter     : @tostka / http://twitter.com/tostka
-                CreatedDate : 2021-06-21
-                FileName    : convertFrom-MarkdownTable.ps1
-                License     : MIT License
-                Copyright   : (c) 2024 Todd Kadrie
-                Github      : https://github.com/tostka/verb-io
-                Tags        : Powershell,Markdown,Input,Conversion
-                REVISION
-                * 9:33 AM 4/11/2025 add alias: cfmdt (reflects standard verbalias)
-                * 12:33 PM 5/17/2024 fixed odd bug, was failing to trim trailing | on some rows, which caused convertfrom-csv to drop that column.
-                * 9:04 AM 9/27/2023 cbh demo output tweaks (unindented, results in 1st line de-indent and rest indented.
-                * 10:35 AM 2/21/2022 CBH example ps> adds 
-                * 12:42 PM 6/22/2021 bug workaround: empty fields in source md table (|data||data|) cause later (export-csv|convertto-csv) to create a csv with *missing* delimiting comma on the problem field ;  added trim of each field content, and CBH example for creation of a csv from mdtable input; added aliases
-                * 5:40 PM 6/21/2021 init
-                .DESCRIPTION
-                convertFrom-MarkdownTable.ps1 - Converts a Markdown table to a PowerShell object.
-                Also supports convesion of variant 'border' md table syntax (e.g. each line wrapped in outter pipe | chars)
-                Intent is as a simpler alternative to here-stringinputs for csv building. 
-                .PARAMETER markdowntext
-                Markdown-formated table to be converted into an object [-markdowntext 'title text']
-                .INPUTS
-                Accepts piped input.
-                .OUTPUTS
-                System.Object[]
-               .EXAMPLE
-               PS> $svcs = Get-Service Bits,Winrm | select status,name,displayname | 
-                  convertTo-MarkdownTable -border | ConvertFrom-MarkDownTable ;  
-               Convert Service listing to and back from MD table, demo's working around border md table syntax (outter pipe-wrapped lines)
-              .EXAMPLE
-               PS> $mdtable = @"
-            |EmailAddress|DisplayName|Groups|Ticket|
-            |---|---|---|---|
-            |da.pope@vatican.org||CardinalDL@vatican.org|999999|
-            |bozo@clown.com|Bozo Clown|SillyDL;SmartDL|000001|
-            "@ ; 
-                  $of = ".\out-csv-$(get-date -format 'yyyyMMdd-HHmmtt').csv" ; 
-                  $mdtable | convertfrom-markdowntable | export-csv -path $of -notype ;
-                  cat $of ;
-
-                    "EmailAddress","DisplayName","Groups","Ticket"
-                    "da.pope@vatican.org","","CardinalDL@vatican.org","999999"
-                    "bozo@clown.com","Bozo Clown","SillyDL;SmartDL","000001"
-
-                Example simpler method for building csv input files fr mdtable syntax, without PSCustomObjects, hashes, or invoked object creation.
-                .EXAMPLE
-                PS> $mdtable | convertFrom-MarkdownTable | convertTo-MarkdownTable -border ; 
-                Example to expand and dress up a simple md table, leveraging both convertfrom-mtd and convertto-mtd (which performs space padding to align pipe columns)
-                .LINK
-                https://github.com/tostka/verb-IO
-                #>
-                [CmdletBinding()]
-                [alias('convertfrom-mdt','in-markdowntable','in-mdt','cfmdt')]    
-                Param (
-                    [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true,HelpMessage="Markdown-formated table to be converted into an object [-markdowntext 'title text']")]
-                    $markdowntext
-                ) ;
-                PROCESS {
-                    $content = @() ; 
-                    if(($markdowntext|measure).count -eq 1){$markdowntext  = $markdowntext -split '\n' } ;
-                    # # bug, empty fields (||) when exported (export-csv|convertto-csv) -> broken csv (missing delimiting comma between 2 fields). 
-                    # workaround : flip empty field => \s. The $object still comes out properly $null on the field, but the change cause export-csv of the resulting obj to no longer output a broken csv.(weird)
-                    $markdowntext  = $markdowntext -replace '\|\|','| |' ; 
-                    $content = $markdowntext  | ?{$_ -notmatch "--" } ;
-                } ;  
-                END {
-                    # trim lead/trail '| from each line (borders) ; remove empty lines; foreach
-                    #$PsObj = $content.trim('|')| where-object{$_} | ForEach-Object{ 
-                    # 11:19 AM 5/17/2024 issue, it's not triming trailing '|' on "THROTTLE |The message was throttled.|problem|":
-                    $PsObj = $content.trim('|').trimend('|')| where-object{$_} | ForEach-Object{ 
-                        #$_.split('|').trim() -join '|' ; # split fields and trim leading/trailing spaces from each , then re-join with '|'
-                        # still coming through with a surviving trailing |, though the leading border is gone (causes to drop trailing cell)
-                        # filter populated, trim start/end spaces, and refilter pop'd then join result - that seems to have fixed the bug
-                        ($_.split('|') | where-object{$_} | foreach-object{$_.trim()} |where-object{$_} )  -join '|' ; 
-                    } | ConvertFrom-Csv -Delimiter '|'; # convert to object
-                    $PsObj | write-output ; 
-                } ; # END-E
-            } ; 
-            } ; 
-            #endregion CONVERTFROM_MARKDOWNTABLE ; #*------^ END convertFrom-MarkdownTable ^------
-            
-            $xopBuilds = @"
+        $xopBuilds = @"
 ProductName                                                | ReleaseDate     | BuildNumberShort | BuildNumberLong | PatchBasis                           | NickName              | IsInstallable
 ---------------------------------------------------------- | --------------- | ---------------- | --------------- | ------------------------------------ | --------------------- | -------------
 Exchange Server SE RTM Oct25SU                             | 10/14/2025      | 15.2.2562.29 	  | 15.02.2562.029  | Exchange Server SE RTM               | EXSE_RTM_Oct25SU
@@ -669,36 +671,36 @@ Exchange Server 4.0 SP2                                    | 7/19/1996       | 4
 Exchange Server 4.0 SP1                                    | 5/1/1996        | 4.0.838          |                 | Exchange Server 4.0 SP1              | EX40_SP1              | TRUE
 Exchange Server 4.0 Standard Edition                       | 6/11/1996       | 4.0.837          |                 | Exchange Server 4.0 Standard Edition | EX40_SE               | TRUE
 "@ | convertFrom-MarkdownTable ;    
-            if($Version){ 
-                $xopBuildsndx = @{}
-                $Key = 'BuildNumberShort' ;             
-                write-verbose "building indexed hash on $($Key)" ; 
-                Foreach ($Item in $xopBuilds){
-                    $Procd++ ; 
-                    if($Key -eq 'BuildNumberLong' -AND ($null -eq $Item.BuildNumberLong)){
-                        $Item.BuildNumberLong = $Item.BuildNumberShort
-                    } ; 
-                    $xopBuildsndx[$Item.$Key.ToString()] = $Item ;             
+        if($Version){ 
+            $xopBuildsndx = @{}
+            $Key = 'BuildNumberShort' ;             
+            write-verbose "building indexed hash on $($Key)" ; 
+            Foreach ($Item in $xopBuilds){
+                $Procd++ ; 
+                if($Key -eq 'BuildNumberLong' -AND ($null -eq $Item.BuildNumberLong)){
+                    $Item.BuildNumberLong = $Item.BuildNumberShort
                 } ; 
-                $xopBuilds = $null ; 
+                $xopBuildsndx[$Item.$Key.ToString()] = $Item ;             
             } ; 
-        } ;  # BEG-E
-        PROCESS {
-            if($Version){
-                foreach($Vers in $Version){
-                    if($BuildData = $xopBuildsndx[$Vers.tostring()]){
-                        #Return $BuildData ; 
-                        Return [pscustomobject]$BuildData ;
-                    }else{
-                        Return $false ; 
-                    } ;
-                } ; 
-            } ;
-            if($AllVersions){
-                write-host "-AllVersions: Returning full builds table to pipeline (for post-filtering)" ; 
-                Return [pscustomobject]$xopBuilds ; 
+            $xopBuilds = $null ; 
+        } ; 
+    } ;  # BEG-E
+    PROCESS {
+        if($Version){
+            foreach($Vers in $Version){
+                if($BuildData = $xopBuildsndx[$Vers.tostring()]){
+                    #Return $BuildData ; 
+                    Return [pscustomobject]$BuildData ;
+                }else{
+                    Return $false ; 
+                } ;
             } ; 
-        };  # PROC-E
-        END {}
-    } ; 
-    #endregion RESOLVE_XOPBUILDSEMVERSTOTEXTNAMETDO ; #*------^ END Resolve-xopBuildSemVersToTextNameTDO ^------
+        } ;
+        if($AllVersions){
+            write-host "-AllVersions: Returning full builds table to pipeline (for post-filtering)" ; 
+            Return [pscustomobject]$xopBuilds ; 
+        } ; 
+    };  # PROC-E
+    END {}
+} ; 
+#endregion RESOLVE_XOPBUILDSEMVERSTOTEXTNAMETDO ; #*------^ END Resolve-xopBuildSemVersToTextNameTDO ^------
