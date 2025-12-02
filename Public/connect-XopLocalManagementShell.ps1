@@ -1,8 +1,9 @@
 ﻿# connect-XopLocalManagementShell.ps1
 
 
-#region CONNECT_XOPLOCALMANAGEMENTSHELL ; #*------v connect-XopLocalManagementShell v------
-function connect-XopLocalManagementShell {
+#region CONNECT_XOPLOCALMANAGEMENTSHELL ; #*------v connect-xopLocalManagementShell v------
+    #if (-not(gi function:connect-xopLocalManagementShell -ea 0)) {
+        function connect-XopLocalManagementShell {
             <#
             .SYNOPSIS
             connect-XopLocalManagementShell - Detects *local* machine has Exchange Server installed, and role (Mailbox v Edge); resolves & configs dependant Env Varis; configures and loads local Exchange Management Shell (EMS) connection into the server.
@@ -21,6 +22,9 @@ function connect-XopLocalManagementShell {
             AddedWebsite: https://github.com/PietroCiaccio/
             AddedTwitter: URL
             REVISIONS
+            * 2:47 PM 12/2/2025 💡 updated the CBH demo to test for missing cmdlet, before doing reimport (conditional on actual fail; 
+                imports are needed when this is called out of the .psm1 by another freestanding .ps1; 
+                tends to work fine wo remedial ip from funcs inside the psm1). Tested in latest set-exLicense.
             * 4:13 PM 10/7/2025 updated CBH non-func $idfqdn for $env:computername in pss test ; 
                 for demo of new remedial call import code; code to detect preexisting pssessions, and skip rexec redund, also to remove those as they accumulate; 
             * 5:12 PM 8/16/2025 connect-XopLocalManagementShell():Edge lacks RemoteExchange.ps1, added regkey edge test to exempt test for the file (was causing premature throw).
@@ -42,12 +46,21 @@ function connect-XopLocalManagementShell {
             PS> if(connect-XopLocalManagementShell){ write-host -foregroundcolor green "Connected" } else { write-warning "NOT CONNECTED!"} ;
             Simple test - returns session on connection.
             .EXAMPLE
-            PS> $cmd = $null; $cmd = get-command 'Get-OrganizationConfig' -erroraction 0 ;
+            PS> $tcmdlet = 'Set-ClientAccessServer' ; 
+            PS> $cmd = $null; $cmd = get-command $tcmdlet -erroraction 0 ;
             PS> if(-not $cmd){
-            PS>     if($xopconn = connect-XopLocalManagementShell){ 
+            PS>     if($xopconn = connect-XopLocalManagementShell){
             PS>         if($ExPSS = get-pssession | ? { $_.ComputerName -match "^$($env:computername)" -AND $_.ConfigurationName -eq 'Microsoft.Exchange' } | sort id -Descending | select -first 1 ){
             PS>             TRY{
-            PS>                 $ExIPSS = Import-PSSession $ExPSS -allowclobber -ea STOP ;
+            PS>                 $cmd = $null; $cmd = get-command $tcmdlet -erroraction 0 ;
+            PS>                 if(-not $cmd){
+            PS>                     $smsg = "Missing $($tcmdlet): re-importing PSSession..." ;
+            PS>                     if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+            PS>                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            PS>                         #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+            PS>                     } ;
+            PS>                     $ExIPSS = Import-PSSession $ExPSS -allowclobber -ea STOP ;
+            PS>                 } ; 
             PS>                 $cmd = $null; $cmd = get-command 'Get-OrganizationConfig' -erroraction stop ;
             PS>                 $smsg = "Connected to: $($expss.computername)" ;
             PS>                 if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
@@ -56,21 +69,22 @@ function connect-XopLocalManagementShell {
             PS>                 } ;
             PS>             } CATCH {
             PS>                 $ErrTrapd=$Error[0] ;
-            PS>                 $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;                        
+            PS>                 $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
             PS>                 if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
             PS>                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             PS>                 } ;
-            PS>                 BREAK ; 
+            PS>                 BREAK ;
             PS>             } ;
-            PS>         } ; 
-            PS>     } else { 
+            PS>         } ;
+            PS>     } else {
             PS>         $smsg = "NOT CONNECTED!"
             PS>         if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
             PS>             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
             PS>             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             PS>         } ;
+            PS>         BREAK ; 
             PS>     } ;
-            PS> } ;
+            PS> } ;            
             Well rounded demo that rediscovers out of scope/unimported open/avail pssessions and does a remedial import.
             .LINK
             https://github.com/tostka/powershellBB/    
@@ -395,5 +409,5 @@ function connect-XopLocalManagementShell {
                 } ;
             } ;  # END-E
         }
-#endregion CONNECT_XOPLOCALMANAGEMENTSHELL ; #*------^ END connect-XopLocalManagementShell ^------
-
+    #}
+    #endregion CONNECT_XOPLOCALMANAGEMENTSHELL ; #*------^ END connect-xopLocalManagementShell ^------
