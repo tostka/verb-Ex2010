@@ -1,7 +1,7 @@
 ﻿# connect-OPServices.ps1
 
 #region CONNECT_OPSERVICES ; #*======v connect-OPServices v======
-if(-not (get-childitem function:connect-OPServices -ea 0)){
+#if(-not (get-childitem function:connect-OPServices -ea 0)){
     function connect-OPServices {
         <#
         .SYNOPSIS
@@ -21,6 +21,8 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
         AddedWebsite:
         AddedTwitter:
         REVISIONS
+        * 1:02 PM 1/27/2026 latest dbg'd version
+        * 1:07 PM 1/20/2026 pulled the defer, should *never* defer the function source copy
         * 9:00 AM 6/3/2025 revised CBH demo, properly handle cross-org conn attempts, incl forestwide spec recovery
         * 4:36 PM 6/2/2025 updated CBH demo to cover cross org fails, wo breaking cloud run (against MGDomain updates .ps1s)
         * 2:56 PM 5/19/2025 updated cross-org access fail, to rnot say missing creds ; rem'd $prefVaris dump (blank values, throws errors)
@@ -586,22 +588,32 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
                                 $smsg = "testing conn to:$($exServer.name.tostring())..." ; 
                                 if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
                                 else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-                                if(get-command -module (get-module |?{$_.name -like 'tmp_*'}).name -name 'get-OrganizationConfig' -ea SilentlyContinue){
-                                    if($pssEXOP = Get-PSSession |  where-object { ($_.ConfigurationName -eq 'Microsoft.Exchange') -AND ( $_.runspace.ConnectionInfo.AppName -match '^/(exadmin|powershell)$') -AND ( $_.runspace.ConnectionInfo.Port -eq '80') }){
-                                        if($pssEXOP.State -ne "Opened" -OR $pssEXOP.Availability -ne "Available"){
-                                            $pssEXOP | remove-pssession ; $pssEXOP = $null ;
-                                        } ;
-                                    } ; 
-                                } else {
-                                    $smsg = "(mangled ExOP conn: disconnect/reconnect...)" ;
-                                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
-                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-                                    if($pssEXOP = Get-PSSession |  where-object { ($_.ConfigurationName -eq 'Microsoft.Exchange') -AND ( $_.runspace.ConnectionInfo.AppName -match '^/(exadmin|powershell)$') -AND ( $_.runspace.ConnectionInfo.Port -eq '80') }){
-                                        if($pssEXOP.State -ne "Opened" -OR $pssEXOP.Availability -ne "Available"){
-                                            $pssEXOP | remove-pssession ; $pssEXOP = $null ;
-                                        } ;
-                                    } ; 
-                                } ;
+                                #if(get-command -module (get-module |?{$_.name -like 'tmp_*'}).name -name 'get-OrganizationConfig' -ea SilentlyContinue){
+                                if($tmod = (get-module |?{$_.name -like 'tmp_*'}).name){
+                                    if(get-command -module $tmod.name -name 'get-OrganizationConfig' -ea SilentlyContinue){
+                                    # above throws an error: get-command : The term 'get-OrganizationConfig' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+                                        if($pssEXOP = Get-PSSession |  where-object { ($_.ConfigurationName -eq 'Microsoft.Exchange') -AND ( $_.runspace.ConnectionInfo.AppName -match '^/(exadmin|powershell)$') -AND ( $_.runspace.ConnectionInfo.Port -eq '80') }){
+                                            if($pssEXOP.State -ne "Opened" -OR $pssEXOP.Availability -ne "Available"){
+                                                $pssEXOP | remove-pssession ; $pssEXOP = $null ;
+                                            } ;
+                                        } ; 
+                                    } else {
+                                        $smsg = "(mangled ExOP conn: disconnect/reconnect...)" ;
+                                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                                        if($pssEXOP = Get-PSSession |  where-object { ($_.ConfigurationName -eq 'Microsoft.Exchange') -AND ( $_.runspace.ConnectionInfo.AppName -match '^/(exadmin|powershell)$') -AND ( $_.runspace.ConnectionInfo.Port -eq '80') }){
+                                            if($pssEXOP.State -ne "Opened" -OR $pssEXOP.Availability -ne "Available"){
+                                                $pssEXOP | remove-pssession ; $pssEXOP = $null ;
+                                            } ;
+                                        } ; 
+                                    } ;
+                                }else{
+                                    $smsg = "UNABLE TO:`$tmod = (get-module |?{$_.name -like 'tmp_*'}).name ~" ; 
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                                    THROW $SMSG ; 
+                                    BREAK ; 
+                                } 
                                 if(-not $pssEXOP){
                                     $smsg = "Connecting to: $($exServer.FQDN)" ;
                                     if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
@@ -2077,5 +2089,5 @@ if(-not (get-childitem function:connect-OPServices -ea 0)){
             [pscustomobject]$ret_ccOPs | write-output ;
         } ; # END-E
     } ;
-} ;
+#} ;
 #endregion CONNECT_OPSERVICES ; #*======^ END connect-OPServices ^======
