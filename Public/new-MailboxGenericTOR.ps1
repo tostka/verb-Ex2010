@@ -16,6 +16,7 @@ function new-MailboxGenericTOR {
     Github      : https://github.com/tostka/verb-ex2010
     Tags        : Exchange,ExchangeOnPremises,Mailbox,Creation,Maintenance,UserMailbox
     REVISIONS
+    * 5:24 PM 1/28/2026 supress passstatusZ_tenorg error; Implement missing $SiteOverride passthrough ; REQUIRED FOR MIGRATIONS DOMAINS, THEY DON'T RESOLVE TO A FUNCTIONAL SITEOU (COMES BACK _MIGRATE)
     * 12:41 PM 1/27/2026 latest conn_svcs block updated
     * 2:48 PM 1/19/2026 -whatif's find ; bugfix: $pltCcOPSvcs.UserRole (postfilter, not match test)
     # 12:20 PM 1/16/2026 check out against AAD->MG migr mandate, bring in latest logging & SERVICE_CONNECTIONS blocks
@@ -875,7 +876,11 @@ function new-MailboxGenericTOR {
 
         # 1:19 PM 2/13/2019 email trigger vari, it will be semi-delimd list of mail-triggering events
         # TenOrg or other looped-specific PassStatus (auto supported by 7pswlt)
-        New-Variable -Name PassStatus_$($tenorg) -scope Script -Value $null ;
+        if(get-Variable -Name PassStatus_$($tenorg) -scope Script -ea 0){
+
+        }else{
+            New-Variable -Name PassStatus_$($tenorg) -scope Script -Value $null ;
+        } ;
         # Clear error variable
         $Error.Clear() ;
     
@@ -1480,6 +1485,14 @@ function new-MailboxGenericTOR {
                 $pltInput.OfficeOverride=$OfficeOverride ; 
             }else{
                 $pltInput.add('OfficeOverride',$OfficeOverride) ;  
+            }
+        };
+        # *5:17 PM 1/28/2026 unimplemented siteoverride!
+        if($SiteOverride){
+            if($pltInput.keys -contains 'SiteOverride'){
+                $pltInput.SiteOverride=$SiteOverride ; 
+            }else{
+                $pltInput.add('SiteOverride',$SiteOverride) ;  
             }
         };
         # only reset from defaults on explicit -NonGeneric $true param
