@@ -20,6 +20,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 9:17 AM 1/29/2026 Cleanup ; EXIT ; -> Cleanup ; BREAK ;
     * 12:41 PM 1/27/2026 latest conn_svcs block updated
     * 2:48 PM 1/19/2026 -whatif's find ; 
     * 10:48 AM 1/19/2026 bugfix: $pltCcOPSvcs.UserRole (postfilter, not match test)
@@ -1653,14 +1654,30 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
         #region DATAPREP ; # ------
         if ( ($InputSplat.OwnerMbx=(get-mailbox -identity $($InputSplat.Owner) -ea 0)) -OR ($InputSplat.OwnerMbx=(get-remotemailbox -identity $($InputSplat.Owner) -ea 0)) ){
-
+            $rgxOUMigrations = ',OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
+            $rgxMigationsSite = ',OU=(\w+),OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;            
+            if($InputSplat.OwnerMbx.DistinguishedName -match $rgxOUMigrations){
+                $OSiteCode = [regex]::Match($odn,$rgxMigationsSite).groups[1].value ;
+                if($OSiteCode){
+                    $smsg = "Resolved _MIGRATIONS tree OSiteCode:$($OSiteCode)" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                }else{
+                    throw "Unable to resolve $($pltNmbx.Owner.DistinguishedName) into a SiteCode" ;
+                    Break ;
+                }
+            }else{
+                $OSiteCode = $InputSplat.OwnerMbx.identity.tostring().split('/')[1]
+            } ;
+            $InputSplat.SiteCode=$OSiteCode;       
         } else {
           throw "Unable to resolve $($InputSplat.Owner) to any existing OP or EXO mailbox" ;
-          Cleanup ; Exit ;
+          Cleanup ; BREAK ;
         } ;
 
         $InputSplat.Domain=$($InputSplat.OwnerMbx.identity.tostring().split("/")[0]) ;
-        $InputSplat.SiteCode=($InputSplat.OwnerMbx.identity.tostring().split('/')[1]) ;
+        #$InputSplat.SiteCode=($InputSplat.OwnerMbx.identity.tostring().split('/')[1]) ;
 
         $domain=$InputSplat.Domain ;
         if(!$domaincontroller){
@@ -1686,13 +1703,13 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         If($InputSplat.NonGeneric) {
             if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $false)   ) {
 
-            } else { Cleanup ; Exit ;}
+            } else { Cleanup ; BREAK ;}
         } elseIf($Room -OR $Equipement) {
             if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Resource $true ) ) {
-            } else { Cleanup ; Exit ;}
+            } else { Cleanup ; BREAK ;}
         } else {
             if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $true ) ) {
-            } else { Cleanup ; Exit ;}
+            } else { Cleanup ; BREAK ;}
         }
 
         # add forced office designation, to match $SiteCode/OU
@@ -1757,10 +1774,10 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                             if($showdebug){ $smsg= "Owner UserMailbox detected" ;if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;  } ;
                             # base users off of Owner
                             if ( $InputSplat.BaseUser=(get-mailbox -identity $($InputSplat.Owner) -domaincontroller $($InputSplat.domaincontroller) -ea continue ) ) {
-                            } else { Cleanup ; Exit ;}
+                            } else { Cleanup ; BREAK ;}
                         } else {
                             throw "Unable to resolve $($InputSplat.ManagedBy) to any existing OP or EXO mailbox" ;
-                            Cleanup ; Exit ;
+                            Cleanup ; BREAK ;
                         } ;
                     }
                     "MailUser" {
@@ -1768,16 +1785,16 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                             if($showdebug){ $smsg= "Owner MailUser detected" ;if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;  } ;
                             # base users off of Owner
                             if ( $InputSplat.BaseUser=(get-Remotemailbox -identity $($InputSplat.Owner) -domaincontroller $($InputSplat.domaincontroller) -ea continue ) ) {
-                            } else { Cleanup ; Exit ;}
+                            } else { Cleanup ; BREAK ;}
                         } else {
                             # without the -ea stop, we need an explicit error
                             throw "Unable to resolve $($InputSplat.ManagedBy) to any existing OP or EXO mailbox" ;
-                            Cleanup ; Exit ;
+                            Cleanup ; BREAK ;
                         } ;
                     }
                     default {
                         throw "$($InputSplat.ManagedBy) Not found, or unrecognized RecipientType" ;
-                        Cleanup ; Exit ;
+                        Cleanup ; BREAK ;
                     }
                 } ;
 
@@ -1839,7 +1856,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                         } else {
                             $smsg= "UNABLE TO FIND A BASEUSER - USE -BASEUSER TO SPECIFY A SUITABLE ACCT *SOMEWHERE*" ;
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-                            Cleanup ; Exit ;
+                            Cleanup ; BREAK ;
                         } ;
                     } else {
                         if ( $InputSplat.BaseUser = get-remotemailbox -OnPremisesOrganizationalUnit $($MbxSplat.OrganizationalUnit) -resultsize 50 | Where-Object { $_.distinguishedname -notlike '*demo*' } | get-random   ) {
@@ -1851,7 +1868,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                         } else {
                             $smsg= "UNABLE TO FIND A BASEUSER - USE -BASEUSER TO SPECIFY A SUITABLE ACCT *SOMEWHERE*" ;
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-                            Cleanup ; Exit ;
+                            Cleanup ; BREAK ;
                         } ;
                     }
                     write-host -foregroundcolor darkgray "$((get-date).ToString("HH:mm:ss")):Drew Random BaseUser: $($InputSplat.BaseUser.DisplayName) ($($inputsplat.BaseUser.samaccountname))" ;
@@ -1862,7 +1879,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                                     $InputSplat.BaseUser=$tmpBaseUser ;
                             } else {
                                 throw "Unable to resolve $($InputSplat.BaseUser) to any existing OP or EXO mailbox" ;
-                                Cleanup ; Exit ;
+                                Cleanup ; BREAK ;
                             } ;
                         } ;
                         "MailUser" {
@@ -1871,12 +1888,12 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                             } else {
                                 # without the -ea stop, we need an explicit error
                                 throw "Unable to resolve $($InputSplat.BaseUser) to any existing OP or EXO mailbox" ;
-                                Cleanup ; Exit ;
+                                Cleanup ; BREAK ;
                             } ;
                         } ;
                         default {
                             throw "$($InputSplat.ManagedBy) Not found, or unrecognized RecipientType" ;
-                            Cleanup ; Exit ;
+                            Cleanup ; BREAK ;
                         }
                     } ;
                 } ;
@@ -1902,7 +1919,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             } ;
 
             if ( $InputSplat.BUserAD=(get-user -identity $($InputSplat.BaseUser.samaccountname) -domaincontroller $($InputSplat.domaincontroller) -ea continue)  ) {
-            } else { Cleanup ; Exit ;} ;
+            } else { Cleanup ; BREAK ;} ;
             $InputSplat.ADDesc="$(get-date -format 'MM/dd/yyyy') for $($InputSplat.OwnerMbx.samaccountname) $($InputSplat.ticket) -tsk" ;
 
             # check for conflicting samaccountname, and increment
@@ -2174,7 +2191,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                     }  # if-E
                 } else {
                     $smsg= "INVALID KEY ABORTING NO CHANGE!" ;  if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
-                    Exit ;
+                    BREAK ;
                 } ;
 
             } # if-E No oMbx
