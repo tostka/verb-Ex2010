@@ -1,4 +1,5 @@
 ﻿#*------v get-ExRootSiteOUs.ps1 v------
+#region GET_EXROOTSITEOUS ; #*------v get-ExRootSiteOUs v------
 function get-ExRootSiteOUs {
     <#
     .SYNOPSIS
@@ -18,10 +19,11 @@ function get-ExRootSiteOUs {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    # 1:10 PM 1/30/2026 add support for discovery of _Migration sub roots 
     # 12:34 PM 8/4/2021 ren'd getADSiteOus -> get-ExRootSiteOUs (avoid overlap with verb-adms\get-ADRootSiteOus())
     # 12:49 PM 7/25/2019 get-ExRootSiteOUs:updated $RegexBanned to cover TAC (no users or DL resource 
-      OUs - appears to be variant of LYN w a single disabled users (obsolete disabled 
-      TimH acct) 
+        OUs - appears to be variant of LYN w a single disabled users (obsolete disabled 
+        TimH acct) 
     # 12:08 PM 6/20/2019 init vers
     .DESCRIPTION
     get-ExRootSiteOUs.ps1 - Gather & return array of objects for root OU's matching a regex filter on the DN (if target OUs have a consistent name structure)
@@ -47,20 +49,31 @@ function get-ExRootSiteOUs {
     ##[Alias('ulu')]
     Param(
         [Parameter(Position = 0, HelpMessage = "OU DistinguishedName regex, to identify 'Site' OUs [-ADUser [regularexpression]]")]
-        [ValidateNotNullOrEmpty()][string]$Regex = '^OU=(\w{3}|PACRIM),DC=global,DC=ad,DC=toro((lab)*),DC=com$',
+            [ValidateNotNullOrEmpty()]
+            [string]$rgxTTCRootOUs = '^OU=(\w{3}|PACRIM),DC=global,DC=ad,DC=toro((lab)*),DC=com$',
         [Parameter(Position = 0, HelpMessage = "OU DistinguishedName regex, to EXCLUDE non-legitimate 'Site' OUs [-RegexBanned [regularexpression]]")]
-        [ValidateNotNullOrEmpty()][string]$RegexBanned = '^OU=(BCC|EDC|NC1|NDS|TAC),DC=global,DC=ad,DC=toro((lab)*),DC=com$',
-        #[Parameter(HelpMessage = "Domain Controller [-domaincontroller server.fqdn.com]")]
-        #[string] $domaincontroller,
+            [ValidateNotNullOrEmpty()]
+            [string]$rgxTTCBannedRootOUs = '^OU=(BCC|EDC|NC1|NDS|TAC),DC=global,DC=ad,DC=toro((lab)*),DC=com$',
+        [Parameter(Position = 0, HelpMessage = "OU DistinguishedName regex, to identify 'Site' OUs [-ADUser [regularexpression]]")]
+            [ValidateNotNullOrEmpty()]
+            [string]$rgxMIGRRootOUs = '^OU=(\w{3}|PACRIM),OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$',
+        [Parameter(Position = 0, HelpMessage = "OU DistinguishedName regex, to EXCLUDE non-legitimate 'Site' OUs [-RegexBanned [regularexpression]]")]
+            [ValidateNotNullOrEmpty()]
+            [string]$rgxMigrBannedRootOUs = '^OU=(BCC|EDC|NC1|NDS|TAC),DC=global,DC=ad,DC=toro((lab)*),DC=com$',
+        [Parameter(HelpMessage = "Domain Controller [-domaincontroller server.fqdn.com]")]
+            [string] $domaincontroller,
         [Parameter(HelpMessage = "Debugging Flag [-showDebug]")]
-        [switch] $showDebug
+            [switch] $showDebug
     ) # PARAM BLOCK END
     $verbose = ($VerbosePreference -eq "Continue") ; 
     $error.clear() ;
     TRY {
-        #if (!$domaincontroller) { $domaincontroller = get-gcfast } ;
-        $SiteOUs = Get-OrganizationalUnit |?{($_.distinguishedname -match $Regex) -AND ($_.distinguishedname -notmatch $RegexBanned) }|sort distinguishedname ; 
-
+        if (!$domaincontroller) { $domaincontroller = get-gcfast } ;
+        $SiteOUs = @() ; 
+        write-verbose "Retrieve net TTC SiteOUs..." ; 
+        $SiteOUs += Get-OrganizationalUnit |?{($_.distinguishedname -match $rgxTTCRootOUs) -AND ($_.distinguishedname -notmatch $rgxTTCBannedRootOUs) }|sort distinguishedname ; 
+        write-verbose "Retrieve net _MIGRATION SiteOUs..." ; 
+        $SiteOUs += Get-OrganizationalUnit |?{($_.distinguishedname -match $rgxMIGRRootOUs) -AND ($_.distinguishedname -notmatch $rgxMigrBannedRootOUs) }|sort distinguishedname ; 
     } CATCH {
         $ErrTrapd=$Error[0] ;
         $smsg = "Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
@@ -79,9 +92,10 @@ function get-ExRootSiteOUs {
     if ($SiteOUs) {
         $SiteOUs | write-output ;
     } else {
-        $smsg= "Unable to retrieve OUs matching specified rgx:`n$($regex)";
+        $smsg= "Unable to retrieve OUs matching specified rgx:`n$($rgxTTCRootOUs)|$()";
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         $false | write-output ;
     }
-} ; #*------^ END Function get-ExRootSiteOUs ^------
+} ; 
+#endregion GET_EXROOTSITEOUS ; #*------^ END get-ExRootSiteOUs ^------

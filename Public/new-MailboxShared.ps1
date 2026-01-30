@@ -20,6 +20,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 4:17 PM 1/30/2026 fixed $odn owner.mbx.dn bug
     * 9:17 AM 1/29/2026 Cleanup ; EXIT ; -> Cleanup ; BREAK ;
     * 12:41 PM 1/27/2026 latest conn_svcs block updated
     * 2:48 PM 1/19/2026 -whatif's find ; 
@@ -1657,7 +1658,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             $rgxOUMigrations = ',OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
             $rgxMigationsSite = ',OU=(\w+),OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;            
             if($InputSplat.OwnerMbx.DistinguishedName -match $rgxOUMigrations){
-                $OSiteCode = [regex]::Match($odn,$rgxMigationsSite).groups[1].value ;
+                $OSiteCode = [regex]::Match($InputSplat.OwnerMbx.DistinguishedName ,$rgxMigationsSite).groups[1].value ;
                 if($OSiteCode){
                     $smsg = "Resolved _MIGRATIONS tree OSiteCode:$($OSiteCode)" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
