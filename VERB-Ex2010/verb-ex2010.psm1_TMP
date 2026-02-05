@@ -1,30 +1,30 @@
-﻿# verb-Ex2010.psm1
+﻿# verb-ex2010.psm1
 
 
 <#
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 7.1.1
+Version     : 7.1.2
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
-CreatedDate : 1/17.1.10
+CreatedDate : 1/17.1.20
 FileName    : VERB-Ex2010.psm1
 License     : MIT
-Copyright   : (c) 1/17.1.10 Todd Kadrie
+Copyright   : (c) 1/17.1.20 Todd Kadrie
 Github      : https://github.com/tostka
 REVISIONS
 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
 * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
-* 1/17.1.10 - 1.0.0.0
+* 1/17.1.20 - 1.0.0.0
 # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
 # 11:34 AM 12/30/2019 ran vsc alias-expansion
 # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
 # 10:19 AM 11/1/2019 trimmed some whitespace
 # 10:05 AM 10/31/2019 added sample load/call info
-# 12:02 PM 5/7.1.19 added cx10,rx10,dx10 aliases
-# 11:29 AM 5/7.1.19 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+# 12:02 PM 5/7.1.29 added cx10,rx10,dx10 aliases
+# 11:29 AM 5/7.1.29 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
 # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
 # 4:15 PM 3/24/2018 updated pshhelp
 # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
@@ -7991,10 +7991,11 @@ function get-ExRootSiteOUs {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    # 1:10 PM 1/30/2026 add support for discovery of _Migration sub roots 
     # 12:34 PM 8/4/2021 ren'd getADSiteOus -> get-ExRootSiteOUs (avoid overlap with verb-adms\get-ADRootSiteOus())
     # 12:49 PM 7/25/2019 get-ExRootSiteOUs:updated $RegexBanned to cover TAC (no users or DL resource 
-      OUs - appears to be variant of LYN w a single disabled users (obsolete disabled 
-      TimH acct) 
+        OUs - appears to be variant of LYN w a single disabled users (obsolete disabled 
+        TimH acct) 
     # 12:08 PM 6/20/2019 init vers
     .DESCRIPTION
     get-ExRootSiteOUs.ps1 - Gather & return array of objects for root OU's matching a regex filter on the DN (if target OUs have a consistent name structure)
@@ -8020,20 +8021,31 @@ function get-ExRootSiteOUs {
     ##[Alias('ulu')]
     Param(
         [Parameter(Position = 0, HelpMessage = "OU DistinguishedName regex, to identify 'Site' OUs [-ADUser [regularexpression]]")]
-        [ValidateNotNullOrEmpty()][string]$Regex = '^OU=(\w{3}|PACRIM),DC=global,DC=ad,DC=toro((lab)*),DC=com$',
+            [ValidateNotNullOrEmpty()]
+            [string]$rgxTTCRootOUs = '^OU=(\w{3}|PACRIM),DC=global,DC=ad,DC=toro((lab)*),DC=com$',
         [Parameter(Position = 0, HelpMessage = "OU DistinguishedName regex, to EXCLUDE non-legitimate 'Site' OUs [-RegexBanned [regularexpression]]")]
-        [ValidateNotNullOrEmpty()][string]$RegexBanned = '^OU=(BCC|EDC|NC1|NDS|TAC),DC=global,DC=ad,DC=toro((lab)*),DC=com$',
-        #[Parameter(HelpMessage = "Domain Controller [-domaincontroller server.fqdn.com]")]
-        #[string] $domaincontroller,
+            [ValidateNotNullOrEmpty()]
+            [string]$rgxTTCBannedRootOUs = '^OU=(BCC|EDC|NC1|NDS|TAC),DC=global,DC=ad,DC=toro((lab)*),DC=com$',
+        [Parameter(Position = 0, HelpMessage = "OU DistinguishedName regex, to identify 'Site' OUs [-ADUser [regularexpression]]")]
+            [ValidateNotNullOrEmpty()]
+            [string]$rgxMIGRRootOUs = '^OU=(\w{3}|PACRIM),OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$',
+        [Parameter(Position = 0, HelpMessage = "OU DistinguishedName regex, to EXCLUDE non-legitimate 'Site' OUs [-RegexBanned [regularexpression]]")]
+            [ValidateNotNullOrEmpty()]
+            [string]$rgxMigrBannedRootOUs = '^OU=(BCC|EDC|NC1|NDS|TAC),DC=global,DC=ad,DC=toro((lab)*),DC=com$',
+        [Parameter(HelpMessage = "Domain Controller [-domaincontroller server.fqdn.com]")]
+            [string] $domaincontroller,
         [Parameter(HelpMessage = "Debugging Flag [-showDebug]")]
-        [switch] $showDebug
+            [switch] $showDebug
     ) # PARAM BLOCK END
     $verbose = ($VerbosePreference -eq "Continue") ; 
     $error.clear() ;
     TRY {
-        #if (!$domaincontroller) { $domaincontroller = get-gcfast } ;
-        $SiteOUs = Get-OrganizationalUnit |?{($_.distinguishedname -match $Regex) -AND ($_.distinguishedname -notmatch $RegexBanned) }|sort distinguishedname ; 
-
+        if (!$domaincontroller) { $domaincontroller = get-gcfast } ;
+        $SiteOUs = @() ; 
+        write-verbose "Retrieve net TTC SiteOUs..." ; 
+        $SiteOUs += Get-OrganizationalUnit |?{($_.distinguishedname -match $rgxTTCRootOUs) -AND ($_.distinguishedname -notmatch $rgxTTCBannedRootOUs) }|sort distinguishedname ; 
+        write-verbose "Retrieve net _MIGRATION SiteOUs..." ; 
+        $SiteOUs += Get-OrganizationalUnit |?{($_.distinguishedname -match $rgxMIGRRootOUs) -AND ($_.distinguishedname -notmatch $rgxMigrBannedRootOUs) }|sort distinguishedname ; 
     } CATCH {
         $ErrTrapd=$Error[0] ;
         $smsg = "Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
@@ -8052,7 +8064,7 @@ function get-ExRootSiteOUs {
     if ($SiteOUs) {
         $SiteOUs | write-output ;
     } else {
-        $smsg= "Unable to retrieve OUs matching specified rgx:`n$($regex)";
+        $smsg= "Unable to retrieve OUs matching specified rgx:`n$($rgxTTCRootOUs)|$()";
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         $false | write-output ;
@@ -12900,7 +12912,7 @@ Function Get-SetupTextVersionTDO {
         Author      : Todd Kadrie
         Website     : http://www.toddomation.com
         Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 202507.1.1423PM
+        CreatedDate : 20250711-0423PM
         FileName    : Get-SetupTextVersionTDO.ps1
         License     : (none asserted)
         Copyright   : (none asserted)
@@ -13288,7 +13300,7 @@ function get-xopExchangeLocalVersionTDO{
     Author      : Todd Kadrie
     Website     : http://www.toddomation.com
     Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 202507.1.1423PM
+    CreatedDate : 20250711-0423PM
     FileName    : get-xopExchangeLocalVersionTDO.ps1
     License     : MIT License
     Copyright   : (c) 2025 Todd Kadrie
@@ -13889,7 +13901,7 @@ function get-xopServerAdminDisplayVersion {
             '15.2.792.13' = 	'Exchange Server 2019 CU8 Apr21SU'
             '15.2.792.10' = 	'Exchange Server 2019 CU8 Mar21SU'
             '15.2.792.3' = 	'Exchange Server 2019 CU8'
-            '15.2.721.13' = 	'Exchange Server 2019 CU7 Mar21SU'
+            '15.2.7.1.23' = 	'Exchange Server 2019 CU7 Mar21SU'
             '15.2.721.2' = 	'Exchange Server 2019 CU7'
             '15.2.659.12' = 	'Exchange Server 2019 CU6 Mar21SU'
             '15.2.659.4' = 	'Exchange Server 2019 CU6'
@@ -16469,6 +16481,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 4:17 PM 1/30/2026 fixed $odn owner.mbx.dn bug
     * 9:17 AM 1/29/2026 Cleanup ; EXIT ; -> Cleanup ; BREAK ;
     * 12:41 PM 1/27/2026 latest conn_svcs block updated
     * 2:48 PM 1/19/2026 -whatif's find ; 
@@ -18106,7 +18119,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             $rgxOUMigrations = ',OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
             $rgxMigationsSite = ',OU=(\w+),OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;            
             if($InputSplat.OwnerMbx.DistinguishedName -match $rgxOUMigrations){
-                $OSiteCode = [regex]::Match($odn,$rgxMigationsSite).groups[1].value ;
+                $OSiteCode = [regex]::Match($InputSplat.OwnerMbx.DistinguishedName ,$rgxMigationsSite).groups[1].value ;
                 if($OSiteCode){
                     $smsg = "Resolved _MIGRATIONS tree OSiteCode:$($OSiteCode)" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
@@ -20404,7 +20417,7 @@ Function Resolve-xopBuildSemVersToTextNameTDO {
     Author      : Todd Kadrie
     Website     : http://www.toddomation.com
     Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 202507.1.1423PM
+    CreatedDate : 20250711-0423PM
     FileName    : Resolve-xopBuildSemVersToTextNameTDO.ps1
     License     : (none asserted)
     Copyright   : (none asserted)
@@ -20568,7 +20581,7 @@ Function Resolve-xopBuildSemVersToTextNameTDO {
         Exchange Server 2019 CU10          6/29/2021   15.2.922.7       15.02.0922.007  Exchange Server 2019 CU10 EX2019_CU10        TRUE         
         Exchange Server 2019 CU9           3/16/2021   15.2.858.5       15.02.0858.005  Exchange Server 2019 CU9  EX2019_CU9         TRUE         
         Exchange Server 2019 CU8           12/15/2020  15.2.792.3       15.02.0792.003  Exchange Server 2019 CU8  EX2019_CU8         TRUE         
-        Exchange Server 2019 CU7           9/15/2020   15.2.721.2       15.02.07.1.102  Exchange Server 2019 CU7  EX2019_CU7         TRUE         
+        Exchange Server 2019 CU7           9/15/2020   15.2.721.2       15.02.0721.002  Exchange Server 2019 CU7  EX2019_CU7         TRUE         
         Exchange Server 2019 CU6           6/16/2020   15.2.659.4       15.02.0659.004  Exchange Server 2019 CU6  EX2019_CU6         TRUE         
         Exchange Server 2019 CU5           3/17/2020   15.2.595.3       15.02.0595.003  Exchange Server 2019 CU5  EX2019_CU5         TRUE         
         Exchange Server 2019 CU4           12/17/2019  15.2.529.5       15.02.0529.005  Exchange Server 2019 CU4  EX2019_CU4         TRUE         
@@ -20788,8 +20801,8 @@ Exchange Server 2019 CU8 May21SU                           | 5/11/2021       | 1
 Exchange Server 2019 CU8 Apr21SU                           | 4/13/2021       | 15.2.792.13      | 15.02.0792.013  | Exchange Server 2019 CU8             | EX2019_CU8_Apr21SU    |
 Exchange Server 2019 CU8 Mar21SU                           | 3/2/2021        | 15.2.792.10      | 15.02.0792.010  | Exchange Server 2019 CU8             | EX2019_CU8_Mar21SU    |
 Exchange Server 2019 CU8                                   | 12/15/2020      | 15.2.792.3       | 15.02.0792.003  | Exchange Server 2019 CU8             | EX2019_CU8            | TRUE
-Exchange Server 2019 CU7 Mar21SU                           | 3/2/2021        | 15.2.721.13      | 15.02.07.1.113  | Exchange Server 2019 CU7             | EX2019_CU7_Mar21SU    |
-Exchange Server 2019 CU7                                   | 9/15/2020       | 15.2.721.2       | 15.02.07.1.102  | Exchange Server 2019 CU7             | EX2019_CU7            | TRUE
+Exchange Server 2019 CU7 Mar21SU                           | 3/2/2021        | 15.2.7.1.23      | 15.02.0721.013  | Exchange Server 2019 CU7             | EX2019_CU7_Mar21SU    |
+Exchange Server 2019 CU7                                   | 9/15/2020       | 15.2.721.2       | 15.02.0721.002  | Exchange Server 2019 CU7             | EX2019_CU7            | TRUE
 Exchange Server 2019 CU6 Mar21SU                           | 3/2/2021        | 15.2.659.12      | 15.02.0659.012  | Exchange Server 2019 CU6             | EX2019_CU6_Mar21SU    |
 Exchange Server 2019 CU6                                   | 6/16/2020       | 15.2.659.4       | 15.02.0659.004  | Exchange Server 2019 CU6             | EX2019_CU6            | TRUE
 Exchange Server 2019 CU5 Mar21SU                           | 3/2/2021        | 15.2.595.8       | 15.02.0595.008  | Exchange Server 2019 CU5             | EX2019_CU5_Mar21SU    |
@@ -21033,7 +21046,7 @@ Update Rollup 6 for Exchange Server 2007                   | 2/21/2008       | 8
 Update Rollup 5 for Exchange Server 2007                   | 10/25/2007      | 8.0.754.0        | 8.00.0754.000   | Exchange Server 2007 RTM             | EX2007_UR5            |
 Update Rollup 4 for Exchange Server 2007                   | 8/23/2007       | 8.0.744.0        | 8.00.0744.000   | Exchange Server 2007 RTM             | EX2007_UR4            |
 Update Rollup 3 for Exchange Server 2007                   | 6/28/2007       | 8.0.730.1        | 8.00.0730.001   | Exchange Server 2007 RTM             | EX2007_UR3            |
-Update Rollup 2 for Exchange Server 2007                   | 5/8/2007        | 8.0.711.2        | 8.00.07.1.102   | Exchange Server 2007 RTM             | EX2007_UR2            |
+Update Rollup 2 for Exchange Server 2007                   | 5/8/2007        | 8.0.711.2        | 8.00.0711.002   | Exchange Server 2007 RTM             | EX2007_UR2            |
 Update Rollup 1 for Exchange Server 2007                   | 4/17/2007       | 8.0.708.3        | 8.00.0708.003   | Exchange Server 2007 RTM             | EX2007_UR1            |
 Exchange Server 2007 RTM                                   | 3/8/2007        | 8.0.685.25       | 8.00.0685.025   | Exchange Server 2007 RTM             | EX2007_RTM            | TRUE
 Exchange Server 2003 post-SP2                              | 8/1/2008        | 6.5.7654.4       |                 | Exchange Server 2003 post-SP2        | EX2003_post-SP2       | TRUE
@@ -21111,7 +21124,7 @@ Function Resolve-xopMajorVersionTDO {
     Author      : Todd Kadrie
     Website     : http://www.toddomation.com
     Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 202507.1.1423PM
+    CreatedDate : 20250711-0423PM
     FileName    : Resolve-xopMajorVersionTDO.ps1
     License     : (none asserted)
     Copyright   : (none asserted)
@@ -23142,7 +23155,7 @@ function test-LocalExchangeInfoTDO {
             Author      : Todd Kadrie
             Website     : http://www.toddomation.com
             Twitter     : @tostka / http://twitter.com/tostka
-            CreatedDate : 202507.1.1423PM
+            CreatedDate : 20250711-0423PM
             FileName    : test-LocalExchangeInfoTDO.ps1
             License     : MIT License
             Copyright   : (c) 2025 Todd Kadrie
