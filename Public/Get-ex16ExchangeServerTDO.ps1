@@ -21,6 +21,8 @@ function Get-ex16ExchangeServerTDO{
         AddedWebsite: http://www.toddomation.com
         AddedTwitter: @tostka / http://twitter.com/tostka
         REVISIONS
+        * 2:35 PM 2/17/2026 add missing base alias
+        * 2:35 PM 12/2/2025 spliced in re-import connect-xopLocalManagementShell code
         * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat) ; ADD: being{} & connext-xop...() call (dep)
         * 9:10 AM 7/24/2025 ren: Get-EPExchangeServer -> Get-ex16ExchangeServerTDO (alias orig name) ; 
         updated return obj, now includes raw component status and a xxxFmt formated output (visible in dumps wo manual expansion); added ServerWideOffline that can be used as central check (assuming it can't be set if other components are active)
@@ -39,25 +41,53 @@ function Get-ex16ExchangeServerTDO{
         $testResults = Get-EPMaintenanceMode -identity SERVER1 ; 
         #>
         [cmdletbinding()]
-        [Alias('Get-EPExchangeServer')]
+        [Alias('Get-EPExchangeServer','Get-ex16ExchangeServer')]
         PARAM (
             [Parameter(mandatory=$true,valuefrompipelinebypropertyname=$true)][PSCustomObject]$Identity
         )
-        BEGIN{
-            if(-not (gcm Get-ExchangeServer -ea 0)){
-                if(connect-XopLocalManagementShell){
-                    $smsg = "Connected" ; 
-                    if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        BEGIN{            
+            #region CONNECT_XOPLOCAL ; #*------v connect-XopLocal v------
+            $tcmdlet = 'get-ExchangeServer' ;
+            $cmd = $null; $cmd = get-command $tcmdlet -erroraction 0 ;
+            if(-not $cmd){
+                if($xopconn = connect-XopLocalManagementShell){
+                    if($ExPSS = get-pssession | ? { $_.ComputerName -match "^$($env:computername)" -AND $_.ConfigurationName -eq 'Microsoft.Exchange' } | sort id -Descending | select -first 1 ){
+                        TRY{
+                            $cmd = $null; $cmd = get-command $tcmdlet -erroraction 0 ;
+                            if(-not $cmd){
+                                $smsg = "Missing $($cmdlet): re-importing PSSession..." ;
+                                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                } ;
+                                $ExIPSS = Import-PSSession $ExPSS -allowclobber -ea STOP ;
+                            } ;
+                            $cmd = $null; $cmd = get-command 'Get-OrganizationConfig' -erroraction stop ;
+                            $smsg = "Connected to: $($expss.computername)" ;
+                            if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                            } ;
+                        } CATCH {
+                            $ErrTrapd=$Error[0] ;
+                            $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                            if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            } ;
+                            BREAK ;
+                        } ;
                     } ;
                 } else {
                     $smsg = "NOT CONNECTED!"
                     if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     } ;
+                    BREAK ;
                 } ;
             } ;
-        }
+            #endregion CONNECT_XOPLOCAL ; #*------^ END connect-XopLocal ^------
+        } # BEG-E
         PROCESS {
             # Validate Exchange Server
             if ($input) {
