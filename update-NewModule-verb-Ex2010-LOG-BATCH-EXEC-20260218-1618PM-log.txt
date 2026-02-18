@@ -1,0 +1,626 @@
+﻿2026-02-18 16:18:51 INFO:  : #*======v VERB-dev.psm1:verb-Ex2010 v======
+2026-02-18 16:18:52 INFO:  : Run: reset-ModulePublishingDirectory -ModuleName verb-Ex2010
+2026-02-18 16:18:53 ##  : 
+#*------v PROCESSING : verb-Ex2010 v------
+2026-02-18 16:18:54 INFO:  : Pre-purge (CHANGELOG|README)\.md$ Root dir matches from :
+2026-02-18 16:18:54 INFO:  : verb-Ex2010 resolved $ModPubPath:C:\sc\verb-Ex2010\verb-Ex2010\
+$ModResPath:C:\sc\verb-Ex2010\Resource\
+2026-02-18 16:18:55 INFO:  : verb-Ex2010 resolved $ModPubPath:C:\sc\verb-Ex2010\verb-Ex2010\
+$ModResPath:C:\sc\verb-Ex2010\Licenses\
+2026-02-18 16:18:56 INFO:  : verb-Ex2010 resolved $ModPubPath:C:\sc\verb-Ex2010\verb-Ex2010\
+$ModResPath:C:\sc\verb-Ex2010\Docs\
+2026-02-18 16:18:56 INFO:  : ==C:\sc\verb-Ex2010\CHANGELOG.md:
+2026-02-18 16:18:57 INFO:  : ==C:\sc\verb-Ex2010\README.md:
+2026-02-18 16:18:57 INFO:  : ==C:\sc\verb-Ex2010\Docs\Quick-Start-Installation-and-Example.md:
+2026-02-18 16:18:58 ##  : 
+#*------^ PROCESSING : verb-Ex2010 ^------
+2026-02-18 16:18:58 INFO:  : Run: populate-ModulePublishingDirectory -ModuleName verb-Ex2010
+2026-02-18 16:18:59 ##  : 
+#*------v PROCESSING : verb-Ex2010 v------
+2026-02-18 16:18:59 INFO:  : Locating (CHANGELOG|README)\.md$ Root dir matches from :
+2026-02-18 16:19:00 INFO:  : verb-Ex2010 resolved $ModPubPath:C:\sc\verb-Ex2010\verb-Ex2010\
+$ModResPath:C:\sc\verb-Ex2010\Resource\
+2026-02-18 16:19:00 INFO:  : verb-Ex2010 resolved $ModPubPath:C:\sc\verb-Ex2010\verb-Ex2010\
+$ModResPath:C:\sc\verb-Ex2010\Licenses\
+2026-02-18 16:19:01 INFO:  : verb-Ex2010 resolved $ModPubPath:C:\sc\verb-Ex2010\verb-Ex2010\
+$ModResPath:C:\sc\verb-Ex2010\Docs\
+2026-02-18 16:19:01 INFO:  : copy-item w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+path                           {C:\sc\verb-Ex2010\CHANGELOG.md, C:\sc\verb-Ex2010\README.md, C:\sc\verb-Ex2010\Docs\Quick-Start-Installation-and-Example.md}                                                                                                                  
+destination                    C:\sc\verb-Ex2010\verb-Ex2010\                                                                                                                                                                                                                 
+force                          True                                                                                                                                                                                                                                           
+erroraction                    STOP                                                                                                                                                                                                                                           
+verbose                        False                                                                                                                                                                                                                                          
+whatif                         False
+--$pltCI.path:
+C:\sc\verb-Ex2010\CHANGELOG.md
+C:\sc\verb-Ex2010\README.md
+C:\sc\verb-Ex2010\Docs\Quick-Start-Installation-and-Example.md
+2026-02-18 16:19:02 ##  : 
+#*------^ PROCESSING : verb-Ex2010 ^------
+2026-02-18 16:19:02 INFO:  : Run: Remove any non-pub garbage cp'd into c:\sc\verb-Ex2010\verb-Ex2010 -ModuleName verb-Ex2010
+2026-02-18 16:19:03 INFO:  : Validate updated verb-Ex2010\verb-Ex2010 dir contents against Manifest:
+Run: test-modulemanifest -Path C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1
+2026-02-18 16:19:03 INFO:  : NON-Republish pass detected:
+MERGE parm specified as well:`n-Merge Public|Internal|Classes include subdirs module content into updated .psm1
+-Sign updated files.
+-Uninstall/Remove existing profile module
+-Copy new module to profile
+-Confirm: Get-Module -ListAvailable
+-Check/Update existing Psd1 Version
+-Publish-Module
+-Remove existing installed profile module
+-Test Install-Module
+-Test Import-Module
+2026-02-18 16:19:04 INFO:  : -Merge specified...
+2026-02-18 16:19:04 INFO:  : ConvertTo-ModuleMergedTDO w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModuleName                     verb-Ex2010                                                                                                                                                                                                                                    
+ModuleSourcePath               {c:\sc\verb-Ex2010\Public, c:\sc\verb-Ex2010\Internal}                                                                                                                                                                                         
+ModuleDestinationPath          c:\sc\verb-Ex2010\verb-Ex2010                                                                                                                                                                                                                  
+RequiredVersion                8.0.0                                                                                                                                                                                                                                          
+LogSpec                        {logging, logfile, transcript}                                                                                                                                                                                                                 
+NoAliasExport                                                                                                                                                                                                                                                                 
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+showdebug                      False                                                                                                                                                                                                                                          
+whatif                         False
+2026-02-18 16:19:05 INFO:  : ConvertTo-ModuleMergedTDO w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModuleName                     verb-Ex2010                                                                                                                                                                                                                                    
+ModuleSourcePath               {c:\sc\verb-Ex2010\Public, c:\sc\verb-Ex2010\Internal}                                                                                                                                                                                         
+ModuleDestinationPath          c:\sc\verb-Ex2010\verb-Ex2010                                                                                                                                                                                                                  
+RequiredVersion                8.0.0                                                                                                                                                                                                                                          
+LogSpec                        {logging, logfile, transcript}                                                                                                                                                                                                                 
+NoAliasExport                                                                                                                                                                                                                                                                 
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+showdebug                      False                                                                                                                                                                                                                                          
+whatif                         False
+2026-02-18 16:19:07 INFO:  : (NON-dyn psm1 detected - purging existing non-CBH content...)
+2026-02-18 16:19:09 INFO:  : Initialize-PSModuleDirectories w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModuleSourcePath               {c:\sc\verb-Ex2010\Public, c:\sc\verb-Ex2010\Internal}                                                                                                                                                                                         
+ModuleDestinationPath          c:\sc\verb-Ex2010\verb-Ex2010                                                                                                                                                                                                                  
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+whatif                         False
+2026-02-18 16:19:09 INFO:  : 
+#*------v (1/2):C:\sc\verb-Ex2010\Public v------
+2026-02-18 16:19:10 INFO:  : Processing 61 $ComponentScripts files through Remove-AuthenticodeSignature...
+2026-02-18 16:19:10 INFO:  : Processing (1/61):C:\sc\verb-Ex2010\Public\add-MailboxAccessGrant.ps1...
+2026-02-18 16:19:11 INFO:  : Processing (2/61):C:\sc\verb-Ex2010\Public\add-MbxAccessGrant.ps1...
+2026-02-18 16:19:12 INFO:  : Processing (3/61):C:\sc\verb-Ex2010\Public\Connect-Ex2010.ps1...
+2026-02-18 16:19:12 INFO:  : Processing (4/61):C:\sc\verb-Ex2010\Public\Connect-Ex2010XO.ps1...
+2026-02-18 16:19:13 INFO:  : Processing (5/61):C:\sc\verb-Ex2010\Public\Connect-ExchangeServerTDO.ps1...
+2026-02-18 16:19:13 INFO:  : Processing (6/61):C:\sc\verb-Ex2010\Public\connect-OPServices.ps1...
+2026-02-18 16:19:14 INFO:  : Processing (7/61):C:\sc\verb-Ex2010\Public\connect-XopLocalManagementShell.ps1...
+2026-02-18 16:19:15 INFO:  : Processing (8/61):C:\sc\verb-Ex2010\Public\Convert-xopAdminDisplayVersionTDO.ps1...
+2026-02-18 16:19:16 INFO:  : Processing (9/61):C:\sc\verb-Ex2010\Public\cx10cmw.ps1...
+2026-02-18 16:19:16 INFO:  : Processing (10/61):C:\sc\verb-Ex2010\Public\cx10tol.ps1...
+2026-02-18 16:19:17 INFO:  : Processing (11/61):C:\sc\verb-Ex2010\Public\cx10tor.ps1...
+2026-02-18 16:19:17 INFO:  : Processing (12/61):C:\sc\verb-Ex2010\Public\disable-ForestView.ps1...
+2026-02-18 16:19:18 INFO:  : Processing (13/61):C:\sc\verb-Ex2010\Public\disable-xopExServer.ps1...
+2026-02-18 16:19:18 INFO:  : Processing (14/61):C:\sc\verb-Ex2010\Public\Disconnect-Ex2010.ps1...
+2026-02-18 16:19:19 INFO:  : Processing (15/61):C:\sc\verb-Ex2010\Public\enable-ForestView.ps1...
+2026-02-18 16:19:19 INFO:  : Processing (16/61):C:\sc\verb-Ex2010\Public\get-ADExchangeServerTDO.ps1...
+2026-02-18 16:19:20 INFO:  : Processing (17/61):C:\sc\verb-Ex2010\Public\get-DAGDatabaseCopyStatus.ps1...
+2026-02-18 16:19:20 INFO:  : Processing (18/61):C:\sc\verb-Ex2010\Public\Get-ex16ExchangeServerTDO.ps1...
+2026-02-18 16:19:21 INFO:  : Processing (19/61):C:\sc\verb-Ex2010\Public\Get-ex16MaintenanceModeTDO.ps1...
+2026-02-18 16:19:21 INFO:  : Processing (20/61):C:\sc\verb-Ex2010\Public\Get-ExchangeOrganizationTDO.ps1...
+2026-02-18 16:19:22 INFO:  : Processing (21/61):C:\sc\verb-Ex2010\Public\Get-ExchServerFromExServersGroup.ps1...
+2026-02-18 16:19:22 INFO:  : Processing (22/61):C:\sc\verb-Ex2010\Public\get-ExRootSiteOUs.ps1...
+2026-02-18 16:19:23 INFO:  : Processing (23/61):C:\sc\verb-Ex2010\Public\get-IISLocalBoundCertifcateTDO.ps1...
+2026-02-18 16:19:23 INFO:  : Processing (24/61):C:\sc\verb-Ex2010\Public\get-MailboxDatabaseQuotas.ps1...
+2026-02-18 16:19:24 INFO:  : Processing (25/61):C:\sc\verb-Ex2010\Public\Get-MessageTrackingLogTDO.ps1...
+2026-02-18 16:19:25 INFO:  : Processing (26/61):C:\sc\verb-Ex2010\Public\Get-SetupTextVersionTDO.ps1...
+2026-02-18 16:19:26 INFO:  : Processing (27/61):C:\sc\verb-Ex2010\Public\get-UserMailADSummary.ps1...
+2026-02-18 16:19:26 INFO:  : Processing (28/61):C:\sc\verb-Ex2010\Public\get-xopExchangeLocalVersionTDO.ps1...
+2026-02-18 16:19:27 INFO:  : Processing (29/61):C:\sc\verb-Ex2010\Public\get-xopLocalBinVersionTDO.ps1...
+2026-02-18 16:19:27 INFO:  : Processing (30/61):C:\sc\verb-Ex2010\Public\get-xopLocalExSetupVersionTDO.ps1...
+2026-02-18 16:19:28 INFO:  : Processing (31/61):C:\sc\verb-Ex2010\Public\get-xopServerAdminDisplayVersion.ps1...
+2026-02-18 16:19:28 INFO:  : Processing (32/61):C:\sc\verb-Ex2010\Public\import-EMSLocalModule.ps1...
+2026-02-18 16:19:29 INFO:  : Processing (33/61):C:\sc\verb-Ex2010\Public\Initialize-xopEventIDTable.ps1...
+2026-02-18 16:19:30 INFO:  : Processing (34/61):C:\sc\verb-Ex2010\Public\Invoke-ExchangeCommand.ps1...
+2026-02-18 16:19:30 INFO:  : Processing (35/61):C:\sc\verb-Ex2010\Public\load-EMSLatest.ps1...
+2026-02-18 16:19:31 INFO:  : Processing (36/61):C:\sc\verb-Ex2010\Public\Load-EMSSnap.ps1...
+2026-02-18 16:19:31 INFO:  : Processing (37/61):C:\sc\verb-Ex2010\Public\new-MailboxGenericTOR.ps1...
+2026-02-18 16:19:32 INFO:  : Processing (38/61):C:\sc\verb-Ex2010\Public\new-MailboxShared.ps1...
+2026-02-18 16:19:33 INFO:  : Processing (39/61):C:\sc\verb-Ex2010\Public\preview-EAPUpdate.ps1...
+2026-02-18 16:19:33 INFO:  : Processing (40/61):C:\sc\verb-Ex2010\Public\Reconnect-Ex2010.ps1...
+2026-02-18 16:19:34 INFO:  : Processing (41/61):C:\sc\verb-Ex2010\Public\Reconnect-Ex2010XO.ps1...
+2026-02-18 16:19:34 INFO:  : Processing (42/61):C:\sc\verb-Ex2010\Public\remove-EMSLocalModule.ps1...
+2026-02-18 16:19:35 INFO:  : Processing (43/61):C:\sc\verb-Ex2010\Public\remove-SmtpPlusAddress.ps1...
+2026-02-18 16:19:35 INFO:  : Processing (44/61):C:\sc\verb-Ex2010\Public\resolve-ExchangeServerVersionTDO.ps1...
+2026-02-18 16:19:36 INFO:  : Processing (45/61):C:\sc\verb-Ex2010\Public\resolve-RecipientEAP.ps1...
+2026-02-18 16:19:36 INFO:  : Processing (46/61):C:\sc\verb-Ex2010\Public\Resolve-xopBuildSemVersToTextNameTDO.ps1...
+2026-02-18 16:19:37 INFO:  : Processing (47/61):C:\sc\verb-Ex2010\Public\Resolve-xopMajorVersionTDO.ps1...
+2026-02-18 16:19:37 INFO:  : Processing (48/61):C:\sc\verb-Ex2010\Public\rx10cmw.ps1...
+2026-02-18 16:19:38 INFO:  : Processing (49/61):C:\sc\verb-Ex2010\Public\rx10tol.ps1...
+2026-02-18 16:19:38 INFO:  : Processing (50/61):C:\sc\verb-Ex2010\Public\rx10tor.ps1...
+2026-02-18 16:19:39 INFO:  : Processing (51/61):C:\sc\verb-Ex2010\Public\Start-ex16MaintenanceMode.ps1...
+2026-02-18 16:19:39 INFO:  : Processing (52/61):C:\sc\verb-Ex2010\Public\start-Ex16ServicesInDependencyOrder.ps1...
+2026-02-18 16:19:40 INFO:  : Processing (53/61):C:\sc\verb-Ex2010\Public\start-ExMaintModeExpress.ps1...
+2026-02-18 16:19:40 INFO:  : Processing (54/61):C:\sc\verb-Ex2010\Public\Stop-ex16MaintenanceMode.ps1...
+2026-02-18 16:19:41 INFO:  : Processing (55/61):C:\sc\verb-Ex2010\Public\stop-Ex16ServicesInDependencyOrder.ps1...
+2026-02-18 16:19:41 INFO:  : Processing (56/61):C:\sc\verb-Ex2010\Public\Test-ExchangeOrganizationTDO.ps1...
+2026-02-18 16:19:42 INFO:  : Processing (57/61):C:\sc\verb-Ex2010\Public\test-ExOPPSession.ps1...
+2026-02-18 16:19:42 INFO:  : Processing (58/61):C:\sc\verb-Ex2010\Public\test-EXOPStatus.ps1...
+2026-02-18 16:19:43 INFO:  : Processing (59/61):C:\sc\verb-Ex2010\Public\test-LocalExchangeInfoTDO.ps1...
+2026-02-18 16:19:43 INFO:  : Processing (60/61):C:\sc\verb-Ex2010\Public\test-xopExchangeInstallWatermarkTDO.ps1...
+2026-02-18 16:19:44 INFO:  : Processing (61/61):C:\sc\verb-Ex2010\Public\toggle-ForestView.ps1...
+2026-02-18 16:19:44 INFO:  : 
+#*------v (2/2):C:\sc\verb-Ex2010\Internal v------
+2026-02-18 16:19:45 INFO:  : Processing 0 $ComponentScripts files through Remove-AuthenticodeSignature...
+2026-02-18 16:19:45 INFO:  : (Updating Psm1 Export-ModuleMember -Function to reflect Public modules)
+2026-02-18 16:19:46 INFO:  : Adding:FooterBlock...
+2026-02-18 16:19:46 INFO:  : confirm-ModuleBuildSync w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModPsdPath                     c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1_TMP                                                                                                                                                                                             
+RequiredVersion                8.0.0                                                                                                                                                                                                                                          
+NoTest                         True                                                                                                                                                                                                                                           
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-02-18 16:19:47 INFO:  : (test-path confirms $ModPsm1 & $ModTestPs1)
+2026-02-18 16:19:47 INFO:  : Import-PowerShellDataFile w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1_TMP                                                                                                                                                                                             
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+verbose                        False
+2026-02-18 16:19:48 INFO:  : (resolved Module attributes:
+$ModuleName:	verb-Ex2010
+$ModRoot:	c:\sc\verb-Ex2010
+$ModPsd1:	c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1_TMP
+$ModPsm1:	c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1_TMP
+$ModTestPs1:	c:\sc\verb-Ex2010\Tests\verb-Ex2010.tests.ps1
+$psd1Vers:	8.0.0
+$psd1guid:	684f10fe-59f5-491f-ad28-619d9ddbe0f9)
+2026-02-18 16:19:48 INFO:  : confirm-ModulePsd1Version w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1_TMP                                                                                                                                                                                             
+RequiredVersion                8.0.0                                                                                                                                                                                                                                          
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-02-18 16:19:49 INFO:  : (Version already updated to match)
+2026-02-18 16:19:49 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        8.0.0                                                                                                                                                                                                                                          
+Valid                          False
+2026-02-18 16:19:50 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-02-18 16:19:50 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        8.0.0                                                                                                                                                                                                                                          
+Valid                          True
+2026-02-18 16:19:51 INFO:  : #*======^ confirm-ModulePsd1Version: c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1_TMP ^======
+2026-02-18 16:19:51 INFO:  : (confirm-ModulePsd1Version:Success)
+2026-02-18 16:19:52 INFO:  : confirm-ModulePsm1Version w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1_TMP                                                                                                                                                                                             
+RequiredVersion                8.0.0                                                                                                                                                                                                                                          
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-02-18 16:19:52 WARNING:  : In:c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1_TMP
+Version present:(7.1.2)
+*does not* properly match:8.0.0
+FORCING MATCHING UPDATE!
+2026-02-18 16:19:54 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        8.0.0                                                                                                                                                                                                                                          
+Valid                          False
+2026-02-18 16:19:55 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-02-18 16:19:55 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        8.0.0                                                                                                                                                                                                                                          
+Valid                          True
+2026-02-18 16:19:56 INFO:  : #*======^ confirm-ModulePsm1Version: c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1_TMP ^======
+2026-02-18 16:19:56 INFO:  : (confirm-ModulePsm1Version:Success)
+2026-02-18 16:19:57 INFO:  : (-NoTest: skipping confirm-ModuleTestPs1Guid)
+2026-02-18 16:19:57 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Manifest                       c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1_TMP                                                                                                                                                                                             
+Module                         c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1_TMP                                                                                                                                                                                             
+Pester                         (SKIPPED)                                                                                                                                                                                                                                      
+Guid                           (SKIPPED)                                                                                                                                                                                                                                      
+Version                        8.0.0                                                                                                                                                                                                                                          
+Valid                          False
+2026-02-18 16:19:58 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-02-18 16:19:58 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Manifest                       c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1_TMP                                                                                                                                                                                             
+Module                         c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1_TMP                                                                                                                                                                                             
+Pester                         (SKIPPED)                                                                                                                                                                                                                                      
+Guid                           (SKIPPED)                                                                                                                                                                                                                                      
+Version                        8.0.0                                                                                                                                                                                                                                          
+Valid                          True
+2026-02-18 16:19:59 INFO:  : #*======^ confirm-ModuleBuildSync:  ^======
+2026-02-18 16:19:59 INFO:  : (confirm-ModuleBuildSync:Success)
+2026-02-18 16:20:00 INFO:  : Test-ModuleTMPFiles w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModuleNamePSM1Path             c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1_TMP                                                                                                                                                                                             
+verbose                        False
+2026-02-18 16:20:00 INFO:  : #*======v Test-ModuleTMPFiles: c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1_TMP v======
+2026-02-18 16:20:01 INFO:  : 
+Psm1:c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1_TMP
+Psd1:c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1_TMP
+2026-02-18 16:20:01 INFO:  : Test-ModuleManifest:PASSED
+2026-02-18 16:20:02 INFO:  : Creating Testable c:\sc\verb-Ex2010\verb-Ex2010\cf35a21e-a3e0-4e43-ae61-f31c3382d27a.psm1
+ to validate c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1_TMP will Import-Module
+2026-02-18 16:20:03 INFO:  : Ipmo: PASSED
+2026-02-18 16:20:03 INFO:  : (remove-module -name c:\sc\verb-Ex2010\verb-Ex2010\cf35a21e-a3e0-4e43-ae61-f31c3382d27a.psm1 -force)
+2026-02-18 16:20:04 INFO:  : (remove-item -path c:\sc\verb-Ex2010\verb-Ex2010\cf35a21e-a3e0-4e43-ae61-f31c3382d27a.psm1 -ErrorAction SilentlyContinue ; 
+2026-02-18 16:20:04 INFO:  : (remove-item -path c:\sc\verb-Ex2010\verb-Ex2010\cf35a21e-a3e0-4e43-ae61-f31c3382d27a.psd1 -ErrorAction SilentlyContinue ; 
+2026-02-18 16:20:05 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Manifest                       cf35a21e-a3e0-4e43-ae61-f31c3382d27a                                                                                                                                                                                                           
+Module                         cf35a21e-a3e0-4e43-ae61-f31c3382d27a                                                                                                                                                                                                           
+Valid                          False
+2026-02-18 16:20:05 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-02-18 16:20:06 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Manifest                       cf35a21e-a3e0-4e43-ae61-f31c3382d27a                                                                                                                                                                                                           
+Module                         cf35a21e-a3e0-4e43-ae61-f31c3382d27a                                                                                                                                                                                                           
+Valid                          True
+2026-02-18 16:20:06 INFO:  : #*======^ Test-ModuleTMPFiles: c:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1_TMP ^======
+2026-02-18 16:20:07 INFO:  : #*======^ ConvertTo-ModuleMergedTDO: ^======
+2026-02-18 16:20:07 INFO:  : (Test-ModuleManifest:PASSED)
+2026-02-18 16:20:08 INFO:  : Checking sync of Psd1 module guid to the Pester Test Script: c:\sc\verb-Ex2010\Tests\verb-Ex2010.tests.ps1
+2026-02-18 16:20:08 INFO:  : confirm-ModuleBuildSync w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModPsdPath                     C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1                                                                                                                                                                                                 
+RequiredVersion                8.0.0                                                                                                                                                                                                                                          
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-02-18 16:20:09 INFO:  : (test-path confirms $ModPsm1 & $ModTestPs1)
+2026-02-18 16:20:09 INFO:  : Import-PowerShellDataFile w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1                                                                                                                                                                                                 
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+verbose                        False
+2026-02-18 16:20:10 INFO:  : (resolved Module attributes:
+$ModuleName:	verb-Ex2010
+$ModRoot:	c:\sc\verb-Ex2010
+$ModPsd1:	C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1
+$ModPsm1:	C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1
+$ModTestPs1:	c:\sc\verb-Ex2010\Tests\verb-Ex2010.tests.ps1
+$psd1Vers:	8.0.0
+$psd1guid:	684f10fe-59f5-491f-ad28-619d9ddbe0f9)
+2026-02-18 16:20:10 INFO:  : confirm-ModulePsd1Version w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1                                                                                                                                                                                                 
+RequiredVersion                8.0.0                                                                                                                                                                                                                                          
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-02-18 16:20:11 INFO:  : (Version already updated to match)
+2026-02-18 16:20:11 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        8.0.0                                                                                                                                                                                                                                          
+Valid                          False
+2026-02-18 16:20:12 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-02-18 16:20:12 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        8.0.0                                                                                                                                                                                                                                          
+Valid                          True
+2026-02-18 16:20:13 INFO:  : #*======^ confirm-ModulePsd1Version: C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1 ^======
+2026-02-18 16:20:13 INFO:  : (confirm-ModulePsd1Version:Success)
+2026-02-18 16:20:13 INFO:  : confirm-ModulePsm1Version w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1                                                                                                                                                                                                 
+RequiredVersion                8.0.0                                                                                                                                                                                                                                          
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-02-18 16:20:14 INFO:  : (Version already updated to match)
+2026-02-18 16:20:14 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        8.0.0                                                                                                                                                                                                                                          
+Valid                          False
+2026-02-18 16:20:15 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-02-18 16:20:15 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        8.0.0                                                                                                                                                                                                                                          
+Valid                          True
+2026-02-18 16:20:16 INFO:  : #*======^ confirm-ModulePsm1Version: C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1 ^======
+2026-02-18 16:20:16 INFO:  : (confirm-ModulePsm1Version:Success)
+2026-02-18 16:20:17 INFO:  : Checking sync of Psd1 module guid to the Pester Test Script: c:\sc\verb-Ex2010\Tests\verb-Ex2010.tests.ps1
+2026-02-18 16:20:17 INFO:  : confirm-ModuleTestPs1Guid w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           c:\sc\verb-Ex2010\Tests\verb-Ex2010.tests.ps1                                                                                                                                                                                                  
+RequiredGuid                   684f10fe-59f5-491f-ad28-619d9ddbe0f9                                                                                                                                                                                                           
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-02-18 16:20:18 INFO:  : (Guid  already updated to match)
+2026-02-18 16:20:19 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Guid                           684f10fe-59f5-491f-ad28-619d9ddbe0f9                                                                                                                                                                                                           
+Valid                          False
+2026-02-18 16:20:19 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-02-18 16:20:20 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Guid                           684f10fe-59f5-491f-ad28-619d9ddbe0f9                                                                                                                                                                                                           
+Valid                          True
+2026-02-18 16:20:20 INFO:  : (confirm-ModuleTestPs1Guid:Success)
+2026-02-18 16:20:21 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Manifest                       C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1                                                                                                                                                                                                 
+Module                         C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1                                                                                                                                                                                                 
+Pester                         c:\sc\verb-Ex2010\Tests\verb-Ex2010.tests.ps1                                                                                                                                                                                                  
+Guid                           684f10fe-59f5-491f-ad28-619d9ddbe0f9                                                                                                                                                                                                           
+Version                        8.0.0                                                                                                                                                                                                                                          
+Valid                          False
+2026-02-18 16:20:21 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-02-18 16:20:22 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Manifest                       C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1                                                                                                                                                                                                 
+Module                         C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psm1                                                                                                                                                                                                 
+Pester                         c:\sc\verb-Ex2010\Tests\verb-Ex2010.tests.ps1                                                                                                                                                                                                  
+Guid                           684f10fe-59f5-491f-ad28-619d9ddbe0f9                                                                                                                                                                                                           
+Version                        8.0.0                                                                                                                                                                                                                                          
+Valid                          True
+2026-02-18 16:20:22 INFO:  : #*======^ confirm-ModuleBuildSync:  ^======
+2026-02-18 16:20:23 INFO:  : (confirm-ModuleBuildSync:Success)
+2026-02-18 16:20:23 INFO:  : Signing appropriate files...
+2026-02-18 16:20:24 INFO:  : set-AuthenticodeSignatureTDO w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+file                           {C:\sc\verb-Ex2010\rebuild-module.ps1, C:\sc\verb-Ex2010\requirements.psd1, C:\sc\verb-Ex2010\Tests\PPoShScriptingStyle.psd1, C:\sc\verb-Ex2010\Tests\ToddomationScriptingStyle-medium.psd1...}                                                
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+whatif                         False
+2026-02-18 16:20:25 INFO:  : Removing existing profile verb-Ex2010 content...
+2026-02-18 16:20:25 INFO:  : Uninstall-ModuleForce w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModuleName                     verb-Ex2010                                                                                                                                                                                                                                    
+Verbose                        False                                                                                                                                                                                                                                          
+whatif                         False
+2026-02-18 16:20:31 INFO:  : 
+#*------v Uninstall PSGet Mod:verb-Ex2010:v7.1.2 v------
+2026-02-18 16:20:56 INFO:  : 
+#*------^ Uninstall PSGet Mod:verb-Ex2010:v7.1.2 ^------
+2026-02-18 16:20:57 INFO:  : (Processing $env:PSModulePath paths, for surviving locked copies of verb-Ex2010 to *manually* purge...)
+2026-02-18 16:20:57 INFO:  : Checking: verb-Ex2010 below: C:\Users\kadritss\Documents\WindowsPowerShell\Modules...
+2026-02-18 16:20:58 INFO:  : Checking: verb-Ex2010 below: C:\ProgramData\Boxstarter...
+2026-02-18 16:20:58 INFO:  : Checking: verb-Ex2010 below: C:\Program Files\WindowsPowerShell\Modules...
+2026-02-18 16:20:59 INFO:  : Checking: verb-Ex2010 below: C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules...
+2026-02-18 16:20:59 INFO:  : Checking: verb-Ex2010 below: C:\Program Files (x86)\AutoIt3\AutoItX...
+2026-02-18 16:21:00 INFO:  : Copying module to profile (net of .git & .vscode dirs, and backed up content)...
+2026-02-18 16:21:00 INFO:  : $srcFiles:post-filter out:
+\\(Package|Tests|logs)\\|(\.ps[dm]1_(\d+-\d+[AP]M|TMP)|-LOG-BATCH-EXEC-\d+-\d+[AP]M-log\.txt|\\(fingerprint|Psd1filelist))$
+2026-02-18 16:21:01 INFO:  : Discovered mod-copy files ($srcFiles.fullname):w
+C:\sc\verb-Ex2010\VERB-Ex2010\CHANGELOG.md
+C:\sc\verb-Ex2010\VERB-Ex2010\LICENSE.txt
+C:\sc\verb-Ex2010\VERB-Ex2010\Quick-Start-Installation-and-Example.md
+C:\sc\verb-Ex2010\VERB-Ex2010\README.md
+C:\sc\verb-Ex2010\VERB-Ex2010\verb-Ex2010.psd1
+C:\sc\verb-Ex2010\VERB-Ex2010\verb-Ex2010.psm1
+2026-02-18 16:21:02 INFO:  : Non-Pre-existing:$to:C:\Users\kadritss\Documents\WindowsPowerShell\Modules\verb-Ex2010\verb-Ex2010
+Pre-creating before copy...
+2026-02-18 16:21:02 INFO:  : Mode   LastWriteTime        Length Name       
+----   -------------        ------ ----       
+d----- 2/18/2026 4:21:02 PM        verb-Ex2010
+2026-02-18 16:21:03 INFO:  : -Merge:exclude $MergeBuildExcl \\(Public|Internal|External|Private)\\.*.ps1$ files from temp build copy
+2026-02-18 16:21:03 INFO:  : Recursively remove empty subdirs below C:\Users\kadritss\Documents\WindowsPowerShell\Modules\verb-Ex2010\verb-Ex2010...
+2026-02-18 16:21:04 INFO:  : Move/Flatten Resource etc files into root of temp Build dir...
+2026-02-18 16:21:04 INFO:  : Unable to locate a problematic temp mod dir C:\Users\kadritss\Documents\WindowsPowerShell\Modules\verb-Ex2010\verb-Ex2010 COPY of Quick-Start-Installation-and-Example.md
+2026-02-18 16:21:05 INFO:  : Unable to locate a problematic temp mod dir C:\Users\kadritss\Documents\WindowsPowerShell\Modules\verb-Ex2010\verb-Ex2010 COPY of CHANGELOG.md
+2026-02-18 16:21:05 INFO:  : Unable to locate a problematic temp mod dir C:\Users\kadritss\Documents\WindowsPowerShell\Modules\verb-Ex2010\verb-Ex2010 COPY of LICENSE.txt
+2026-02-18 16:21:06 INFO:  : Unable to locate a problematic temp mod dir C:\Users\kadritss\Documents\WindowsPowerShell\Modules\verb-Ex2010\verb-Ex2010 COPY of README.md
+2026-02-18 16:21:07 INFO:  : copy/Flatten Resource etc files into source root c:\sc\verb-Ex2010\verb-Ex2010 dir...
+2026-02-18 16:21:07 INFO:  : Resolved $ModPsdPath:
+C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1
+2026-02-18 16:21:08 INFO:  : 
+==Verifying CU:Mods\verb-Ex2010\verb-Ex2010\Quick-Start-Installation-and-Example.md:
+2026-02-18 16:21:08 INFO:  : 
+==Verifying CU:Mods\verb-Ex2010\verb-Ex2010\CHANGELOG.md:
+2026-02-18 16:21:09 INFO:  : 
+==Verifying CU:Mods\verb-Ex2010\verb-Ex2010\LICENSE.txt:
+2026-02-18 16:21:09 INFO:  : 
+==Verifying CU:Mods\verb-Ex2010\verb-Ex2010\README.md:
+2026-02-18 16:21:10 INFO:  : Running pre-Publish-Module .psd1 test:
+Test-ModuleManifest -path C:\sc\verb-Ex2010\verb-Ex2010\verb-Ex2010.psd1
+2026-02-18 16:21:10 INFO:  : (Test-ModuleManifest:PASSED)
+2026-02-18 16:21:11 INFO:  : (Profiling Repo: get-PSRepository -name lyncRepo...)
+2026-02-18 16:21:13 INFO:  : 
+Publish-Module w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Name                           verb-Ex2010                                                                                                                                                                                                                                    
+Repository                     lyncRepo                                                                                                                                                                                                                                       
+RequiredVersion                8.0.0                                                                                                                                                                                                                                          
+Verbose                        True                                                                                                                                                                                                                                           
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+errorVariable                  pbmo_Err                                                                                                                                                                                                                                       
+whatif                         False
+2026-02-18 16:21:40 WARNING:  :  FOUND $pbmo_Err: import-module HAD ERRORS! (no action, could be non-impacting)
+2026-02-18 16:21:41 WARNING:  :  Publish-Module PBMO UNDEFINED ERROR! System.Management.Automation.StopUpstreamCommandsException: System error.     at Microsoft.PowerShell.Commands.SelectObjectCommand.ProcessRecord()     at System.Management.Automation.CommandProcessor.ProcessRecord() (But PublishModule doesn't bother to return a functional Error object with an Exception, so we can't trust/parse or act on it. Just echo)
+2026-02-18 16:21:42 WARNING:  :  Publish-Module PBMO UNDEFINED ERROR! System.Management.Automation.StopUpstreamCommandsException: System error.     at Microsoft.PowerShell.Commands.SelectObjectCommand.ProcessRecord()     at System.Management.Automation.CommandProcessor.ProcessRecord() (But PublishModule doesn't bother to return a functional Error object with an Exception, so we can't trust/parse or act on it. Just echo)
+2026-02-18 16:21:43 INFO:  : Waiting for:find-module -name verb-Ex2010 -Repository lyncRepo ...
+2026-02-18 16:21:58 INFO:  : find-module returned Array, taking highest Version...
+2026-02-18 16:21:59 INFO:  : Install-Module w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Name                           verb-Ex2010                                                                                                                                                                                                                                    
+Repository                     lyncRepo                                                                                                                                                                                                                                       
+RequiredVersion                8.0.0                                                                                                                                                                                                                                          
+scope                          CurrentUser                                                                                                                                                                                                                                    
+force                          True                                                                                                                                                                                                                                           
+AllowClobber                   True                                                                                                                                                                                                                                           
+errorVariable                  ismo_Err                                                                                                                                                                                                                                       
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+whatif                         False
+2026-02-18 16:22:17 INFO:  : Testing Module:Import-Module w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Name                           verb-Ex2010                                                                                                                                                                                                                                    
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+errorVariable                  ipmo_Err                                                                                                                                                                                                                                       
+force                          True                                                                                                                                                                                                                                           
+verbose                        True
+2026-02-18 16:22:19 INFO:  : Retrieving matching Repo .nupkg file:
+gci \\lynmsv10\lync_fs\scripts\sc\verb-Ex2010.8.0.0.nupkgl..
+2026-02-18 16:22:19 INFO:  : Proper updated .nupkg file found:verb-Ex2010.8.0.0.nupkg, copying to local Pkg directory.
+2026-02-18 16:22:20 INFO:  : remove-UnneededFileVariants w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           c:\sc\verb-Ex2010\Package                                                                                                                                                                                                                      
+Include                        nupkg                                                                                                                                                                                                                                          
+Pattern                                                                                                                                                                                                                                                                       
+FilterOn                       CreationTime                                                                                                                                                                                                                                   
+Keep                           2                                                                                                                                                                                                                                              
+KeepToday                      True                                                                                                                                                                                                                                           
+verbose                        True                                                                                                                                                                                                                                           
+whatif                         False
+2026-02-18 16:22:21 INFO:  : remove-UnneededFileVariants w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           c:\sc\verb-Ex2010\Tests                                                                                                                                                                                                                        
+Include                        ScriptAnalyzer-Results-*.xml                                                                                                                                                                                                                   
+Pattern                                                                                                                                                                                                                                                                       
+FilterOn                       CreationTime                                                                                                                                                                                                                                   
+Keep                           4                                                                                                                                                                                                                                              
+KeepToday                      True                                                                                                                                                                                                                                           
+verbose                        True                                                                                                                                                                                                                                           
+whatif                         False
+2026-02-18 16:22:21 INFO:  : 
+---------------------------------------------------------------------------------
+Processing completed: verb-Ex2010 :: c:\sc\verb-Ex2010
+- Script is currently installed (from PsRep: with scope:CurrentUser, under TORO\kadritss profile
+
+- To update other scopes/accounts on same machine, or install on other machines:
+    1. Uninstall current module copies:
+
+        Uninstall-Module -Name verb-Ex2010) -AllVersion -whatif ;
+
+    2. Install the current version (or higher) from the Repo:lyncRepo:
+
+        install-Module -name verb-Ex2010 -Repository lyncRepo -RequiredVersion 8.0.0 -scope currentuser -whatif ;
+
+    3. Reimport the module with -force, to ensure the current installed verison is loaded:
+
+        import-Module -name verb-Ex2010 -force -verbose ;
+
+#-=-=-Stacked list for the above: CURRENTUSER=-=-=-=-=-=
+$whatif=$false ;  $tScop = 'CurrentUser' ; $tMod = 'verb-Ex2010' ; $tVer = '8.0.0' ;
+if($IsCoreCLR){
+    write-warning "WARNING YOU'RE INSTALLING INTO POWERSHELLCORE (7+)!
+THE MODULE WILL GO INTO \DOCS\POWERSHELL\MODULES
+(vs \DOCS\WINDOWSPOWERSHELL\MODULES)!" ; 
+    $bRet=Read-Host "Enter YYY to continue. Anything else will exit"  ; 
+    if ($bRet.ToUpper() -eq "YYY") {} else {WRITE-WARNING "HALTING!" ; BREAK} ; 
+} ; 
+TRY {
+    switch($tScop){
+        'CurrentUser'{$ModPath = "$(split-path $profile)\Modules\$($tmod)" }
+        'AllUsers' {$ModPath = "$($env:ProgramFiles)\WindowsPowerShell\Modules)\$($tmod)"} 
+    } ;
+    if($Repository = (Get-PSRepository -Name $localPSRepo -ea 'STOP').name){
+        rmo -Name $tmod -ea 0 ;
+        Uninstall-Module -Name $tmod -AllVersion -force -ea 0 -whatif:$($whatif);
+        gi -path $ModPath -ea 0 |ri -Recurse -force -verbose  -whatif:$($whatif) ;
+        if($thisVers = find-module -name $tmod -Repository $Repository -RequiredVersion $tVer){
+            $thisvers  | ft -a Name,Version,Repository ; 
+            $thisVers | install-Module -scope $tScop -Force -AllowClobber -ea 'STOP' -whatif:$($whatif) ;
+        }else {
+            throw "Unable to:find-module -name $($tmod) -Repository $($Repository) -RequiredVersion $($tVer)" ; 
+            break ; 
+        } ; 
+        rmo -Name $tmod -force -ea 0 ;
+        ipmo -name $tmod -force -verbose -ea 'STOP'  ;
+        gmo -name $tmod | ? version -ne $tVer | rmo -Force -Verbose ; 
+        gmo -name $tmod -list ;
+    } else {
+        throw "Unable to resolve `lyncRepo to a configured local PSRepository" ;
+    } ;
+} CATCH {
+    $ErrTrapd=$Error[0] ;
+    $smsg = "
+$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+    write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+} ;
+#-=-=-=-=-=-=-=-=
+#-=-=-Stacked list for the above: ALLUSERS=-=-=-=-=-=
+$whatif=$false ; $tScop = 'AllUsers' ; $tMod = 'verb-Ex2010' ; $tVer = '8.0.0' ;  
+if($IsCoreCLR){
+    write-warning "WARNING YOU'RE INSTALLING INTO POWERSHELLCORE (7+)!
+THE MODULE WILL GO INTO \DOCS\POWERSHELL\MODULES
+(vs \DOCS\WINDOWSPOWERSHELL\MODULES)!" ; 
+    $bRet=Read-Host "Enter YYY to continue. Anything else will exit"  ; 
+    if ($bRet.ToUpper() -eq "YYY") {} else {WRITE-WARNING "HALTING!" ; BREAK} ; 
+} ; 
+TRY {
+    switch($tScop){
+        'CurrentUser'{$ModPath = "$(split-path $profile)\Modules\$($tmod)" }
+        'AllUsers' {$ModPath = "$($env:ProgramFiles)\WindowsPowerShell\Modules)\$($tmod)"} 
+    } ;
+    if($Repository = (Get-PSRepository -Name $localPSRepo -ea 'STOP').name){
+        rmo -Name $tmod -ea 0 ;
+        Uninstall-Module -Name $tmod -AllVersion -force -ea 0 -whatif:$($whatif);
+        gi -path $ModPath -ea 0 |ri -Recurse -force -verbose  -whatif:$($whatif) ;
+        if($thisVers = find-module -name $tmod -Repository $Repository -RequiredVersion $tVer){
+            $thisvers  | ft -a Name,Version,Repository ; 
+            $thisVers | install-Module -scope $tScop -Force -AllowClobber -ea 'STOP' -whatif:$($whatif) ;
+        }else {
+            throw "Unable to:find-module -name $($tmod) -Repository $($Repository) -RequiredVersion $($tVer)" ; 
+            break ; 
+        } ; 
+        rmo -Name $tmod -force -ea 0 ;
+        ipmo -name $tmod -force -verbose -ea 'STOP'  ;
+        gmo -name $tmod | ? version -ne $tVer | rmo -Force -Verbose ; 
+        gmo -name $tmod -list ;
+    } else {
+        throw "Unable to resolve `lyncRepo to a configured local PSRepository" ;
+    } ;
+} CATCH {
+    $ErrTrapd=$Error[0] ;
+    $smsg = "
+$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+    write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+} ;
+#-=-=-=-=-=-=-=-=
+
+- You may also want to run the configured Pester Tests of the new script:
+
+        . c:\sc\verb-Ex2010\Tests\verb-Ex2010.tests.ps1
+
+Full Processing Details can be found in:
+
+c:\scripts\logs\update-NewModule-verb-Ex2010-LOG-BATCH-EXEC-20260218-1618PM-log.txt
+
+---------------------------------------------------------------------------------
+
+2026-02-18 16:22:22 INFO:  : 
+(Most recent processing log can be found at:c:\sc\verb-Ex2010\update-NewModule-verb-Ex2010-LOG-BATCH-EXEC-20260218-1618PM-log.txt)
+(perm copy stored at:c:\scripts\logs\update-NewModule-verb-Ex2010-LOG-BATCH-EXEC-20260218-1618PM-log.txt

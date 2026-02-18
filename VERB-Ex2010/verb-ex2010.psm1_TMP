@@ -1,30 +1,30 @@
-﻿# verb-ex2010.psm1
+﻿# verb-Ex2010.psm1
 
 
 <#
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 7.1.2
+Version     : 8.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
-CreatedDate : 1/17.1.20
+CreatedDate : 1/18.0.00
 FileName    : VERB-Ex2010.psm1
 License     : MIT
-Copyright   : (c) 1/17.1.20 Todd Kadrie
+Copyright   : (c) 1/18.0.00 Todd Kadrie
 Github      : https://github.com/tostka
 REVISIONS
 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
 * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
-* 1/17.1.20 - 1.0.0.0
+* 1/18.0.00 - 1.0.0.0
 # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
 # 11:34 AM 12/30/2019 ran vsc alias-expansion
 # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
 # 10:19 AM 11/1/2019 trimmed some whitespace
 # 10:05 AM 10/31/2019 added sample load/call info
-# 12:02 PM 5/7.1.29 added cx10,rx10,dx10 aliases
-# 11:29 AM 5/7.1.29 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+# 12:02 PM 5/8.0.09 added cx10,rx10,dx10 aliases
+# 11:29 AM 5/8.0.09 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
 # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
 # 4:15 PM 3/24/2018 updated pshhelp
 # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
@@ -7547,6 +7547,8 @@ function Get-ex16ExchangeServerTDO{
         AddedWebsite: http://www.toddomation.com
         AddedTwitter: @tostka / http://twitter.com/tostka
         REVISIONS
+        * 2:35 PM 2/17/2026 add missing base alias
+        * 2:35 PM 12/2/2025 spliced in re-import connect-xopLocalManagementShell code
         * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat) ; ADD: being{} & connext-xop...() call (dep)
         * 9:10 AM 7/24/2025 ren: Get-EPExchangeServer -> Get-ex16ExchangeServerTDO (alias orig name) ; 
         updated return obj, now includes raw component status and a xxxFmt formated output (visible in dumps wo manual expansion); added ServerWideOffline that can be used as central check (assuming it can't be set if other components are active)
@@ -7565,25 +7567,53 @@ function Get-ex16ExchangeServerTDO{
         $testResults = Get-EPMaintenanceMode -identity SERVER1 ; 
         #>
         [cmdletbinding()]
-        [Alias('Get-EPExchangeServer')]
+        [Alias('Get-EPExchangeServer','Get-ex16ExchangeServer')]
         PARAM (
             [Parameter(mandatory=$true,valuefrompipelinebypropertyname=$true)][PSCustomObject]$Identity
         )
-        BEGIN{
-            if(-not (gcm Get-ExchangeServer -ea 0)){
-                if(connect-XopLocalManagementShell){
-                    $smsg = "Connected" ; 
-                    if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        BEGIN{            
+            #region CONNECT_XOPLOCAL ; #*------v connect-XopLocal v------
+            $tcmdlet = 'get-ExchangeServer' ;
+            $cmd = $null; $cmd = get-command $tcmdlet -erroraction 0 ;
+            if(-not $cmd){
+                if($xopconn = connect-XopLocalManagementShell){
+                    if($ExPSS = get-pssession | ? { $_.ComputerName -match "^$($env:computername)" -AND $_.ConfigurationName -eq 'Microsoft.Exchange' } | sort id -Descending | select -first 1 ){
+                        TRY{
+                            $cmd = $null; $cmd = get-command $tcmdlet -erroraction 0 ;
+                            if(-not $cmd){
+                                $smsg = "Missing $($cmdlet): re-importing PSSession..." ;
+                                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                } ;
+                                $ExIPSS = Import-PSSession $ExPSS -allowclobber -ea STOP ;
+                            } ;
+                            $cmd = $null; $cmd = get-command 'Get-OrganizationConfig' -erroraction stop ;
+                            $smsg = "Connected to: $($expss.computername)" ;
+                            if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                            } ;
+                        } CATCH {
+                            $ErrTrapd=$Error[0] ;
+                            $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                            if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            } ;
+                            BREAK ;
+                        } ;
                     } ;
                 } else {
                     $smsg = "NOT CONNECTED!"
                     if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     } ;
+                    BREAK ;
                 } ;
             } ;
-        }
+            #endregion CONNECT_XOPLOCAL ; #*------^ END connect-XopLocal ^------
+        } # BEG-E
         PROCESS {
             # Validate Exchange Server
             if ($input) {
@@ -13901,8 +13931,8 @@ function get-xopServerAdminDisplayVersion {
             '15.2.792.13' = 	'Exchange Server 2019 CU8 Apr21SU'
             '15.2.792.10' = 	'Exchange Server 2019 CU8 Mar21SU'
             '15.2.792.3' = 	'Exchange Server 2019 CU8'
-            '15.2.7.1.23' = 	'Exchange Server 2019 CU7 Mar21SU'
-            '15.2.721.2' = 	'Exchange Server 2019 CU7'
+            '15.2.721.13' = 	'Exchange Server 2019 CU7 Mar21SU'
+            '15.2.8.0.0' = 	'Exchange Server 2019 CU7'
             '15.2.659.12' = 	'Exchange Server 2019 CU6 Mar21SU'
             '15.2.659.4' = 	'Exchange Server 2019 CU6'
             '15.2.595.8' = 	'Exchange Server 2019 CU5 Mar21SU'
@@ -14959,7 +14989,7 @@ function new-MailboxGenericTOR {
     # 10:28 AM 6/27/2018 add $domaincontroller param option - skips dc discovery process and uses the spec, also updated $findOU code to work with torolab dom
     # 10:59 AM 5/21/2018 Fixed broken -nongeneric $true functionality: (corrected samaccountname gen code for blank fname field). Also added Mailuser/RemoteMailbox support for -Owner value. Validated functional for creation of the LYNCmonacct1 mbx.
     # 11:25 AM 12/22/2017 missing casmailbox splat construct for psv2 section, update CU5 test regx for perrotde & perrotpl, output an error when it fails to find a BaseUser (new empty site with empty target OU to draw from, prompts to hand spec -BaseUser param with mbx in another OU or loc
-    # 11:58 AM 11/15/2017 1321: accommodate EXO-hosted Owners by testing with get-remotemailbox -AND get-mailbox on the owner spec. Created a mailbox, seemed to work. Not sure of access grant script yet.
+    # 11:58 AM 11/15/2018.0.01: accommodate EXO-hosted Owners by testing with get-remotemailbox -AND get-mailbox on the owner spec. Created a mailbox, seemed to work. Not sure of access grant script yet.
     # 11:43 AM 10/6/2017 made $Cu5 Mandatry:$false
     # 10:30 AM 10/6/2017 fix typo in $cu5 switch
     # 8:41 AM 10/6/2017 major re-splict to read lost set-mailbox (alt domain assignment) & set-casmailbox material. Need to splice this code
@@ -16521,7 +16551,7 @@ function new-MailboxShared {
     # 10:28 AM 6/27/2018 add $domaincontroller param option - skips dc discovery process and uses the spec, also updated $findOU code to work with TOL dom
     # 10:59 AM 5/21/2018 Fixed broken -nongeneric $true functionality: (corrected samaccountname gen code for blank fname field). Also added Mailuser/RemoteMailbox support for -Owner value. Validated functional for creation of the LYNCmonacct1 mbx.
     # 11:25 AM 12/22/2017 missing casmailbox splat construct for psv2 section, update CU5 test regx for perrotde & perrotpl, output an error when it fails to find a BaseUser (new empty site with empty target OU to draw from, prompts to hand spec -BaseUser param with mbx in another OU or loc
-    # 11:58 AM 11/15/2017 1321: accommodate EXO-hosted Owners by testing with get-remotemailbox -AND get-mailbox on the owner spec. Created a mailbox, seemed to work. Not sure of access grant script yet.
+    # 11:58 AM 11/15/2018.0.01: accommodate EXO-hosted Owners by testing with get-remotemailbox -AND get-mailbox on the owner spec. Created a mailbox, seemed to work. Not sure of access grant script yet.
     # 11:43 AM 10/6/2017 made $Cu5 Mandatry:$false
     # 10:30 AM 10/6/2017 fix typo in $cu5 switch
     # 8:41 AM 10/6/2017 major re-splict to read lost set-mailbox (alt domain assignment) & set-casmailbox material. Need to splice this code
@@ -20581,7 +20611,7 @@ Function Resolve-xopBuildSemVersToTextNameTDO {
         Exchange Server 2019 CU10          6/29/2021   15.2.922.7       15.02.0922.007  Exchange Server 2019 CU10 EX2019_CU10        TRUE         
         Exchange Server 2019 CU9           3/16/2021   15.2.858.5       15.02.0858.005  Exchange Server 2019 CU9  EX2019_CU9         TRUE         
         Exchange Server 2019 CU8           12/15/2020  15.2.792.3       15.02.0792.003  Exchange Server 2019 CU8  EX2019_CU8         TRUE         
-        Exchange Server 2019 CU7           9/15/2020   15.2.721.2       15.02.0721.002  Exchange Server 2019 CU7  EX2019_CU7         TRUE         
+        Exchange Server 2019 CU7           9/15/2020   15.2.8.0.0       15.02.0721.002  Exchange Server 2019 CU7  EX2019_CU7         TRUE         
         Exchange Server 2019 CU6           6/16/2020   15.2.659.4       15.02.0659.004  Exchange Server 2019 CU6  EX2019_CU6         TRUE         
         Exchange Server 2019 CU5           3/17/2020   15.2.595.3       15.02.0595.003  Exchange Server 2019 CU5  EX2019_CU5         TRUE         
         Exchange Server 2019 CU4           12/17/2019  15.2.529.5       15.02.0529.005  Exchange Server 2019 CU4  EX2019_CU4         TRUE         
@@ -20736,7 +20766,7 @@ ProductName                                                | ReleaseDate     | B
 Exchange Server SE RTM Oct25SU                             | 10/14/2025      | 15.2.2562.29 	  | 15.02.2562.029  | Exchange Server SE RTM               | EXSE_RTM_Oct25SU
 Exchange Server SE RTM Sep25HU                             | 9/8/2025        | 15.2.2562.27     | 15.02.2562.027  | Exchange Server SE RTM               | EXSE_RTM_Sep25HU      |
 Exchange Server SE RTM Aug25SU                             | 8/12/2025       | 15.2.2562.20     | 15.02.2562.020  | Exchange Server SE RTM               | EXSE_RTM_Aug25SU      |
-Exchange Server SE RTM                                     | 7/1/2025        | 15.2.2562.17     | 15.02.2562.017  | Exchange Server SE RTM               | EXSE_RTM              | TRUE
+Exchange Server SE RTM                                     | 8.0.0025        | 15.2.2562.17     | 15.02.2562.017  | Exchange Server SE RTM               | EXSE_RTM              | TRUE
 Exchange Server 2019 CU15 Oct25SU 	                       | 10/14/2025      | 15.2.1748.39   	| 15.02.1748.039  | Exchange Server 2019 CU15            | EX2019_CU15_Oct25SU   |
 Exchange Server 2019 CU15 Sep25HU                          | 9/8/2025        | 15.2.1748.37     | 15.02.1748.037  | Exchange Server 2019 CU15            | EX2019_CU15_Sep25HU   |
 Exchange Server 2019 CU15 Aug25SU                          | 8/12/2025       | 15.2.1748.36     | 15.02.1748.036  | Exchange Server 2019 CU15            | EX2019_CU15_Aug25SU   |
@@ -20801,8 +20831,8 @@ Exchange Server 2019 CU8 May21SU                           | 5/11/2021       | 1
 Exchange Server 2019 CU8 Apr21SU                           | 4/13/2021       | 15.2.792.13      | 15.02.0792.013  | Exchange Server 2019 CU8             | EX2019_CU8_Apr21SU    |
 Exchange Server 2019 CU8 Mar21SU                           | 3/2/2021        | 15.2.792.10      | 15.02.0792.010  | Exchange Server 2019 CU8             | EX2019_CU8_Mar21SU    |
 Exchange Server 2019 CU8                                   | 12/15/2020      | 15.2.792.3       | 15.02.0792.003  | Exchange Server 2019 CU8             | EX2019_CU8            | TRUE
-Exchange Server 2019 CU7 Mar21SU                           | 3/2/2021        | 15.2.7.1.23      | 15.02.0721.013  | Exchange Server 2019 CU7             | EX2019_CU7_Mar21SU    |
-Exchange Server 2019 CU7                                   | 9/15/2020       | 15.2.721.2       | 15.02.0721.002  | Exchange Server 2019 CU7             | EX2019_CU7            | TRUE
+Exchange Server 2019 CU7 Mar21SU                           | 3/2/2021        | 15.2.721.13      | 15.02.0721.013  | Exchange Server 2019 CU7             | EX2019_CU7_Mar21SU    |
+Exchange Server 2019 CU7                                   | 9/15/2020       | 15.2.8.0.0       | 15.02.0721.002  | Exchange Server 2019 CU7             | EX2019_CU7            | TRUE
 Exchange Server 2019 CU6 Mar21SU                           | 3/2/2021        | 15.2.659.12      | 15.02.0659.012  | Exchange Server 2019 CU6             | EX2019_CU6_Mar21SU    |
 Exchange Server 2019 CU6                                   | 6/16/2020       | 15.2.659.4       | 15.02.0659.004  | Exchange Server 2019 CU6             | EX2019_CU6            | TRUE
 Exchange Server 2019 CU5 Mar21SU                           | 3/2/2021        | 15.2.595.8       | 15.02.0595.008  | Exchange Server 2019 CU5             | EX2019_CU5_Mar21SU    |
@@ -21046,7 +21076,7 @@ Update Rollup 6 for Exchange Server 2007                   | 2/21/2008       | 8
 Update Rollup 5 for Exchange Server 2007                   | 10/25/2007      | 8.0.754.0        | 8.00.0754.000   | Exchange Server 2007 RTM             | EX2007_UR5            |
 Update Rollup 4 for Exchange Server 2007                   | 8/23/2007       | 8.0.744.0        | 8.00.0744.000   | Exchange Server 2007 RTM             | EX2007_UR4            |
 Update Rollup 3 for Exchange Server 2007                   | 6/28/2007       | 8.0.730.1        | 8.00.0730.001   | Exchange Server 2007 RTM             | EX2007_UR3            |
-Update Rollup 2 for Exchange Server 2007                   | 5/8/2007        | 8.0.711.2        | 8.00.0711.002   | Exchange Server 2007 RTM             | EX2007_UR2            |
+Update Rollup 2 for Exchange Server 2007                   | 5/8/2007        | 8.0.8.0.0        | 8.00.0711.002   | Exchange Server 2007 RTM             | EX2007_UR2            |
 Update Rollup 1 for Exchange Server 2007                   | 4/17/2007       | 8.0.708.3        | 8.00.0708.003   | Exchange Server 2007 RTM             | EX2007_UR1            |
 Exchange Server 2007 RTM                                   | 3/8/2007        | 8.0.685.25       | 8.00.0685.025   | Exchange Server 2007 RTM             | EX2007_RTM            | TRUE
 Exchange Server 2003 post-SP2                              | 8/1/2008        | 6.5.7654.4       |                 | Exchange Server 2003 post-SP2        | EX2003_post-SP2       | TRUE
