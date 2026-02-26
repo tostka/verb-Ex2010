@@ -1,6 +1,8 @@
 ﻿# Get-MessageTrackingLogTDO.ps1
 
-# To convert vx10 func to .ps1 script, for vx10-less use: rem the function declare lines, and saveas Get-MessageTrackingLogTDO.ps1, update exec splats to use .\Get-MessageTrackingLogTDO.ps1 vs unpathed/ext func name
+# To convert vx10 func to .ps1 script, for vx10-less use: rem the function declare lines, 
+#and saveas Get-MessageTrackingLogTDO.ps1, 
+# update exec splats to use .\Get-MessageTrackingLogTDO.ps1 vs unpathed/ext func name
 #*------v Function Get-MessageTrackingLogTDO v------
 function Get-MessageTrackingLogTDO {
     <#
@@ -18,6 +20,8 @@ function Get-MessageTrackingLogTDO {
     Github      : htt-ps://github.com/tostka/verb-XXX
     Tags        : Powershell,Exchange,MessageTracking,Get-MessageTrackingLog,ActiveDirectory
     REVISIONS
+    * 3:33 PM 2/26/2026 spliced in base missing funcs to get working again in CMW, added expl for duping to other hubs local
+        revised example call to work past missing local rmv-invalidvarinamechars
     * 10:28 AM 9/11/2025 found it writing epcsv to modules install dir: enviro_discover block & resolve-EnvironmentTDO() to latest parammt vers. Now exports properly to d:\scripts\ on jb.
     * 10;23 am 4/30/2025 - get-ADExchangeServerTDO: * 10;05 am 4/30/2025 fixed code for Edge role in raw PS, missing evaris for Ex: added discovery from reg & stock file system dirs for version etc.
         - Connect-ExchangeServerTDO: * 10;07 am 4/30/2025 fixed borked edge conn, typo, and rev logic for Ex & role detection in raw PS - lacks evaris for exchange (EMS/REMS only), so leverage reg & stock install loc hunting to discover setup.exe for vers & role confirm).
@@ -226,16 +230,34 @@ function Get-MessageTrackingLogTDO {
     PS>     ResultSize="" ;
     PS>     Tag='' ;
     PS> } ;
-    PS> $pltGMTL = [ordered]@{} ;
-    PS> $pltI.GetEnumerator() | ?{ $_.value}  | ForEach-Object { $pltGMTL.Add($_.Key, $_.Value) } ;
-    PS> $vn = (@("xopMsgs$($pltI.ticket)",$pltI.Tag) | ?{$_}) -join '_' write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):.\Get-MessageTrackingLogTDO w`n$(($pltGMTL|out-string).trim())`n(assign to `$$($vn))" ;
-    PS> if(gv $vn -ea 0){rv $vn} ;
-    PS> if($tmsgs = .\Get-MessageTrackingLogTDO @pltGMTL){sv -na $vn -va $tmsgs ;
-    PS> write-host "(assigned to `$$vn)"} ;
+    PS> $pltGMTL = [ordered]@{} ; $pltI.GetEnumerator() | ?{ $_.value}  | ForEach-Object { $pltGMTL.Add($_.Key, $_.Value) } ; $vn = @() ; $vn += "xopMsgs" ; if(gcm Remove-InvalidVariableNameChars -ea 0){    if($pltI.ticket){$vn += @( Remove-InvalidVariableNameChars  -name $pltI.ticket)} ;    if($pltI.Tag){$vn += @($(Remove-InvalidVariableNameChars -name $pltI.Tag))} ; } else {   if($pltI.ticket){$vn += @( $pltI.ticket)} ;   if($pltI.Tag){$vn += @($pltI.Tag)} ; } $vn = $vn -join '_' ; write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-MessageTrackingLogTDO w`n$(($pltGMTL|out-string).trim())`n(assign to `$$($vn))" ; if(gv $vn -ea 0){rv $vn} ; if($tmsgs = .\Get-MessageTrackingLogTDO.ps1 @pltGMTL){sv -na $vn -va $tmsgs ; write-host "(assigned to `$$vn)"} ;
     Demo with dot-exec'd script syntax, same as demo1, with .\'s and version ex16 (for renames from _func.ps1 -> .ps1, and rem'ing the function declar lines). 
     .EXAMPLE
     PS> gci \\tsclient\d\scripts\Get-MessageTrackingLogTDO* | copy-item -dest c:\scripts\ -Verbose
     Copy in via RDP (includes exported psbreakpoint file etc)
+    .EXAMPLE
+    PS> $whatif = $true ; 
+    PS> $pltCI=[ordered]@{
+    PS>     path = (resolve-path (gcm Get-MessageTrackingLogTDO.ps1 | select -expand source)).path ; 
+    PS>     erroraction = 'STOP' ; 
+    PS>     verbose = $true ;
+    PS>     whatif = $($whatif) ; 
+    PS> } ;
+    PS> Get-TransportService |? name -ne $env:computername | select -expand name | %{
+    PS>     TRY{
+    PS>             $thisbox = $_; 
+    PS>             write-host $thisbox  ; 
+    PS>             $pltCI.destination = "\\$($thisbox)\c$\scripts\" ; 
+    PS>             $smsg = "$($thisbox)::copy-item w`n$(($pltCI|out-string).trim())" ; 
+    PS>             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    PS>             copy-item @pltCI ; 
+    PS>     } CATCH {
+    PS>         $ErrTrapd=$Error[0] ;
+    PS>         $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+    PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+    PS>     } ;     
+    PS> } ; 
+    Copy to other local transport servers
     .LINK
     https://bitbucket.org/tostka/powershell/
     #>
@@ -2756,6 +2778,41 @@ TRANSFER              | Recipients were moved to a forked message because of con
         } ;      
         #endregion INITIALIZE_XOPEVENTIDTABLE ; #*------^ Initialize-xopEventIDTable ^------
 
+        # adds 2:30 PM 2/26/2026 (cmw)
+        #region PUSH_TLSLATEST ; #*------v push-TLSLatest v------
+        if(-not(gi function:push-TLSLatest -ea 0)){
+            function push-TLSLatest{
+                <#
+                .SYNOPSIS
+                push-TLSLatest - Elevates TLS on Powershell connections to highest available local version
+                .NOTES
+            
+                REVISIONS
+                * 4:41 PM 5/29/2025 init (replace scriptblock in psparamt)
+            
+                #>
+                [CmdletBinding()]
+                PARAM() ; 
+                $CurrentVersionTlsLabel = [Net.ServicePointManager]::SecurityProtocol ; # Tls, Tls11, Tls12 ('Tls' == TLS1.0)  ;
+                write-verbose "PRE: `$CurrentVersionTlsLabel : $($CurrentVersionTlsLabel )" ;
+                # psv6+ already covers, test via the SslProtocol parameter presense
+                if ('SslProtocol' -notin (Get-Command Invoke-RestMethod).Parameters.Keys) {
+                    $currentMaxTlsValue = [Math]::Max([Net.ServicePointManager]::SecurityProtocol.value__,[Net.SecurityProtocolType]::Tls.value__) ;
+                    write-verbose "`$currentMaxTlsValue : $($currentMaxTlsValue )" ;
+                    $newerTlsTypeEnums = [enum]::GetValues('Net.SecurityProtocolType') | Where-Object { $_ -gt $currentMaxTlsValue }
+                    if($newerTlsTypeEnums){
+                        write-verbose "Appending upgraded/missing TLS `$enums:`n$(($newerTlsTypeEnums -join ','|out-string).trim())" ;
+                    } else {
+                        write-verbose "Current TLS `$enums are up to date with max rev available on this machine" ;
+                    };
+                    $newerTlsTypeEnums | ForEach-Object {
+                        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
+                    } ;
+                } ;
+            } ; 
+        } ; 
+        #endregion PUSH_TLSLATEST ; #*------^ END push-TLSLatest ^------
+
         #endregion FUNCTIONS_INTERNAL ; #*======^ END FUNCTIONS_INTERNAL ^======
 
         #region CONSTANTS_AND_ENVIRO ; #*======v CONSTANTS_AND_ENVIRO v======
@@ -2879,24 +2936,374 @@ TRANSFER              | Recipients were moved to a forked message because of con
         } ; 
         #>
         #endregion OS_INFO ; #*------^ END OS_INFO ^------
-        #region TEST_EXOPLOCAL ; #*------v TEST_EXOPLOCAL v------
-        if(get-command test-LocalExchangeInfoTDO -ea STOP){}ELSE{
-            $smsg = "UNABLE TO gcm test-LocalExchangeInfoTDO !" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-            BREAK ; 
-        } ; 
-        $lclExOP = test-LocalExchangeInfoTDO ; 
-        write-verbose "Expand returned NoteProperty properties into matching local variables" ; 
-        if($host.version.major -gt 2){
-            $lclExOP.PsObject.Properties | ?{$_.membertype -eq 'NoteProperty'} | foreach-object{set-variable -name $_.name -value $_.value -verbose -whatif:$false -Confirm:$false ;} ;
-        }else{
-            write-verbose "Psv2 lacks the above expansion capability; just create simpler variable set" ; 
-            $ExVers = $lclExOP.ExVers ; $isLocalExchangeServer = $lclExOP.isLocalExchangeServer ; $IsEdgeTransport = $lclExOP.IsEdgeTransport ;
-        } ;
-        #
-        #endregion TEST_EXOPLOCAL ; #*------^ END TEST_EXOPLOCAL ^------
+        
+        #region TEST_LOCALEXCHANGEINFOTDO ; #*------v test-LocalExchangeInfoTDO v------
+        if(get-command test-LocalExchangeInfoTDO -ea 0){}ELSE{
+            function test-LocalExchangeInfoTDO {
+                <#
+                .SYNOPSIS
+                test-LocalExchangeInfoTDO - Checks local server's status as an Exchange Server (checks for Exchange Services, Registry Keys, key roles, versions), without reliance on Exchange Mgmt Shell). Differs from vx10\get-xopServerAdminDisplayVersion(), in that it isn't intended to be run for remote server version verification, and avoids reliance on get-exchangeserver and other Exchange Mgmt Shell dependancies.
+                .NOTES
+                Version     : 0.0.
+                Author      : Todd Kadrie
+                Website     : http://www.toddomation.com
+                Twitter     : @tostka / http://twitter.com/tostka
+                CreatedDate : 20250711-0423PM
+                FileName    : test-LocalExchangeInfoTDO.ps1
+                License     : MIT License
+                Copyright   : (c) 2025 Todd Kadrie
+                Github      : https://github.com/tostka/verb-ex2010
+                Tags        : Powershell,Exchange,ExchangeServer,Install,Patch,Maintenance
+                AddedCredit : REFERENCE
+                AddedWebsite: URL
+                AddedTwitter: URL
+                REVISIONS
+                * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat)
+                * 2:58 PM 7/17/2025 updated CBH;  hybrid with prexisting vx10\test-LocalExchangeInfoTDO, combined best ideas from both; ren (again) to match existing: test-xopExchangeLocalInstallTDO -> test-LocalExchangeInfoTDO()
+                * 4:09 PM 7/13/2025 add: cbh demo to test for down/disabled svcs state ;
+                 ren: test-xopExchangeLocalInstallTDO -> test-xopExchangeLocalInstallTDO, aliased orig ; add: all useful roles props 'isAdminTools','isCAS','isUM','isAdminTools','isCAS','isUM','isHub','isEdgeTransport' (tested in registry)
+                * * 5:29 PM 7/12/2025 init; added support for version detect of Exchange Subcription Edition (identified as ExVers: ExSE, 15.2.2562+ (only differentiation from Ex2019 is that that vers is still 15.2.1748...)
+                .DESCRIPTION
+                test-LocalExchangeInfoTDO - Checks local server's status as an Exchange Server (checks for Exchange Services, Registry Keys, key roles, versions), without reliance on Exchange Mgmt Shell). Differs from vx10\get-xopServerAdminDisplayVersion(), in that it isn't intended to be run for remote server version verification, and avoids reliance on get-exchangeserver and other Exchange Mgmt Shell dependancies.
+
+                Has the following potential properties that may be returned (only returns those populated/relevent to the local system):
+
+                hasExServices = [boolean] ;
+                ExServicesStatus = [msex & w3svc & clussvc services status] ;
+                isLocalExchangeServer = [boolean] ;
+                isAdminTools = [boolean] ;
+                isCAS = [boolean] ;
+                isUM = [boolean] ;
+                isMbx = [boolean] ;
+                isHub = [boolean] ;
+                isEdgeTransport = [boolean] ;
+                hasRoleWatermark = [boolean] ;
+                isExSE = [boolean]  # Exchange Subscription Edition identifier.
+                isEx2019 = [boolean]
+                isEx2016 = [boolean]
+                isEx2013 = [boolean]
+                isEx2010 = [boolean]
+                isEx2007 = [boolean]
+                isEx2003 = [boolean]
+                isEx2000 = [boolean]
+                ExVers = [string]  'ExS','Ex2019','Ex2016','Ex2013','Ex2010','Ex2007','Ex2003','Ex2000'
+
+                ## return on a typical Exchange 2016 Mailbox server (with services stopped/disabled)
+        
+                ```powershell
+                isLocalExchangeServer : True
+                hasExServices         : True
+                ExServicesStatus      : {@{ServiceName=MSExchangeADTopology; DisplayName=Microsoft Exchange Active Directory Topology; Status=Stopped; StartType=Disabled}, @{ServiceName=MSExchangeAntispamUpdate; 
+                                        DisplayName=Microsoft Exchange Anti-spam Update; Status=Stopped; StartType=Automatic}, @{ServiceName=MSExchangeCompliance; DisplayName=Microsoft Exchange Compliance Service; 
+                                        Status=Stopped; StartType=Automatic}, @{ServiceName=MSExchangeDagMgmt; DisplayName=Microsoft Exchange DAG Management; Status=Stopped; StartType=Automatic}...}
+                ExVers                : Ex2016
+                isAdminTools          : True
+                isCAS                 : True
+                isEx2016              : True
+                isHub                 : True
+                isMbx                 : True
+                isUM                  : True
+
+         
+                ```
+                .INPUTS
+                None, no piped input.
+                .OUTPUTS
+                System.Object summary of Exchange server descriptors, and service statuses.
+                .EXAMPLE
+                PS> $ExLocalStatus = test-LocalExchangeInfoTDO ;
+                PS> $ExLocalStatus ;
+
+                    isLocalExchangeServer : True
+                    hasExServices         : True
+                    ExServicesStatus      : {@{ServiceName=MSExchangeADTopology; DisplayName=Microsoft Exchange Active Directory Topology; Status=Stopped; StartType=Disabled}, @{ServiceName=MSExchangeAntispamUpdate; 
+                                            DisplayName=Microsoft Exchange Anti-spam Update; Status=Stopped; StartType=Automatic}, @{ServiceName=MSExchangeCompliance; DisplayName=Microsoft Exchange Compliance Service; 
+                                            Status=Stopped; StartType=Automatic}, @{ServiceName=MSExchangeDagMgmt; DisplayName=Microsoft Exchange DAG Management; Status=Stopped; StartType=Automatic}...}
+                    ExVers                : Ex2016
+                    isAdminTools          : True
+                    isCAS                 : True
+                    isEx2016              : True
+                    isHub                 : True
+                    isMbx                 : True
+                    isUM                  : True
+
+                Typical Exchange 2016 return information (Mailbox role server, with services stopped & disabled)
+                .EXAMPLE
+                PS> $rgxStatusKey = 'Automatic|Disabled' ;
+                PS> $rgxXopKeySvcs = 'MSExchangeADTopology|MSExchangeFrontEndTransport|MSExchangeTransport|MSExchangeRPC|MSExchangeIS|MSExchangeEdgeCredential|W3SVC' ;
+                PS> $ExLocalStatus = test-LocalExchangeInfoTDO ;
+                PS> $exlocalstatus.ExServicesStatus |?{$_.StartType -match 'Automatic|Disabled'} | ?{$_.status -eq 'Stopped'} |?{$_.servicename -match 'MSExchangeADTopology|MSExchangeFrontEndTransport|MSExchangeTransport|MSExchangeRPC|MSExchangeIS|W3SVC'}
+                PS> if($ExLocalStatus.ExServicesStatus |?{$_.StartType -match $rgxStatusKey} | ?{$_.status -eq 'Stopped'} |?{$_.servicename -match $rgxXopKeySvcs}){
+                PS>     $smsg = "LOCAL SERVER IS *SERVICE-DISABLED/DOWN*!" ;
+                PS>     $smsg += "`nENABLE SERVIVCES AND BRING BACK ONLINE BEFORE RUNNING THIS SCRIPT!" ;
+                PS>     WRITE-WARNING $smsg ;
+                PS>     throw $smsg ;
+                PS>     break ;
+                PS> } ;
+                Demo testing returned status for running key service state.
+                .LINK
+                https://github.org/tostka/verb-ex2010/
+                #>
+                [alias('get-xopExchangeLocalVersionTDO', 'get-xopExchangeLocalVersion')]
+                PARAM(
+                    [Parameter(HelpMessage = "Switch to force Watermark test status visible (silent unless fail, otherwise)")]
+                    [switch]$showWatermark
+                ) ;
+                BEGIN {
+                    $rgxExSvcNames = '^MSEx'
+                    $rgxExSvcNamesFull = '^(MSEx|W3SVC|ClusSvc)'
+                    $RegistryPath = "HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*" ;
+                    $rgxRoleSuBkEYS = '(AdminTools|ClientAccessRole|UnifiedMessagingRole|MailboxRole|FrontendTransportRole|CafeRole|EdgeTransportRole)$' ;
+                    $ValueNameToCheck = "Watermark" ; #
+                }
+                PROCESS {
+                    #$isLocalExchangeServer = $IsEdgeTransport = $isEx2019 =  $isEx2016 =  $isEx2013 =  $isEx2010 =  $isEx2007 =  $isEx2003 =  $isEx2000 = $false ;
+                    if ($host.version.major -ge 3) { $hSummary = [ordered]@{Dummy = $null ; } }
+                    else { $hSummary = @{Dummy = $null ; } } ;
+                    if ($hSummary.keys -contains 'dummy') { $hSummary.remove('Dummy') };
+                    $fieldsBoolean = 'isLocalExchangeServer', 'hasExServices' ; $fieldsBoolean | foreach-object { $hSummary.add($_, $false) } ;
+                    $fieldsnull = 'ExServicesStatus', 'isAdminTools', 'isCAS', 'isUM', 'isMbx', 'isHub', 'isEdgeTransport', 'hasRoleWatermark', 'isExSE', 'isEx2019', 'isEx2016', 'isEx2013', 'isEx2010', 'isEx2007', 'isEx2003', 'isEx2000', 'ExVers'  | sort ; $fieldsnull | foreach-object { $hSummary.add($_, $null) } ;
+                    <# creates equiv to hashtable:
+                    $hSummary=[ordered]@{
+                        hasExServices = $false ;
+                        ExServicesStatus = $null ;
+                        isLocalExchangeServer = $false ;
+                        isAdminTools = $null ;
+                        isCAS = $null ;
+                        isUM = $null ;
+                        isMbx = $null ;
+                        isHub = $null ;
+                        isEdgeTransport = $null ;
+                        hasRoleWatermark = $null ;
+                        isExSE = $null ;
+                        isEx2019 = $null ;
+                        isEx2016 = $null ;
+                        isEx2013 = $null ;
+                        isEx2010 = $null ;
+                        isEx2007 = $null ;
+                        isEx2003 = $null ;
+                        isEx2000 = $null ;
+                        ExVers = $null ;
+                    }
+                    #>
+                    if (get-service | ? { $_.ServiceName -match $rgxExSvcNames }) {
+                        $hSummary.hasExServices = $true ;
+                        $hSummary.ExServicesStatus = get-service -ComputerName $env:computername | ? { $_.ServiceName -match $rgxExSvcNamesFull } | select-object servicename, displayname, status, starttype
+                    } else { $hSummary.hasExServices = $false } ;
+                    if ($env:ExchangeInstalled) {
+                        $hSummary.isLocalExchangeServer = $true ;
+                    } elseif ($hSummary.hasExServices -AND ($hklmPath = (resolve-path "HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\Setup").path)) {
+                        $hSummary.isLocalExchangeServer = $true ;
+                        switch -regex ($hklmPath) {
+                            '\\v14\\' { $isEx2010 = $true ; $hSummary.ExVers = 'Ex2010' ; 
+                                $smsg = "\v14\Setup == Ex2010" ; 
+                                if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                    if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                                } ;
+                            }
+                            '\\v15\\' { 
+                                $smsg = "\v15\Setup == Ex2016/Ex2019" ; 
+                                if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                    if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                                } ;
+                            }
+                            default {
+                                $smsg = "Unable to manually resolve $($hklmPath) to a known version path!" ;
+                                if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                } ;
+                                throw $smsg ;
+                            }
+                        } ;
+                    } else {
+                        $smsg = "hSummary.isLocalExchangeServer:$($false)" ;
+                        if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        } ;
+                        $hSummary.isLocalExchangeServer = $false ;
+                    } ;
+                    if ($hSummary.isLocalExchangeServer) {
+                        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\AdminTools') {
+                            $smsg = "Local Installed:AdminTools"
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            $hSummary.isAdminTools = $true
+                        }
+                        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\ClientAccessRole') {
+                            $smsg = "Local Installed:ClientAccessRole"
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            $hSummary.isCAS = $true
+                        }
+                        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\UnifiedMessagingRole') {
+                            $smsg = "Local Installed:UnifiedMessagingRole"
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            $hSummary.isUM = $true
+                        }
+                        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\MailboxRole') {
+                            $smsg = "Local Installed:MailboxRole"
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            $hSummary.isMbx = $true
+                        }
+                        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\FrontendTransportRole') {
+                            $smsg = "Local Installed:FrontendTransportRole"
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            $hSummary.isHub = $true
+                        }
+                        if ((get-service MSExchangeEdgeCredential -ea 0) -AND (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\EdgeTransportRole')) {
+                            $smsg = "Local Installed:EdgeTransportRole"
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            $hSummary.isEdgeTransport = $true
+                        } ;
+                    } ;
+                    # version detect:
+                    if ($hSummary.isLocalExchangeServer) {
+                        $smsg = "Checking local discovered Exsetup.exe FileversionInfo" ;
+                        if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                        if ($FileversionInfo = Get-Command Exsetup.exe | ForEach-Object { $_.FileversionInfo } ) {
+                            $smsg = "`$FileversionInfo:Exsetup.exe`n$(($FileversionInfo | ft -a |out-string).trim())" ;
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            [version]$ExsetupRev = (@($FileversionInfo.FileMajorPart, $FileversionInfo.FileMinorPart, $FileversionInfo.FileBuildPart, $FileversionInfo.FilePrivatePart) -join '.')
+                            #$ExsetupProduct = $BuildToProductName[$ExsetupRev.tostring()]
+                            #$smsg = "`$ExsetupProduct:$($ExsetupProduct)" ;
+                        } elseif ($FileversionInfo = (get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe" -ea 0).VersionInfo.FileVersionRaw ) {
+                            $smsg = "`$FileversionInfo:Setup.exe`n$(($FileversionInfo | ft -a |out-string).trim())" ;
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            [version]$ExsetupRev = (@($FileversionInfo.FileMajorPart, $FileversionInfo.FileMinorPart, $FileversionInfo.FileBuildPart, $FileversionInfo.FilePrivatePart) -join '.')
+                        } else {
+                            $smsg = "$($Server.name):Unable to remote retrieve: Get-Command Exsetup.exe | ForEach-Object { $_.FileversionInfo}"
+                            if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            } ;
+                            throw $smsg ; 
+                        } ;
+                        switch -regex ([string](@($FileversionInfo.FileMajorPart, $FileversionInfo.FileMinorPart) -join '.')) {
+                            '15\.2' {
+                                # SE only diffs from ex2019, in the 15.2.25*+ vs 15.2.221-1748
+                                if ($FileversionInfo.FileBuildPart -ge 2562) {
+                                    $hSummary.isExSE = $true ; $hSummary.ExVers = 'ExSE'
+                                } else {
+                                    $hSummary.isEx2019 = $true ; $hSummary.ExVers = 'Ex2019'
+                                } ;
+                            }
+                            '15\.1' { $hSummary.isEx2016 = $true ; $hSummary.ExVers = 'Ex2016' }
+                            '15\.0' { $hSummary.isEx2013 = $true ; $hSummary.ExVers = 'Ex2013' }
+                            '14\..*' { $hSummary.isEx2010 = $true ; $hSummary.ExVers = 'Ex2010' }
+                            '8\..*' { $hSummary.isEx2007 = $true ; $hSummary.ExVers = 'Ex2007' }
+                            '6\.5' { $hSummary.isEx2003 = $true ; $hSummary.ExVers = 'Ex2003' }
+                            '6|6\.0' { $hSummary.isEx2000 = $true ; $hSummary.ExVers = 'Ex2000' } ;
+                            default {
+                                $smsg = "UNRECOGNIZED ExVersNum.Major.Minor string:$(@($FileversionInfo.FileMajorPart,$FileversionInfo.FileMinorPart) -join '.')! ABORTING!" ;
+                                if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                } ;
+                                THROW $smsg ;
+                                BREAK ;
+                            }
+                        } ;
+                    } ;
+                    <# this tests the version on the binpath folder
+                    if ($hSummary.isLocalExchangeServer) {
+                        if ($vers = (get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe" -ea 0).VersionInfo.FileVersionRaw ) {} else {
+                            if ($binPath = (resolve-path  "$($env:ProgramFiles)\Microsoft\Exchange Server\V1*\Bin\Setup.exe" -ea 0).path) { } else {
+                                (get-psdrive -PSProvider FileSystem | ? { $_ -match '[D-Z]' }  | select -expand name) | foreach-object {
+                                    $drv = $_ ;
+                                    if ($rp = resolve-path  "$($drv)$($env:ProgramFiles.substring(1,($env:ProgramFiles.length-1)))\Microsoft\Exchange Server\V1*\Bin\Setup.exe" -ea 0) {
+                                        $binPath = $rp.path;
+                                        if ($host.version.major -gt 2) { break } else { 
+                                            $smsg = "PSv2 breaks entire script w break, instead of branching out of local loop" 
+                                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                                            } ;
+                                        } ;
+                                    } ;
+                                };
+                            } ;
+                            if ($binPath) {
+                                if ( ($vers = (get-item $binPath).VersionInfo.FileVersionRaw) -OR ($vers = (get-item $binPath).VersionInfo.FileVersion) ) {
+                                } else {
+                                    $smsg = "Unable to manually resolve an `$env:ExchangeInstallPath equiv, on any local drive" ;
+                                    write-warning $smsg ;
+                                    throw $smsg ;
+                                }
+                            } ;
+                        } ;
+                    } ;
+                    #>
+                    # add a watermark test
+                    if ($hSummary.isLocalExchangeServer) {
+                        if($wmarks = test-xopExchangeInstallWatermarkTDO){
+                            $smsg = "FOUND INSTALL WATERMARKS! w`n$(($wmarks|out-string).trim())" ;
+                            if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            } ;
+                        } else {
+                            $smsg = "No Watermark values found in `$RegistryPath" ;
+                            if ($showWatermark) {
+                                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                } ;
+                            } else {
+                                if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                    if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                                } ;
+                            } ;
+                        } ;
+                    } ;
+                    if ($hSummary.isLocalExchangeServer) {
+                        $smsg = @("`$hSummary.ExVers: $($hSummary.ExVers)") ;
+                        $smsg += @("`$$((gv "is$($hSummary.ExVers)" -ea 0).name): $((gv "is$($hSummary.ExVers)"  -ea 0).value)") ;
+                        if ($hSummary.IsEdgeTransport) { $smsg += @("`$hSummary.IsEdgeTransport: $($hSummary.IsEdgeTransport)") } else { $smsg += @(" (non-Edge)") } ;
+                        $smsg = ($smsg -join ' ') ;
+                        if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        } ;
+                    } else {
+                        $smsg = "(non-Local ExchangeServer (`$hSummary.isLocalExchangeServer:$([boolean]$hSummary.isLocalExchangeServer )))" ;
+                        if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        } ;
+                    } ; 
+                } ;
+                END {
+                    # clean out null/empty value props (return only populated props)
+                    $mts = $hSummary.GetEnumerator() | ? { ($null -eq $_.value) -OR ($_.value -eq '') } ; $mts | foreach-object { $hSummary.remove($_.Name) } ; remove-variable mts -ea 0 ;
+                    [pscustomobject]$hSummary | write-output
+                }
+            }        
+        }
+        #endregion TEST_LOCALEXCHANGEINFOTDO ; #*------^ END test-LocalExchangeInfoTDO ^------
 
         <#
         #region PsParams ; #*------v PSPARAMS v------
