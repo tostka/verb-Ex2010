@@ -1,8 +1,8 @@
 ﻿# test-LocalExchangeInfoTDO.ps1
 
-
-#region TEST_LOCALEXCHANGEINFOTDO ; #*------v test-LocalExchangeInfoTDO v------
-function test-LocalExchangeInfoTDO {
+    #region TEST_LOCALEXCHANGEINFOTDO ; #*------v test-LocalExchangeInfoTDO v------
+    #if(get-command test-LocalExchangeInfoTDO -ea STOP){}ELSE{
+        function test-LocalExchangeInfoTDO {
             <#
             .SYNOPSIS
             test-LocalExchangeInfoTDO - Checks local server's status as an Exchange Server (checks for Exchange Services, Registry Keys, key roles, versions), without reliance on Exchange Mgmt Shell). Differs from vx10\get-xopServerAdminDisplayVersion(), in that it isn't intended to be run for remote server version verification, and avoids reliance on get-exchangeserver and other Exchange Mgmt Shell dependancies.
@@ -21,6 +21,7 @@ function test-LocalExchangeInfoTDO {
             AddedWebsite: URL
             AddedTwitter: URL
             REVISIONS
+            * 2:35 PM 2/26/2026 added rem'd exist tests
             * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat)
             * 2:58 PM 7/17/2025 updated CBH;  hybrid with prexisting vx10\test-LocalExchangeInfoTDO, combined best ideas from both; ren (again) to match existing: test-xopExchangeLocalInstallTDO -> test-LocalExchangeInfoTDO()
             * 4:09 PM 7/13/2025 add: cbh demo to test for down/disabled svcs state ;
@@ -52,7 +53,7 @@ function test-LocalExchangeInfoTDO {
             ExVers = [string]  'ExS','Ex2019','Ex2016','Ex2013','Ex2010','Ex2007','Ex2003','Ex2000'
 
             ## return on a typical Exchange 2016 Mailbox server (with services stopped/disabled)
-        
+    
             ```powershell
             isLocalExchangeServer : True
             hasExServices         : True
@@ -67,7 +68,7 @@ function test-LocalExchangeInfoTDO {
             isMbx                 : True
             isUM                  : True
 
-         
+     
             ```
             .INPUTS
             None, no piped input.
@@ -364,6 +365,6 @@ function test-LocalExchangeInfoTDO {
                 $mts = $hSummary.GetEnumerator() | ? { ($null -eq $_.value) -OR ($_.value -eq '') } ; $mts | foreach-object { $hSummary.remove($_.Name) } ; remove-variable mts -ea 0 ;
                 [pscustomobject]$hSummary | write-output
             }
-        }
-#endregion TEST_LOCALEXCHANGEINFOTDO ; #*------^ END test-LocalExchangeInfoTDO ^------
-
+        }        
+    #}
+    #endregion TEST_LOCALEXCHANGEINFOTDO ; #*------^ END test-LocalExchangeInfoTDO ^------
