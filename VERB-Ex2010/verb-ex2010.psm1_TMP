@@ -1,30 +1,30 @@
-﻿# verb-Ex2010.psm1
+﻿# VERB-ex2010.psm1
 
 
 <#
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 8.0.0
+Version     : 8.0.1
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
-CreatedDate : 1/18.0.00
+CreatedDate : 1/18.0.10
 FileName    : VERB-Ex2010.psm1
 License     : MIT
-Copyright   : (c) 1/18.0.00 Todd Kadrie
+Copyright   : (c) 1/18.0.10 Todd Kadrie
 Github      : https://github.com/tostka
 REVISIONS
 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
 * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
-* 1/18.0.00 - 1.0.0.0
+* 1/18.0.10 - 1.0.0.0
 # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
 # 11:34 AM 12/30/2019 ran vsc alias-expansion
 # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
 # 10:19 AM 11/1/2019 trimmed some whitespace
 # 10:05 AM 10/31/2019 added sample load/call info
-# 12:02 PM 5/8.0.09 added cx10,rx10,dx10 aliases
-# 11:29 AM 5/8.0.09 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+# 12:02 PM 5/8.0.19 added cx10,rx10,dx10 aliases
+# 11:29 AM 5/8.0.19 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
 # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
 # 4:15 PM 3/24/2018 updated pshhelp
 # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
@@ -8448,6 +8448,8 @@ function Get-MessageTrackingLogTDO {
     Github      : htt-ps://github.com/tostka/verb-XXX
     Tags        : Powershell,Exchange,MessageTracking,Get-MessageTrackingLog,ActiveDirectory
     REVISIONS
+    * 3:33 PM 2/26/2026 spliced in base missing funcs to get working again in CMW, added expl for duping to other hubs local
+        revised example call to work past missing local rmv-invalidvarinamechars
     * 10:28 AM 9/11/2025 found it writing epcsv to modules install dir: enviro_discover block & resolve-EnvironmentTDO() to latest parammt vers. Now exports properly to d:\scripts\ on jb.
     * 10;23 am 4/30/2025 - get-ADExchangeServerTDO: * 10;05 am 4/30/2025 fixed code for Edge role in raw PS, missing evaris for Ex: added discovery from reg & stock file system dirs for version etc.
         - Connect-ExchangeServerTDO: * 10;07 am 4/30/2025 fixed borked edge conn, typo, and rev logic for Ex & role detection in raw PS - lacks evaris for exchange (EMS/REMS only), so leverage reg & stock install loc hunting to discover setup.exe for vers & role confirm).
@@ -8656,16 +8658,34 @@ function Get-MessageTrackingLogTDO {
     PS>     ResultSize="" ;
     PS>     Tag='' ;
     PS> } ;
-    PS> $pltGMTL = [ordered]@{} ;
-    PS> $pltI.GetEnumerator() | ?{ $_.value}  | ForEach-Object { $pltGMTL.Add($_.Key, $_.Value) } ;
-    PS> $vn = (@("xopMsgs$($pltI.ticket)",$pltI.Tag) | ?{$_}) -join '_' write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):.\Get-MessageTrackingLogTDO w`n$(($pltGMTL|out-string).trim())`n(assign to `$$($vn))" ;
-    PS> if(gv $vn -ea 0){rv $vn} ;
-    PS> if($tmsgs = .\Get-MessageTrackingLogTDO @pltGMTL){sv -na $vn -va $tmsgs ;
-    PS> write-host "(assigned to `$$vn)"} ;
+    PS> $pltGMTL = [ordered]@{} ; $pltI.GetEnumerator() | ?{ $_.value}  | ForEach-Object { $pltGMTL.Add($_.Key, $_.Value) } ; $vn = @() ; $vn += "xopMsgs" ; if(gcm Remove-InvalidVariableNameChars -ea 0){    if($pltI.ticket){$vn += @( Remove-InvalidVariableNameChars  -name $pltI.ticket)} ;    if($pltI.Tag){$vn += @($(Remove-InvalidVariableNameChars -name $pltI.Tag))} ; } else {   if($pltI.ticket){$vn += @( $pltI.ticket)} ;   if($pltI.Tag){$vn += @($pltI.Tag)} ; } $vn = $vn -join '_' ; write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-MessageTrackingLogTDO w`n$(($pltGMTL|out-string).trim())`n(assign to `$$($vn))" ; if(gv $vn -ea 0){rv $vn} ; if($tmsgs = .\Get-MessageTrackingLogTDO.ps1 @pltGMTL){sv -na $vn -va $tmsgs ; write-host "(assigned to `$$vn)"} ;
     Demo with dot-exec'd script syntax, same as demo1, with .\'s and version ex16 (for renames from _func.ps1 -> .ps1, and rem'ing the function declar lines). 
     .EXAMPLE
     PS> gci \\tsclient\d\scripts\Get-MessageTrackingLogTDO* | copy-item -dest c:\scripts\ -Verbose
     Copy in via RDP (includes exported psbreakpoint file etc)
+    .EXAMPLE
+    PS> $whatif = $true ; 
+    PS> $pltCI=[ordered]@{
+    PS>     path = (resolve-path (gcm Get-MessageTrackingLogTDO.ps1 | select -expand source)).path ; 
+    PS>     erroraction = 'STOP' ; 
+    PS>     verbose = $true ;
+    PS>     whatif = $($whatif) ; 
+    PS> } ;
+    PS> Get-TransportService |? name -ne $env:computername | select -expand name | %{
+    PS>     TRY{
+    PS>             $thisbox = $_; 
+    PS>             write-host $thisbox  ; 
+    PS>             $pltCI.destination = "\\$($thisbox)\c$\scripts\" ; 
+    PS>             $smsg = "$($thisbox)::copy-item w`n$(($pltCI|out-string).trim())" ; 
+    PS>             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    PS>             copy-item @pltCI ; 
+    PS>     } CATCH {
+    PS>         $ErrTrapd=$Error[0] ;
+    PS>         $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+    PS>         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+    PS>     } ;     
+    PS> } ; 
+    Copy to other local transport servers
     .LINK
     https://bitbucket.org/tostka/powershell/
     #>
@@ -11186,6 +11206,41 @@ TRANSFER              | Recipients were moved to a forked message because of con
         } ;      
         #endregion INITIALIZE_XOPEVENTIDTABLE ; #*------^ Initialize-xopEventIDTable ^------
 
+        # adds 2:30 PM 2/26/2026 (cmw)
+        #region PUSH_TLSLATEST ; #*------v push-TLSLatest v------
+        if(-not(gi function:push-TLSLatest -ea 0)){
+            function push-TLSLatest{
+                <#
+                .SYNOPSIS
+                push-TLSLatest - Elevates TLS on Powershell connections to highest available local version
+                .NOTES
+            
+                REVISIONS
+                * 4:41 PM 5/29/2025 init (replace scriptblock in psparamt)
+            
+                #>
+                [CmdletBinding()]
+                PARAM() ; 
+                $CurrentVersionTlsLabel = [Net.ServicePointManager]::SecurityProtocol ; # Tls, Tls11, Tls12 ('Tls' == TLS1.0)  ;
+                write-verbose "PRE: `$CurrentVersionTlsLabel : $($CurrentVersionTlsLabel )" ;
+                # psv6+ already covers, test via the SslProtocol parameter presense
+                if ('SslProtocol' -notin (Get-Command Invoke-RestMethod).Parameters.Keys) {
+                    $currentMaxTlsValue = [Math]::Max([Net.ServicePointManager]::SecurityProtocol.value__,[Net.SecurityProtocolType]::Tls.value__) ;
+                    write-verbose "`$currentMaxTlsValue : $($currentMaxTlsValue )" ;
+                    $newerTlsTypeEnums = [enum]::GetValues('Net.SecurityProtocolType') | Where-Object { $_ -gt $currentMaxTlsValue }
+                    if($newerTlsTypeEnums){
+                        write-verbose "Appending upgraded/missing TLS `$enums:`n$(($newerTlsTypeEnums -join ','|out-string).trim())" ;
+                    } else {
+                        write-verbose "Current TLS `$enums are up to date with max rev available on this machine" ;
+                    };
+                    $newerTlsTypeEnums | ForEach-Object {
+                        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
+                    } ;
+                } ;
+            } ; 
+        } ; 
+        #endregion PUSH_TLSLATEST ; #*------^ END push-TLSLatest ^------
+
         #endregion FUNCTIONS_INTERNAL ; #*======^ END FUNCTIONS_INTERNAL ^======
 
         #region CONSTANTS_AND_ENVIRO ; #*======v CONSTANTS_AND_ENVIRO v======
@@ -11309,24 +11364,374 @@ TRANSFER              | Recipients were moved to a forked message because of con
         } ; 
         #>
         #endregion OS_INFO ; #*------^ END OS_INFO ^------
-        #region TEST_EXOPLOCAL ; #*------v TEST_EXOPLOCAL v------
-        if(get-command test-LocalExchangeInfoTDO -ea STOP){}ELSE{
-            $smsg = "UNABLE TO gcm test-LocalExchangeInfoTDO !" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-            BREAK ; 
-        } ; 
-        $lclExOP = test-LocalExchangeInfoTDO ; 
-        write-verbose "Expand returned NoteProperty properties into matching local variables" ; 
-        if($host.version.major -gt 2){
-            $lclExOP.PsObject.Properties | ?{$_.membertype -eq 'NoteProperty'} | foreach-object{set-variable -name $_.name -value $_.value -verbose -whatif:$false -Confirm:$false ;} ;
-        }else{
-            write-verbose "Psv2 lacks the above expansion capability; just create simpler variable set" ; 
-            $ExVers = $lclExOP.ExVers ; $isLocalExchangeServer = $lclExOP.isLocalExchangeServer ; $IsEdgeTransport = $lclExOP.IsEdgeTransport ;
-        } ;
-        #
-        #endregion TEST_EXOPLOCAL ; #*------^ END TEST_EXOPLOCAL ^------
+        
+        #region TEST_LOCALEXCHANGEINFOTDO ; #*------v test-LocalExchangeInfoTDO v------
+        if(get-command test-LocalExchangeInfoTDO -ea 0){}ELSE{
+            function test-LocalExchangeInfoTDO {
+                <#
+                .SYNOPSIS
+                test-LocalExchangeInfoTDO - Checks local server's status as an Exchange Server (checks for Exchange Services, Registry Keys, key roles, versions), without reliance on Exchange Mgmt Shell). Differs from vx10\get-xopServerAdminDisplayVersion(), in that it isn't intended to be run for remote server version verification, and avoids reliance on get-exchangeserver and other Exchange Mgmt Shell dependancies.
+                .NOTES
+                Version     : 0.0.
+                Author      : Todd Kadrie
+                Website     : http://www.toddomation.com
+                Twitter     : @tostka / http://twitter.com/tostka
+                CreatedDate : 20250711-0423PM
+                FileName    : test-LocalExchangeInfoTDO.ps1
+                License     : MIT License
+                Copyright   : (c) 2025 Todd Kadrie
+                Github      : https://github.com/tostka/verb-ex2010
+                Tags        : Powershell,Exchange,ExchangeServer,Install,Patch,Maintenance
+                AddedCredit : REFERENCE
+                AddedWebsite: URL
+                AddedTwitter: URL
+                REVISIONS
+                * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat)
+                * 2:58 PM 7/17/2025 updated CBH;  hybrid with prexisting vx10\test-LocalExchangeInfoTDO, combined best ideas from both; ren (again) to match existing: test-xopExchangeLocalInstallTDO -> test-LocalExchangeInfoTDO()
+                * 4:09 PM 7/13/2025 add: cbh demo to test for down/disabled svcs state ;
+                 ren: test-xopExchangeLocalInstallTDO -> test-xopExchangeLocalInstallTDO, aliased orig ; add: all useful roles props 'isAdminTools','isCAS','isUM','isAdminTools','isCAS','isUM','isHub','isEdgeTransport' (tested in registry)
+                * * 5:29 PM 7/12/2025 init; added support for version detect of Exchange Subcription Edition (identified as ExVers: ExSE, 15.2.2562+ (only differentiation from Ex2019 is that that vers is still 15.2.1748...)
+                .DESCRIPTION
+                test-LocalExchangeInfoTDO - Checks local server's status as an Exchange Server (checks for Exchange Services, Registry Keys, key roles, versions), without reliance on Exchange Mgmt Shell). Differs from vx10\get-xopServerAdminDisplayVersion(), in that it isn't intended to be run for remote server version verification, and avoids reliance on get-exchangeserver and other Exchange Mgmt Shell dependancies.
+
+                Has the following potential properties that may be returned (only returns those populated/relevent to the local system):
+
+                hasExServices = [boolean] ;
+                ExServicesStatus = [msex & w3svc & clussvc services status] ;
+                isLocalExchangeServer = [boolean] ;
+                isAdminTools = [boolean] ;
+                isCAS = [boolean] ;
+                isUM = [boolean] ;
+                isMbx = [boolean] ;
+                isHub = [boolean] ;
+                isEdgeTransport = [boolean] ;
+                hasRoleWatermark = [boolean] ;
+                isExSE = [boolean]  # Exchange Subscription Edition identifier.
+                isEx2019 = [boolean]
+                isEx2016 = [boolean]
+                isEx2013 = [boolean]
+                isEx2010 = [boolean]
+                isEx2007 = [boolean]
+                isEx2003 = [boolean]
+                isEx2000 = [boolean]
+                ExVers = [string]  'ExS','Ex2019','Ex2016','Ex2013','Ex2010','Ex2007','Ex2003','Ex2000'
+
+                ## return on a typical Exchange 2016 Mailbox server (with services stopped/disabled)
+        
+                ```powershell
+                isLocalExchangeServer : True
+                hasExServices         : True
+                ExServicesStatus      : {@{ServiceName=MSExchangeADTopology; DisplayName=Microsoft Exchange Active Directory Topology; Status=Stopped; StartType=Disabled}, @{ServiceName=MSExchangeAntispamUpdate; 
+                                        DisplayName=Microsoft Exchange Anti-spam Update; Status=Stopped; StartType=Automatic}, @{ServiceName=MSExchangeCompliance; DisplayName=Microsoft Exchange Compliance Service; 
+                                        Status=Stopped; StartType=Automatic}, @{ServiceName=MSExchangeDagMgmt; DisplayName=Microsoft Exchange DAG Management; Status=Stopped; StartType=Automatic}...}
+                ExVers                : Ex2016
+                isAdminTools          : True
+                isCAS                 : True
+                isEx2016              : True
+                isHub                 : True
+                isMbx                 : True
+                isUM                  : True
+
+         
+                ```
+                .INPUTS
+                None, no piped input.
+                .OUTPUTS
+                System.Object summary of Exchange server descriptors, and service statuses.
+                .EXAMPLE
+                PS> $ExLocalStatus = test-LocalExchangeInfoTDO ;
+                PS> $ExLocalStatus ;
+
+                    isLocalExchangeServer : True
+                    hasExServices         : True
+                    ExServicesStatus      : {@{ServiceName=MSExchangeADTopology; DisplayName=Microsoft Exchange Active Directory Topology; Status=Stopped; StartType=Disabled}, @{ServiceName=MSExchangeAntispamUpdate; 
+                                            DisplayName=Microsoft Exchange Anti-spam Update; Status=Stopped; StartType=Automatic}, @{ServiceName=MSExchangeCompliance; DisplayName=Microsoft Exchange Compliance Service; 
+                                            Status=Stopped; StartType=Automatic}, @{ServiceName=MSExchangeDagMgmt; DisplayName=Microsoft Exchange DAG Management; Status=Stopped; StartType=Automatic}...}
+                    ExVers                : Ex2016
+                    isAdminTools          : True
+                    isCAS                 : True
+                    isEx2016              : True
+                    isHub                 : True
+                    isMbx                 : True
+                    isUM                  : True
+
+                Typical Exchange 2016 return information (Mailbox role server, with services stopped & disabled)
+                .EXAMPLE
+                PS> $rgxStatusKey = 'Automatic|Disabled' ;
+                PS> $rgxXopKeySvcs = 'MSExchangeADTopology|MSExchangeFrontEndTransport|MSExchangeTransport|MSExchangeRPC|MSExchangeIS|MSExchangeEdgeCredential|W3SVC' ;
+                PS> $ExLocalStatus = test-LocalExchangeInfoTDO ;
+                PS> $exlocalstatus.ExServicesStatus |?{$_.StartType -match 'Automatic|Disabled'} | ?{$_.status -eq 'Stopped'} |?{$_.servicename -match 'MSExchangeADTopology|MSExchangeFrontEndTransport|MSExchangeTransport|MSExchangeRPC|MSExchangeIS|W3SVC'}
+                PS> if($ExLocalStatus.ExServicesStatus |?{$_.StartType -match $rgxStatusKey} | ?{$_.status -eq 'Stopped'} |?{$_.servicename -match $rgxXopKeySvcs}){
+                PS>     $smsg = "LOCAL SERVER IS *SERVICE-DISABLED/DOWN*!" ;
+                PS>     $smsg += "`nENABLE SERVIVCES AND BRING BACK ONLINE BEFORE RUNNING THIS SCRIPT!" ;
+                PS>     WRITE-WARNING $smsg ;
+                PS>     throw $smsg ;
+                PS>     break ;
+                PS> } ;
+                Demo testing returned status for running key service state.
+                .LINK
+                https://github.org/tostka/verb-ex2010/
+                #>
+                [alias('get-xopExchangeLocalVersionTDO', 'get-xopExchangeLocalVersion')]
+                PARAM(
+                    [Parameter(HelpMessage = "Switch to force Watermark test status visible (silent unless fail, otherwise)")]
+                    [switch]$showWatermark
+                ) ;
+                BEGIN {
+                    $rgxExSvcNames = '^MSEx'
+                    $rgxExSvcNamesFull = '^(MSEx|W3SVC|ClusSvc)'
+                    $RegistryPath = "HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*" ;
+                    $rgxRoleSuBkEYS = '(AdminTools|ClientAccessRole|UnifiedMessagingRole|MailboxRole|FrontendTransportRole|CafeRole|EdgeTransportRole)$' ;
+                    $ValueNameToCheck = "Watermark" ; #
+                }
+                PROCESS {
+                    #$isLocalExchangeServer = $IsEdgeTransport = $isEx2019 =  $isEx2016 =  $isEx2013 =  $isEx2010 =  $isEx2007 =  $isEx2003 =  $isEx2000 = $false ;
+                    if ($host.version.major -ge 3) { $hSummary = [ordered]@{Dummy = $null ; } }
+                    else { $hSummary = @{Dummy = $null ; } } ;
+                    if ($hSummary.keys -contains 'dummy') { $hSummary.remove('Dummy') };
+                    $fieldsBoolean = 'isLocalExchangeServer', 'hasExServices' ; $fieldsBoolean | foreach-object { $hSummary.add($_, $false) } ;
+                    $fieldsnull = 'ExServicesStatus', 'isAdminTools', 'isCAS', 'isUM', 'isMbx', 'isHub', 'isEdgeTransport', 'hasRoleWatermark', 'isExSE', 'isEx2019', 'isEx2016', 'isEx2013', 'isEx2010', 'isEx2007', 'isEx2003', 'isEx2000', 'ExVers'  | sort ; $fieldsnull | foreach-object { $hSummary.add($_, $null) } ;
+                    <# creates equiv to hashtable:
+                    $hSummary=[ordered]@{
+                        hasExServices = $false ;
+                        ExServicesStatus = $null ;
+                        isLocalExchangeServer = $false ;
+                        isAdminTools = $null ;
+                        isCAS = $null ;
+                        isUM = $null ;
+                        isMbx = $null ;
+                        isHub = $null ;
+                        isEdgeTransport = $null ;
+                        hasRoleWatermark = $null ;
+                        isExSE = $null ;
+                        isEx2019 = $null ;
+                        isEx2016 = $null ;
+                        isEx2013 = $null ;
+                        isEx2010 = $null ;
+                        isEx2007 = $null ;
+                        isEx2003 = $null ;
+                        isEx2000 = $null ;
+                        ExVers = $null ;
+                    }
+                    #>
+                    if (get-service | ? { $_.ServiceName -match $rgxExSvcNames }) {
+                        $hSummary.hasExServices = $true ;
+                        $hSummary.ExServicesStatus = get-service -ComputerName $env:computername | ? { $_.ServiceName -match $rgxExSvcNamesFull } | select-object servicename, displayname, status, starttype
+                    } else { $hSummary.hasExServices = $false } ;
+                    if ($env:ExchangeInstalled) {
+                        $hSummary.isLocalExchangeServer = $true ;
+                    } elseif ($hSummary.hasExServices -AND ($hklmPath = (resolve-path "HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\Setup").path)) {
+                        $hSummary.isLocalExchangeServer = $true ;
+                        switch -regex ($hklmPath) {
+                            '\\v14\\' { $isEx2010 = $true ; $hSummary.ExVers = 'Ex2010' ; 
+                                $smsg = "\v14\Setup == Ex2010" ; 
+                                if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                    if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                                } ;
+                            }
+                            '\\v15\\' { 
+                                $smsg = "\v15\Setup == Ex2016/Ex2019" ; 
+                                if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                    if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                                } ;
+                            }
+                            default {
+                                $smsg = "Unable to manually resolve $($hklmPath) to a known version path!" ;
+                                if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                } ;
+                                throw $smsg ;
+                            }
+                        } ;
+                    } else {
+                        $smsg = "hSummary.isLocalExchangeServer:$($false)" ;
+                        if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        } ;
+                        $hSummary.isLocalExchangeServer = $false ;
+                    } ;
+                    if ($hSummary.isLocalExchangeServer) {
+                        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\AdminTools') {
+                            $smsg = "Local Installed:AdminTools"
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            $hSummary.isAdminTools = $true
+                        }
+                        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\ClientAccessRole') {
+                            $smsg = "Local Installed:ClientAccessRole"
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            $hSummary.isCAS = $true
+                        }
+                        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\UnifiedMessagingRole') {
+                            $smsg = "Local Installed:UnifiedMessagingRole"
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            $hSummary.isUM = $true
+                        }
+                        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\MailboxRole') {
+                            $smsg = "Local Installed:MailboxRole"
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            $hSummary.isMbx = $true
+                        }
+                        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\FrontendTransportRole') {
+                            $smsg = "Local Installed:FrontendTransportRole"
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            $hSummary.isHub = $true
+                        }
+                        if ((get-service MSExchangeEdgeCredential -ea 0) -AND (Test-Path 'HKLM:\SOFTWARE\Microsoft\ExchangeServer\v*\EdgeTransportRole')) {
+                            $smsg = "Local Installed:EdgeTransportRole"
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            $hSummary.isEdgeTransport = $true
+                        } ;
+                    } ;
+                    # version detect:
+                    if ($hSummary.isLocalExchangeServer) {
+                        $smsg = "Checking local discovered Exsetup.exe FileversionInfo" ;
+                        if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                        if ($FileversionInfo = Get-Command Exsetup.exe | ForEach-Object { $_.FileversionInfo } ) {
+                            $smsg = "`$FileversionInfo:Exsetup.exe`n$(($FileversionInfo | ft -a |out-string).trim())" ;
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            [version]$ExsetupRev = (@($FileversionInfo.FileMajorPart, $FileversionInfo.FileMinorPart, $FileversionInfo.FileBuildPart, $FileversionInfo.FilePrivatePart) -join '.')
+                            #$ExsetupProduct = $BuildToProductName[$ExsetupRev.tostring()]
+                            #$smsg = "`$ExsetupProduct:$($ExsetupProduct)" ;
+                        } elseif ($FileversionInfo = (get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe" -ea 0).VersionInfo.FileVersionRaw ) {
+                            $smsg = "`$FileversionInfo:Setup.exe`n$(($FileversionInfo | ft -a |out-string).trim())" ;
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            [version]$ExsetupRev = (@($FileversionInfo.FileMajorPart, $FileversionInfo.FileMinorPart, $FileversionInfo.FileBuildPart, $FileversionInfo.FilePrivatePart) -join '.')
+                        } else {
+                            $smsg = "$($Server.name):Unable to remote retrieve: Get-Command Exsetup.exe | ForEach-Object { $_.FileversionInfo}"
+                            if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            } ;
+                            throw $smsg ; 
+                        } ;
+                        switch -regex ([string](@($FileversionInfo.FileMajorPart, $FileversionInfo.FileMinorPart) -join '.')) {
+                            '15\.2' {
+                                # SE only diffs from ex2019, in the 15.2.25*+ vs 15.2.221-1748
+                                if ($FileversionInfo.FileBuildPart -ge 2562) {
+                                    $hSummary.isExSE = $true ; $hSummary.ExVers = 'ExSE'
+                                } else {
+                                    $hSummary.isEx2019 = $true ; $hSummary.ExVers = 'Ex2019'
+                                } ;
+                            }
+                            '15\.1' { $hSummary.isEx2016 = $true ; $hSummary.ExVers = 'Ex2016' }
+                            '15\.0' { $hSummary.isEx2013 = $true ; $hSummary.ExVers = 'Ex2013' }
+                            '14\..*' { $hSummary.isEx2010 = $true ; $hSummary.ExVers = 'Ex2010' }
+                            '8\..*' { $hSummary.isEx2007 = $true ; $hSummary.ExVers = 'Ex2007' }
+                            '6\.5' { $hSummary.isEx2003 = $true ; $hSummary.ExVers = 'Ex2003' }
+                            '6|6\.0' { $hSummary.isEx2000 = $true ; $hSummary.ExVers = 'Ex2000' } ;
+                            default {
+                                $smsg = "UNRECOGNIZED ExVersNum.Major.Minor string:$(@($FileversionInfo.FileMajorPart,$FileversionInfo.FileMinorPart) -join '.')! ABORTING!" ;
+                                if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                } ;
+                                THROW $smsg ;
+                                BREAK ;
+                            }
+                        } ;
+                    } ;
+                    <# this tests the version on the binpath folder
+                    if ($hSummary.isLocalExchangeServer) {
+                        if ($vers = (get-item "$($env:ExchangeInstallPath)\Bin\Setup.exe" -ea 0).VersionInfo.FileVersionRaw ) {} else {
+                            if ($binPath = (resolve-path  "$($env:ProgramFiles)\Microsoft\Exchange Server\V1*\Bin\Setup.exe" -ea 0).path) { } else {
+                                (get-psdrive -PSProvider FileSystem | ? { $_ -match '[D-Z]' }  | select -expand name) | foreach-object {
+                                    $drv = $_ ;
+                                    if ($rp = resolve-path  "$($drv)$($env:ProgramFiles.substring(1,($env:ProgramFiles.length-1)))\Microsoft\Exchange Server\V1*\Bin\Setup.exe" -ea 0) {
+                                        $binPath = $rp.path;
+                                        if ($host.version.major -gt 2) { break } else { 
+                                            $smsg = "PSv2 breaks entire script w break, instead of branching out of local loop" 
+                                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                                            } ;
+                                        } ;
+                                    } ;
+                                };
+                            } ;
+                            if ($binPath) {
+                                if ( ($vers = (get-item $binPath).VersionInfo.FileVersionRaw) -OR ($vers = (get-item $binPath).VersionInfo.FileVersion) ) {
+                                } else {
+                                    $smsg = "Unable to manually resolve an `$env:ExchangeInstallPath equiv, on any local drive" ;
+                                    write-warning $smsg ;
+                                    throw $smsg ;
+                                }
+                            } ;
+                        } ;
+                    } ;
+                    #>
+                    # add a watermark test
+                    if ($hSummary.isLocalExchangeServer) {
+                        if($wmarks = test-xopExchangeInstallWatermarkTDO){
+                            $smsg = "FOUND INSTALL WATERMARKS! w`n$(($wmarks|out-string).trim())" ;
+                            if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            } ;
+                        } else {
+                            $smsg = "No Watermark values found in `$RegistryPath" ;
+                            if ($showWatermark) {
+                                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                } ;
+                            } else {
+                                if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                    if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                                } ;
+                            } ;
+                        } ;
+                    } ;
+                    if ($hSummary.isLocalExchangeServer) {
+                        $smsg = @("`$hSummary.ExVers: $($hSummary.ExVers)") ;
+                        $smsg += @("`$$((gv "is$($hSummary.ExVers)" -ea 0).name): $((gv "is$($hSummary.ExVers)"  -ea 0).value)") ;
+                        if ($hSummary.IsEdgeTransport) { $smsg += @("`$hSummary.IsEdgeTransport: $($hSummary.IsEdgeTransport)") } else { $smsg += @(" (non-Edge)") } ;
+                        $smsg = ($smsg -join ' ') ;
+                        if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        } ;
+                    } else {
+                        $smsg = "(non-Local ExchangeServer (`$hSummary.isLocalExchangeServer:$([boolean]$hSummary.isLocalExchangeServer )))" ;
+                        if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        } ;
+                    } ; 
+                } ;
+                END {
+                    # clean out null/empty value props (return only populated props)
+                    $mts = $hSummary.GetEnumerator() | ? { ($null -eq $_.value) -OR ($_.value -eq '') } ; $mts | foreach-object { $hSummary.remove($_.Name) } ; remove-variable mts -ea 0 ;
+                    [pscustomobject]$hSummary | write-output
+                }
+            }        
+        }
+        #endregion TEST_LOCALEXCHANGEINFOTDO ; #*------^ END test-LocalExchangeInfoTDO ^------
 
         <#
         #region PsParams ; #*------v PSPARAMS v------
@@ -13758,7 +14163,7 @@ function get-xopServerAdminDisplayVersion {
         updated CBH; 
         updated BuildToProductName indexed hash to specs posted as of 3/26/2025 at https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates
             Maxes reflected in this script, as of that time:
-             - Exchange Server 2019 CU15 (2025H1) 	February 10, 2025 	15.2.1748.10 	15.02.1748.010
+             - Exchange Server 2019 CU15 (2025H1) 	February 10, 2025 	15.2.1748.10 	15.02.1748.0.1
              - Exchange Server 2016 CU23 Nov24SUv2 	November 27, 2024 	15.1.2507.44 	15.01.2507.044
              - Exchange Server 2013 CU23 Mar23SU 	March 14, 2023 	15.0.1497.48 	15.00.1497.048
              - Update Rollup 32 for Exchange Server 2010 SP3 	March 2, 2021 	14.3.513.0 	14.03.0513.000
@@ -13932,7 +14337,7 @@ function get-xopServerAdminDisplayVersion {
             '15.2.792.10' = 	'Exchange Server 2019 CU8 Mar21SU'
             '15.2.792.3' = 	'Exchange Server 2019 CU8'
             '15.2.721.13' = 	'Exchange Server 2019 CU7 Mar21SU'
-            '15.2.8.0.0' = 	'Exchange Server 2019 CU7'
+            '15.2.721.2' = 	'Exchange Server 2019 CU7'
             '15.2.659.12' = 	'Exchange Server 2019 CU6 Mar21SU'
             '15.2.659.4' = 	'Exchange Server 2019 CU6'
             '15.2.595.8' = 	'Exchange Server 2019 CU5 Mar21SU'
@@ -14989,7 +15394,7 @@ function new-MailboxGenericTOR {
     # 10:28 AM 6/27/2018 add $domaincontroller param option - skips dc discovery process and uses the spec, also updated $findOU code to work with torolab dom
     # 10:59 AM 5/21/2018 Fixed broken -nongeneric $true functionality: (corrected samaccountname gen code for blank fname field). Also added Mailuser/RemoteMailbox support for -Owner value. Validated functional for creation of the LYNCmonacct1 mbx.
     # 11:25 AM 12/22/2017 missing casmailbox splat construct for psv2 section, update CU5 test regx for perrotde & perrotpl, output an error when it fails to find a BaseUser (new empty site with empty target OU to draw from, prompts to hand spec -BaseUser param with mbx in another OU or loc
-    # 11:58 AM 11/15/2018.0.01: accommodate EXO-hosted Owners by testing with get-remotemailbox -AND get-mailbox on the owner spec. Created a mailbox, seemed to work. Not sure of access grant script yet.
+    # 11:58 AM 11/15/2017 1321: accommodate EXO-hosted Owners by testing with get-remotemailbox -AND get-mailbox on the owner spec. Created a mailbox, seemed to work. Not sure of access grant script yet.
     # 11:43 AM 10/6/2017 made $Cu5 Mandatry:$false
     # 10:30 AM 10/6/2017 fix typo in $cu5 switch
     # 8:41 AM 10/6/2017 major re-splict to read lost set-mailbox (alt domain assignment) & set-casmailbox material. Need to splice this code
@@ -16551,7 +16956,7 @@ function new-MailboxShared {
     # 10:28 AM 6/27/2018 add $domaincontroller param option - skips dc discovery process and uses the spec, also updated $findOU code to work with TOL dom
     # 10:59 AM 5/21/2018 Fixed broken -nongeneric $true functionality: (corrected samaccountname gen code for blank fname field). Also added Mailuser/RemoteMailbox support for -Owner value. Validated functional for creation of the LYNCmonacct1 mbx.
     # 11:25 AM 12/22/2017 missing casmailbox splat construct for psv2 section, update CU5 test regx for perrotde & perrotpl, output an error when it fails to find a BaseUser (new empty site with empty target OU to draw from, prompts to hand spec -BaseUser param with mbx in another OU or loc
-    # 11:58 AM 11/15/2018.0.01: accommodate EXO-hosted Owners by testing with get-remotemailbox -AND get-mailbox on the owner spec. Created a mailbox, seemed to work. Not sure of access grant script yet.
+    # 11:58 AM 11/15/2017 1321: accommodate EXO-hosted Owners by testing with get-remotemailbox -AND get-mailbox on the owner spec. Created a mailbox, seemed to work. Not sure of access grant script yet.
     # 11:43 AM 10/6/2017 made $Cu5 Mandatry:$false
     # 10:30 AM 10/6/2017 fix typo in $cu5 switch
     # 8:41 AM 10/6/2017 major re-splict to read lost set-mailbox (alt domain assignment) & set-casmailbox material. Need to splice this code
@@ -20603,7 +21008,7 @@ Function Resolve-xopBuildSemVersToTextNameTDO {
 
         ProductName                        ReleaseDate BuildNumberShort BuildNumberLong PatchBasis                NickName           IsInstallable
         -----------                        ----------- ---------------- --------------- ----------                --------           -------------
-        Exchange Server 2019 CU15 (2025H1) 2/10/2025   15.2.1748.10     15.02.1748.010  Exchange Server 2019 CU15 EX2019_CU15_2025H1 TRUE         
+        Exchange Server 2019 CU15 (2025H1) 2/10/2025   15.2.1748.10     15.02.1748.0.1  Exchange Server 2019 CU15 EX2019_CU15_2025H1 TRUE         
         Exchange Server 2019 CU14 (2024H1) 2/13/2024   15.2.1544.4      15.02.1544.004  Exchange Server 2019 CU14 EX2019_CU14_2024H1 TRUE         
         Exchange Server 2019 CU13 (2023H1) 5/3/2023    15.2.1258.12     15.02.1258.012  Exchange Server 2019 CU13 EX2019_CU13_2023H1 TRUE         
         Exchange Server 2019 CU12 (2022H1) 4/20/2022   15.2.1118.7      15.02.1118.007  Exchange Server 2019 CU12 EX2019_CU12_2022H1 TRUE         
@@ -20611,7 +21016,7 @@ Function Resolve-xopBuildSemVersToTextNameTDO {
         Exchange Server 2019 CU10          6/29/2021   15.2.922.7       15.02.0922.007  Exchange Server 2019 CU10 EX2019_CU10        TRUE         
         Exchange Server 2019 CU9           3/16/2021   15.2.858.5       15.02.0858.005  Exchange Server 2019 CU9  EX2019_CU9         TRUE         
         Exchange Server 2019 CU8           12/15/2020  15.2.792.3       15.02.0792.003  Exchange Server 2019 CU8  EX2019_CU8         TRUE         
-        Exchange Server 2019 CU7           9/15/2020   15.2.8.0.0       15.02.0721.002  Exchange Server 2019 CU7  EX2019_CU7         TRUE         
+        Exchange Server 2019 CU7           9/15/2020   15.2.721.2       15.02.0721.002  Exchange Server 2019 CU7  EX2019_CU7         TRUE         
         Exchange Server 2019 CU6           6/16/2020   15.2.659.4       15.02.0659.004  Exchange Server 2019 CU6  EX2019_CU6         TRUE         
         Exchange Server 2019 CU5           3/17/2020   15.2.595.3       15.02.0595.003  Exchange Server 2019 CU5  EX2019_CU5         TRUE         
         Exchange Server 2019 CU4           12/17/2019  15.2.529.5       15.02.0529.005  Exchange Server 2019 CU4  EX2019_CU4         TRUE         
@@ -20766,13 +21171,13 @@ ProductName                                                | ReleaseDate     | B
 Exchange Server SE RTM Oct25SU                             | 10/14/2025      | 15.2.2562.29 	  | 15.02.2562.029  | Exchange Server SE RTM               | EXSE_RTM_Oct25SU
 Exchange Server SE RTM Sep25HU                             | 9/8/2025        | 15.2.2562.27     | 15.02.2562.027  | Exchange Server SE RTM               | EXSE_RTM_Sep25HU      |
 Exchange Server SE RTM Aug25SU                             | 8/12/2025       | 15.2.2562.20     | 15.02.2562.020  | Exchange Server SE RTM               | EXSE_RTM_Aug25SU      |
-Exchange Server SE RTM                                     | 8.0.0025        | 15.2.2562.17     | 15.02.2562.017  | Exchange Server SE RTM               | EXSE_RTM              | TRUE
+Exchange Server SE RTM                                     | 7/1/2025        | 15.2.2562.17     | 15.02.2562.017  | Exchange Server SE RTM               | EXSE_RTM              | TRUE
 Exchange Server 2019 CU15 Oct25SU 	                       | 10/14/2025      | 15.2.1748.39   	| 15.02.1748.039  | Exchange Server 2019 CU15            | EX2019_CU15_Oct25SU   |
 Exchange Server 2019 CU15 Sep25HU                          | 9/8/2025        | 15.2.1748.37     | 15.02.1748.037  | Exchange Server 2019 CU15            | EX2019_CU15_Sep25HU   |
 Exchange Server 2019 CU15 Aug25SU                          | 8/12/2025       | 15.2.1748.36     | 15.02.1748.036  | Exchange Server 2019 CU15            | EX2019_CU15_Aug25SU   |
 Exchange Server 2019 CU15 May25HU                          | 5/29/2025       | 15.2.1748.26     | 15.02.1748.026  | Exchange Server 2019 CU15            | EX2019_CU15_May25HU   |
 Exchange Server 2019 CU15 Apr25HU                          | 4/18/2025       | 15.2.1748.24     | 15.02.1748.024  | Exchange Server 2019 CU15            | EX2019_CU15_Apr25HU   |
-Exchange Server 2019 CU15 (2025H1)                         | 2/10/2025       | 15.2.1748.10     | 15.02.1748.010  | Exchange Server 2019 CU15            | EX2019_CU15_2025H1    | TRUE
+Exchange Server 2019 CU15 (2025H1)                         | 2/10/2025       | 15.2.1748.10     | 15.02.1748.0.1  | Exchange Server 2019 CU15            | EX2019_CU15_2025H1    | TRUE
 Exchange Server 2019 CU14 Sep25HU                          | 9/8/2025        | 15.2.1544.34     | 15.02.1544.034  | Exchange Server 2019 CU14            | EX2019_CU14_Sep25HU   |
 Exchange Server 2019 CU14 Aug25SU                          | 8/12/2025       | 15.2.1544.33     | 15.02.1544.033  | Exchange Server 2019 CU14            | EX2019_CU14_Aug25SU   |
 Exchange Server 2019 CU14 May25HU                          | 5/29/2025       | 15.2.1544.27     | 15.02.1544.027  | Exchange Server 2019 CU14            | EX2019_CU14_May25HU   |
@@ -20792,15 +21197,15 @@ Exchange Server 2019 CU13 Aug23SUv2                        | 8/15/2023       | 1
 Exchange Server 2019 CU13 Aug23SU                          | 8/8/2023        | 15.2.1258.23     | 15.02.1258.023  | Exchange Server 2019 CU13            | EX2019_CU13_Aug23SU   |
 Exchange Server 2019 CU13 Jun23SU                          | 6/13/2023       | 15.2.1258.16     | 15.02.1258.016  | Exchange Server 2019 CU13            | EX2019_CU13_Jun23SU   |
 Exchange Server 2019 CU13 (2023H1)                         | 5/3/2023        | 15.2.1258.12     | 15.02.1258.012  | Exchange Server 2019 CU13            | EX2019_CU13_2023H1    | TRUE
-Exchange Server 2019 CU12 Nov23SU                          | 11/14/2023      | 15.2.1118.40     | 15.02.1118.040  | Exchange Server 2019 CU12            | EX2019_CU12_Nov23SU   |
+Exchange Server 2019 CU12 Nov23SU                          | 11/14/2023      | 15.2.1118.40     | 15.02.1118.0.1  | Exchange Server 2019 CU12            | EX2019_CU12_Nov23SU   |
 Exchange Server 2019 CU12 Oct23SU                          | 10/10/2023      | 15.2.1118.39     | 15.02.1118.039  | Exchange Server 2019 CU12            | EX2019_CU12_Oct23SU   |
 Exchange Server 2019 CU12 Aug23SUv2                        | 8/15/2023       | 15.2.1118.37     | 15.02.1118.037  | Exchange Server 2019 CU12            | EX2019_CU12_Aug23SUv2 |
 Exchange Server 2019 CU12 Aug23SU                          | 8/8/2023        | 15.2.1118.36     | 15.02.1118.036  | Exchange Server 2019 CU12            | EX2019_CU12_Aug23SU   |
-Exchange Server 2019 CU12 Jun23SU                          | 6/13/2023       | 15.2.1118.30     | 15.02.1118.030  | Exchange Server 2019 CU12            | EX2019_CU12_Jun23SU   |
+Exchange Server 2019 CU12 Jun23SU                          | 6/13/2023       | 15.2.1118.30     | 15.02.1118.0.1  | Exchange Server 2019 CU12            | EX2019_CU12_Jun23SU   |
 Exchange Server 2019 CU12 Mar23SU                          | 3/14/2023       | 15.2.1118.26     | 15.02.1118.026  | Exchange Server 2019 CU12            | EX2019_CU12_Mar23SU   |
 Exchange Server 2019 CU12 Feb23SU                          | 2/14/2023       | 15.2.1118.25     | 15.02.1118.025  | Exchange Server 2019 CU12            | EX2019_CU12_Feb23SU   |
 Exchange Server 2019 CU12 Jan23SU                          | 1/10/2023       | 15.2.1118.21     | 15.02.1118.021  | Exchange Server 2019 CU12            | EX2019_CU12_Jan23SU   |
-Exchange Server 2019 CU12 Nov22SU                          | 11/8/2022       | 15.2.1118.20     | 15.02.1118.020  | Exchange Server 2019 CU12            | EX2019_CU12_Nov22SU   |
+Exchange Server 2019 CU12 Nov22SU                          | 11/8/2022       | 15.2.1118.20     | 15.02.1118.0.1  | Exchange Server 2019 CU12            | EX2019_CU12_Nov22SU   |
 Exchange Server 2019 CU12 Oct22SU                          | 10/11/2022      | 15.2.1118.15     | 15.02.1118.015  | Exchange Server 2019 CU12            | EX2019_CU12_Oct22SU   |
 Exchange Server 2019 CU12 Aug22SU                          | 8/9/2022        | 15.2.1118.12     | 15.02.1118.012  | Exchange Server 2019 CU12            | EX2019_CU12_Aug22SU   |
 Exchange Server 2019 CU12 May22SU                          | 5/10/2022       | 15.2.1118.9      | 15.02.1118.009  | Exchange Server 2019 CU12            | EX2019_CU12_May22SU   |
@@ -20825,14 +21230,14 @@ Exchange Server 2019 CU10 Jul21SU                          | 7/13/2021       | 1
 Exchange Server 2019 CU10                                  | 6/29/2021       | 15.2.922.7       | 15.02.0922.007  | Exchange Server 2019 CU10            | EX2019_CU10           | TRUE
 Exchange Server 2019 CU9 Jul21SU                           | 7/13/2021       | 15.2.858.15      | 15.02.0858.015  | Exchange Server 2019 CU9             | EX2019_CU9_Jul21SU    |
 Exchange Server 2019 CU9 May21SU                           | 5/11/2021       | 15.2.858.12      | 15.02.0858.012  | Exchange Server 2019 CU9             | EX2019_CU9_May21SU    |
-Exchange Server 2019 CU9 Apr21SU                           | 4/13/2021       | 15.2.858.10      | 15.02.0858.010  | Exchange Server 2019 CU9             | EX2019_CU9_Apr21SU    |
+Exchange Server 2019 CU9 Apr21SU                           | 4/13/2021       | 15.2.858.10      | 15.02.0858.0.1  | Exchange Server 2019 CU9             | EX2019_CU9_Apr21SU    |
 Exchange Server 2019 CU9                                   | 3/16/2021       | 15.2.858.5       | 15.02.0858.005  | Exchange Server 2019 CU9             | EX2019_CU9            | TRUE
 Exchange Server 2019 CU8 May21SU                           | 5/11/2021       | 15.2.792.15      | 15.02.0792.015  | Exchange Server 2019 CU8             | EX2019_CU8_May21SU    |
 Exchange Server 2019 CU8 Apr21SU                           | 4/13/2021       | 15.2.792.13      | 15.02.0792.013  | Exchange Server 2019 CU8             | EX2019_CU8_Apr21SU    |
 Exchange Server 2019 CU8 Mar21SU                           | 3/2/2021        | 15.2.792.10      | 15.02.0792.010  | Exchange Server 2019 CU8             | EX2019_CU8_Mar21SU    |
 Exchange Server 2019 CU8                                   | 12/15/2020      | 15.2.792.3       | 15.02.0792.003  | Exchange Server 2019 CU8             | EX2019_CU8            | TRUE
 Exchange Server 2019 CU7 Mar21SU                           | 3/2/2021        | 15.2.721.13      | 15.02.0721.013  | Exchange Server 2019 CU7             | EX2019_CU7_Mar21SU    |
-Exchange Server 2019 CU7                                   | 9/15/2020       | 15.2.8.0.0       | 15.02.0721.002  | Exchange Server 2019 CU7             | EX2019_CU7            | TRUE
+Exchange Server 2019 CU7                                   | 9/15/2020       | 15.2.721.2       | 15.02.0721.002  | Exchange Server 2019 CU7             | EX2019_CU7            | TRUE
 Exchange Server 2019 CU6 Mar21SU                           | 3/2/2021        | 15.2.659.12      | 15.02.0659.012  | Exchange Server 2019 CU6             | EX2019_CU6_Mar21SU    |
 Exchange Server 2019 CU6                                   | 6/16/2020       | 15.2.659.4       | 15.02.0659.004  | Exchange Server 2019 CU6             | EX2019_CU6            | TRUE
 Exchange Server 2019 CU5 Mar21SU                           | 3/2/2021        | 15.2.595.8       | 15.02.0595.008  | Exchange Server 2019 CU5             | EX2019_CU5_Mar21SU    |
@@ -20881,7 +21286,7 @@ Exchange Server 2016 CU22 Oct21SU                          | 10/12/2021      | 1
 Exchange Server 2016 CU22                                  | 9/28/2021       | 15.1.2375.7      | 15.01.2375.007  | Exchange Server 2016 CU22            | EX2016_CU22           | TRUE
 Exchange Server 2016 CU21 Mar22SU                          | 3/8/2022        | 15.1.2308.27     | 15.01.2308.027  | Exchange Server 2016 CU21            | EX2016_CU21_Mar22SU   |
 Exchange Server 2016 CU21 Jan22SU                          | 1/11/2022       | 15.1.2308.21     | 15.01.2308.021  | Exchange Server 2016 CU21            | EX2016_CU21_Jan22SU   |
-Exchange Server 2016 CU21 Nov21SU                          | 11/9/2021       | 15.1.2308.20     | 15.01.2308.020  | Exchange Server 2016 CU21            | EX2016_CU21_Nov21SU   |
+Exchange Server 2016 CU21 Nov21SU                          | 11/9/2021       | 15.1.2308.20     | 15.01.2308.0.1  | Exchange Server 2016 CU21            | EX2016_CU21_Nov21SU   |
 Exchange Server 2016 CU21 Oct21SU                          | 10/12/2021      | 15.1.2308.15     | 15.01.2308.015  | Exchange Server 2016 CU21            | EX2016_CU21_Oct21SU   |
 Exchange Server 2016 CU21 Jul21SU                          | 7/13/2021       | 15.1.2308.14     | 15.01.2308.014  | Exchange Server 2016 CU21            | EX2016_CU21_Jul21SU   |
 Exchange Server 2016 CU21                                  | 6/29/2021       | 15.1.2308.8      | 15.01.2308.008  | Exchange Server 2016 CU21            | EX2016_CU21           | TRUE
@@ -20969,7 +21374,7 @@ Exchange Server 2013 RTM                                   | 12/3/2012       | 1
 Update Rollup 32 for Exchange Server 2010 SP3              | 3/2/2021        | 14.3.513.0       | 14.03.0513.000  | Exchange Server 2010 SP3             | EX2010_SP3_UR32       |
 Update Rollup 31 for Exchange Server 2010 SP3              | 12/1/2020       | 14.3.509.0       | 14.03.0509.000  | Exchange Server 2010 SP3             | EX2010_SP3_UR31       |
 Update Rollup 30 for Exchange Server 2010 SP3              | 2/11/2020       | 14.3.496.0       | 14.03.0496.000  | Exchange Server 2010 SP3             | EX2010_SP3_UR30       |
-Update Rollup 29 for Exchange Server 2010 SP3              | 7/9/2019        | 14.3.468.0       | 14.03.0468.000  | Exchange Server 2010 SP3             | EX2010_SP3_UR29       |
+Update Rollup 29 for Exchange Server 2010 SP3              | 7/9/2019        | 14.3.468.0       | 14.03.0468.0.1  | Exchange Server 2010 SP3             | EX2010_SP3_UR29       |
 Update Rollup 28 for Exchange Server 2010 SP3              | 6/7/2019        | 14.3.461.1       | 14.03.0461.001  | Exchange Server 2010 SP3             | EX2010_SP3_UR28       |
 Update Rollup 27 for Exchange Server 2010 SP3              | 4/9/2019        | 14.3.452.0       | 14.03.0452.000  | Exchange Server 2010 SP3             | EX2010_SP3_UR27       |
 Update Rollup 26 for Exchange Server 2010 SP3              | 2/12/2019       | 14.3.442.0       | 14.03.0442.000  | Exchange Server 2010 SP3             | EX2010_SP3_UR26       |
@@ -21003,7 +21408,7 @@ Exchange Server 2010 SP3                                   | 2/12/2013       | 1
 Update Rollup 8 for Exchange Server 2010 SP2               | 12/9/2013       | 14.2.390.3       | 14.02.0390.003  | Exchange Server 2010 SP2             | EX2010_SP2_UR8        |
 Update Rollup 7 for Exchange Server 2010 SP2               | 8/3/2013        | 14.2.375.0       | 14.02.0375.000  | Exchange Server 2010 SP2             | EX2010_SP2_UR7        |
 Update Rollup 6 Exchange Server 2010 SP2                   | 2/12/2013       | 14.2.342.3       | 14.02.0342.003  | Exchange Server 2010 SP2             | EX2010_SP2_UR6        |
-Update Rollup 5 v2 for Exchange Server 2010 SP2            | 12/10/2012      | 14.2.328.10      | 14.02.0328.010  | Exchange Server 2010 SP2             | EX2010_SP2_UR5_v2     |
+Update Rollup 5 v2 for Exchange Server 2010 SP2            | 12/10/2012      | 14.2.328.10      | 14.02.0328.0.1  | Exchange Server 2010 SP2             | EX2010_SP2_UR5_v2     |
 Update Rollup 5 for Exchange Server 2010 SP2               | 11/13/2012      | 14.3.328.5       | 14.03.0328.005  | Exchange Server 2010 SP2             | EX2010_SP2_UR5        |
 Update Rollup 4 v2 for Exchange Server 2010 SP2            | 10/9/2012       | 14.2.318.4       | 14.02.0318.004  | Exchange Server 2010 SP2             | EX2010_SP2_UR4_v2     |
 Update Rollup 4 for Exchange Server 2010 SP2               | 8/13/2012       | 14.2.318.2       | 14.02.0318.002  | Exchange Server 2010 SP2             | EX2010_SP2_UR4        |
@@ -21011,7 +21416,7 @@ Update Rollup 3 for Exchange Server 2010 SP2               | 5/29/2012       | 1
 Update Rollup 2 for Exchange Server 2010 SP2               | 4/16/2012       | 14.2.298.4       | 14.02.0298.004  | Exchange Server 2010 SP2             | EX2010_SP2_UR2        |
 Update Rollup 1 for Exchange Server 2010 SP2               | 2/13/2012       | 14.2.283.3       | 14.02.0283.003  | Exchange Server 2010 SP2             | EX2010_SP2_UR1        |
 Exchange Server 2010 SP2                                   | 12/4/2011       | 14.2.247.5       | 14.02.0247.005  | Exchange Server 2010 SP2             | EX2010_SP2            | TRUE
-Update Rollup 8 for Exchange Server 2010 SP1               | 12/10/2012      | 14.1.438.0       | 14.01.0438.000  | Exchange Server 2010 SP1             | EX2010_SP1_UR8        |
+Update Rollup 8 for Exchange Server 2010 SP1               | 12/10/2012      | 14.1.438.0       | 14.01.0438.0.1  | Exchange Server 2010 SP1             | EX2010_SP1_UR8        |
 Update Rollup 7 v3 for Exchange Server 2010 SP1            | 11/13/2012      | 14.1.421.3       | 14.01.0421.003  | Exchange Server 2010 SP1             | EX2010_SP1_UR7_v3     |
 Update Rollup 7 v2 for Exchange Server 2010 SP1            | 10/10/2012      | 14.1.421.2       | 14.01.0421.002  | Exchange Server 2010 SP1             | EX2010_SP1_UR7_v2     |
 Update Rollup 7 for Exchange Server 2010 SP1               | 8/8/2012        | 14.1.421.0       | 14.01.0421.000  | Exchange Server 2010 SP1             | EX2010_SP1_UR7        |
@@ -21031,7 +21436,7 @@ Exchange Server 2010 RTM                                   | 11/9/2009       | 1
 Update Rollup 23 for Exchange Server 2007 SP3              | 3/21/2017       | 8.3.517.0        | 8.03.0517.000   | Exchange Server 2007 SP3             | EX2007_SP3_UR23       |
 Update Rollup 22 for Exchange Server 2007 SP3              | 12/13/2016      | 8.3.502.0        | 8.03.0502.000   | Exchange Server 2007 SP3             | EX2007_SP3_UR22       |
 Update Rollup 21 for Exchange Server 2007 SP3              | 9/20/2016       | 8.3.485.1        | 8.03.0485.001   | Exchange Server 2007 SP3             | EX2007_SP3_UR21       |
-Update Rollup 20 for Exchange Server 2007 SP3              | 6/21/2016       | 8.3.468.0        | 8.03.0468.000   | Exchange Server 2007 SP3             | EX2007_SP3_UR20       |
+Update Rollup 20 for Exchange Server 2007 SP3              | 6/21/2016       | 8.3.468.0        | 8.03.0468.0.1   | Exchange Server 2007 SP3             | EX2007_SP3_UR20       |
 Update Rollup 19 forExchange Server 2007 SP3               | 3/15/2016       | 8.3.459.0        | 8.03.0459.000   | Exchange Server 2007 SP3             | EX2007_SP3_UR19       |
 Update Rollup 18 forExchange Server 2007 SP3               | December, 2015  | 8.3.445.0        | 8.03.0445.000   | Exchange Server 2007 SP3             | EX2007_SP3_UR18       |
 Update Rollup 17 forExchange Server 2007 SP3               | 6/17/2015       | 8.3.417.1        | 8.03.0417.001   | Exchange Server 2007 SP3             | EX2007_SP3_UR17       |
@@ -21076,7 +21481,7 @@ Update Rollup 6 for Exchange Server 2007                   | 2/21/2008       | 8
 Update Rollup 5 for Exchange Server 2007                   | 10/25/2007      | 8.0.754.0        | 8.00.0754.000   | Exchange Server 2007 RTM             | EX2007_UR5            |
 Update Rollup 4 for Exchange Server 2007                   | 8/23/2007       | 8.0.744.0        | 8.00.0744.000   | Exchange Server 2007 RTM             | EX2007_UR4            |
 Update Rollup 3 for Exchange Server 2007                   | 6/28/2007       | 8.0.730.1        | 8.00.0730.001   | Exchange Server 2007 RTM             | EX2007_UR3            |
-Update Rollup 2 for Exchange Server 2007                   | 5/8/2007        | 8.0.8.0.0        | 8.00.0711.002   | Exchange Server 2007 RTM             | EX2007_UR2            |
+Update Rollup 2 for Exchange Server 2007                   | 5/8/2007        | 8.0.711.2        | 8.00.0711.002   | Exchange Server 2007 RTM             | EX2007_UR2            |
 Update Rollup 1 for Exchange Server 2007                   | 4/17/2007       | 8.0.708.3        | 8.00.0708.003   | Exchange Server 2007 RTM             | EX2007_UR1            |
 Exchange Server 2007 RTM                                   | 3/8/2007        | 8.0.685.25       | 8.00.0685.025   | Exchange Server 2007 RTM             | EX2007_RTM            | TRUE
 Exchange Server 2003 post-SP2                              | 8/1/2008        | 6.5.7654.4       |                 | Exchange Server 2003 post-SP2        | EX2003_post-SP2       | TRUE
@@ -23195,6 +23600,7 @@ function test-LocalExchangeInfoTDO {
             AddedWebsite: URL
             AddedTwitter: URL
             REVISIONS
+            * 2:35 PM 2/26/2026 added rem'd exist tests
             * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat)
             * 2:58 PM 7/17/2025 updated CBH;  hybrid with prexisting vx10\test-LocalExchangeInfoTDO, combined best ideas from both; ren (again) to match existing: test-xopExchangeLocalInstallTDO -> test-LocalExchangeInfoTDO()
             * 4:09 PM 7/13/2025 add: cbh demo to test for down/disabled svcs state ;
@@ -23226,7 +23632,7 @@ function test-LocalExchangeInfoTDO {
             ExVers = [string]  'ExS','Ex2019','Ex2016','Ex2013','Ex2010','Ex2007','Ex2003','Ex2000'
 
             ## return on a typical Exchange 2016 Mailbox server (with services stopped/disabled)
-        
+    
             ```powershell
             isLocalExchangeServer : True
             hasExServices         : True
@@ -23241,7 +23647,7 @@ function test-LocalExchangeInfoTDO {
             isMbx                 : True
             isUM                  : True
 
-         
+     
             ```
             .INPUTS
             None, no piped input.
@@ -23692,7 +24098,7 @@ PARAM() ;
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup,Connect-Ex2010,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,Connect-Ex2010XO,Connect-ExchangeServerTDO,_connect-ExOP,connect-OPServices,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,2b4,2b4c,fb4,connect-XopLocalManagementShell,Convert-xopAdminDisplayVersionTDO,cx10cmw,cx10tol,cx10tor,disable-ForestView,disable-xopExServer,Disconnect-Ex2010,enable-ForestView,get-ADExchangeServerTDO,get-DAGDatabaseCopyStatus,Get-ex16ExchangeServerTDO,Get-ex16MaintenanceModeTDO,Get-ExchangeOrganizationTDO,Get-ExchServerFromExServersGroup,get-ExRootSiteOUs,get-IISLocalBoundCertifcateTDO,get-MailboxDatabaseQuotas,Get-MessageTrackingLogTDO,resolve-EnvironmentTDO,write-log,Start-Log,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,resolve-NetworkLocalTDO,out-Clipboard,convertFrom-MarkdownTable,Remove-InvalidVariableNameChars,remove-SmtpPlusAddress,Initialize-xopEventIDTable,2b4,2b4c,fb4,Get-SetupTextVersionTDO,get-UserMailADSummary,get-xopExchangeLocalVersionTDO,get-xopLocalExSetupVersionTDO,get-xopLocalExSetupVersionTDO,get-xopServerAdminDisplayVersion,import-EMSLocalModule,Initialize-xopEventIDTable,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxGenericTOR,Remove-InvalidVariableNameChars,2b4,2b4c,fb4,new-MailboxShared,Remove-InvalidVariableNameChars,2b4,2b4c,fb4,preview-EAPUpdate,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,remove-SmtpPlusAddress,resolve-ExchangeServerVersionTDO,resolve-RecipientEAP,Resolve-xopBuildSemVersToTextNameTDO,convertFrom-MarkdownTable,Resolve-xopMajorVersionTDO,rx10cmw,rx10tol,rx10tor,Start-ex16MaintenanceMode,start-Ex16ServicesInDependencyOrder,start-ExMaintModeExpress,Stop-ex16MaintenanceMode,stop-Ex16ServicesInDependencyOrder,Test-ExchangeOrganizationTDO,test-ExOPPSession,test-EXOPConnection,test-LocalExchangeInfoTDO,test-xopExchangeInstallWatermarkTDO,toggle-ForestView -Alias *
+Export-ModuleMember -Function add-MailboxAccessGrant,add-MbxAccessGrant,_cleanup,Connect-Ex2010,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,Connect-Ex2010XO,Connect-ExchangeServerTDO,_connect-ExOP,connect-OPServices,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,2b4,2b4c,fb4,connect-XopLocalManagementShell,Convert-xopAdminDisplayVersionTDO,cx10cmw,cx10tol,cx10tor,disable-ForestView,disable-xopExServer,Disconnect-Ex2010,enable-ForestView,get-ADExchangeServerTDO,get-DAGDatabaseCopyStatus,Get-ex16ExchangeServerTDO,Get-ex16MaintenanceModeTDO,Get-ExchangeOrganizationTDO,Get-ExchServerFromExServersGroup,get-ExRootSiteOUs,get-IISLocalBoundCertifcateTDO,get-MailboxDatabaseQuotas,Get-MessageTrackingLogTDO,resolve-EnvironmentTDO,write-log,Start-Log,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,resolve-NetworkLocalTDO,out-Clipboard,convertFrom-MarkdownTable,Remove-InvalidVariableNameChars,remove-SmtpPlusAddress,Initialize-xopEventIDTable,push-TLSLatest,test-LocalExchangeInfoTDO,2b4,2b4c,fb4,Get-SetupTextVersionTDO,get-UserMailADSummary,get-xopExchangeLocalVersionTDO,get-xopLocalExSetupVersionTDO,get-xopLocalExSetupVersionTDO,get-xopServerAdminDisplayVersion,import-EMSLocalModule,Initialize-xopEventIDTable,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxGenericTOR,Remove-InvalidVariableNameChars,2b4,2b4c,fb4,new-MailboxShared,Remove-InvalidVariableNameChars,2b4,2b4c,fb4,preview-EAPUpdate,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,remove-SmtpPlusAddress,resolve-ExchangeServerVersionTDO,resolve-RecipientEAP,Resolve-xopBuildSemVersToTextNameTDO,convertFrom-MarkdownTable,Resolve-xopMajorVersionTDO,rx10cmw,rx10tol,rx10tor,Start-ex16MaintenanceMode,start-Ex16ServicesInDependencyOrder,start-ExMaintModeExpress,Stop-ex16MaintenanceMode,stop-Ex16ServicesInDependencyOrder,Test-ExchangeOrganizationTDO,test-ExOPPSession,test-EXOPConnection,test-LocalExchangeInfoTDO,test-xopExchangeInstallWatermarkTDO,toggle-ForestView -Alias *
 
 
 
