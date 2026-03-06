@@ -20,6 +20,7 @@ function Get-MessageTrackingLogTDO {
     Github      : htt-ps://github.com/tostka/verb-XXX
     Tags        : Powershell,Exchange,MessageTracking,Get-MessageTrackingLog,ActiveDirectory
     REVISIONS
+    * 1;17 pm 3/6/2026 fixed write-log trailing level WARNING -> WARN
     * 3:33 PM 2/26/2026 spliced in base missing funcs to get working again in CMW, added expl for duping to other hubs local
         revised example call to work past missing local rmv-invalidvarinamechars
     * 10:28 AM 9/11/2025 found it writing epcsv to modules install dir: enviro_discover block & resolve-EnvironmentTDO() to latest parammt vers. Now exports properly to d:\scripts\ on jb.
@@ -4897,7 +4898,7 @@ TRANSFER              | Recipients were moved to a forked message because of con
 
             } else { 
                 $smsg = "Unpopulated `$hReports, skipping output to pipeline" ; 
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARNING } 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
                 $false | write-output ; 
