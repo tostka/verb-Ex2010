@@ -20,7 +20,7 @@ function Get-MessageTrackingLogTDO {
     Github      : htt-ps://github.com/tostka/verb-XXX
     Tags        : Powershell,Exchange,MessageTracking,Get-MessageTrackingLog,ActiveDirectory
     REVISIONS
-    * 1;17 pm 3/6/2026 fixed write-log trailing level WARNING -> WARN
+    * 2:22 PM 3/6/2026 updated demo1 splat for role domain function/ps1 detects ;  fixed write-log trailing level WARNING -> WARN
     * 3:33 PM 2/26/2026 spliced in base missing funcs to get working again in CMW, added expl for duping to other hubs local
         revised example call to work past missing local rmv-invalidvarinamechars
     * 10:28 AM 9/11/2025 found it writing epcsv to modules install dir: enviro_discover block & resolve-EnvironmentTDO() to latest parammt vers. Now exports properly to d:\scripts\ on jb.
@@ -177,12 +177,13 @@ function Get-MessageTrackingLogTDO {
     PS>     ResultSize="" ;
     PS>     Tag='' ;
     PS> } ;
-    PS> $pltGMTL = [ordered]@{} ;
-    PS> $pltI.GetEnumerator() | ?{ $_.value}  | ForEach-Object { $pltGMTL.Add($_.Key, $_.Value) } ;
-    PS> $vn = (@("xopMsgs$($pltI.ticket)",$pltI.Tag) | ?{$_}) -join '_' write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-MessageTrackingLogTDO w`n$(($pltGMTL|out-string).trim())`n(assign to `$$($vn))" ;
-    PS> if(gv $vn -ea 0){rv $vn} ;
-    PS> if($tmsgs = Get-MessageTrackingLogTDO @pltGMTL){sv -na $vn -va $tmsgs ;
-    PS> write-host "(assigned to `$$vn)"} ;
+    PS> switch ($env:USERDOMAIN){     'CMW'{$pltI.Tag = "CMWEdg_$($pltI.Tag)"}     'TORO'{$pltI.Tag = "TTC_$($pltI.Tag)"}     'TORO-LAB'{$pltI.Tag = "TOL_$($pltI.Tag)"}     $env:COMPUTERNAME{         if(get-service MSExchangeEdgeCredential){$pltI.Tag += "CMWEdg_$($pltI.Tag)"}         }      DEFAULT{write-warning "UNRECOGNIZED `$ENV:USERDOMAIN!$($env:USERDOMAIN)" ; BREAK ; } } ; 
+    PS> $pltGMTL = [ordered]@{} ; $pltI.GetEnumerator() | ?{ $_.value}  | ForEach-Object { $pltGMTL.Add($_.Key, $_.Value) } ; $vn = @() ; $vn += "xopMsgs" ; 
+    PS> if(gcm Remove-InvalidVariableNameChars -ea 0){    if($pltI.ticket){$vn += @( Remove-InvalidVariableNameChars  -name $pltI.ticket)} ;   if($pltI.Tag){$vn += @($(Remove-InvalidVariableNameChars -name $pltI.Tag))} ; } else {   if($pltI.ticket){$vn += @( $pltI.ticket)} ;  if($pltI.Tag){$vn += @($pltI.Tag)} ; }  ; $vn = $vn -join '_' ; 
+    PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-MessageTrackingLogTDO w`n$(($pltGMTL|out-string).trim())`n(assign to `$$($vn))" ; 
+    PS> if(gv $vn -ea 0){rv $vn} ; 
+    PS> if(gcm Get-MessageTrackingLogTDO -ea 0 | ?{$_.commandtype -eq 'Function' -AND $_.Source -eq 'VERB-ex2010'}){   $tmsgs = Get-MessageTrackingLogTDO.ps1 @pltGMTL ;  }elseif(gcm .\Get-MessageTrackingLogTDO.ps1){   $tmsgs = .\Get-MessageTrackingLogTDO.ps1 @pltGMTL ;  } else{   write-warning "UNABLE TO RESOVLE LOCAL Get-MessageTrackingLogTDO!" ;  } ; 
+    PS> if($tmsgs){sv -na $vn -va $tmsgs ;write-host "(assigned to `$$vn)"} ;
     Demo run fed by splatted parameters with Days specified and Start/End blank (matches 7PSMsgTrkAll splat layout)
     .EXAMPLE
     PS> $platIn=[ordered]@{
