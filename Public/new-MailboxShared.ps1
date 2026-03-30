@@ -20,6 +20,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 4:18 PM 3/30/2026 fixed borked $FallBackBaseUserOU typo
     * 4:17 PM 1/30/2026 fixed $odn owner.mbx.dn bug
     * 9:17 AM 1/29/2026 Cleanup ; EXIT ; -> Cleanup ; BREAK ;
     * 12:41 PM 1/27/2026 latest conn_svcs block updated
@@ -598,7 +599,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $RetrySleep = 5 ; # seconds to wait between retries
         # $rgxCU5 = [infra file]
         # OU that's used when can't find any baseuser for the owner's OU, default to a random shared from ($ADSiteCodeUS) (avoid crapping out):
-        $FallBackBaseUserOU = "$($DomTORfqdn)/($ADSiteCodeUS)/Generic Email Accounts" ;
+        $FallBackBaseUserOU = "$($DomTORfqdn)/$($ADSiteCodeUS)/Generic Email Accounts" ;
 
         #endregion LOCAL_CONSTANTS ; #*------^ END LOCAL_CONSTANTS ^------  
           

@@ -15,6 +15,7 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    * 4:18 PM 3/30/2026 fixed borked $FallBackBaseUserOU typo
     # 5:12 PM 10/13/2021 fixed long standing random add-adgroupmember bug (failed to see target sg/dg), by swapping in ADGM ex cmd;  pulled [int] from $ticket , to permit non-numeric & multi-tix
     # 11:36 AM 9/16/2021 string
     # 10:27 AM 9/14/2021 beefed up echos w 7pswhsplat's pre
@@ -246,7 +247,7 @@ function add-MailboxAccessGrant {
         $RetrySleep = 5 ; # seconds to wait between retries
         # $rgxCU5 = [infra file]
         # OU that's used when can't find any baseuser for the owner's OU, default to a random shared from ($ADSiteCodeUS) (avoid crapping out):
-        $FallBackBaseUserOU = "$($DomTORfqdn)/($ADSiteCodeUS)/Generic Email Accounts" ;
+        $FallBackBaseUserOU = "$($DomTORfqdn)/$($ADSiteCodeUS)/Generic Email Accounts" ;
 
         # strings are: "[tModName];[tModFile];tModCmdlet"
         $tMods = @() ;
