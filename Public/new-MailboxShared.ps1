@@ -20,7 +20,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
-    * 4:18 PM 3/30/2026 fixed borked $FallBackBaseUserOU typo
+    * 4:18 PM 3/30/2026 fixed borked $FallBackBaseUserOU typo; updated latest START_LOG_HOLISTIC
     * 4:17 PM 1/30/2026 fixed $odn owner.mbx.dn bug
     * 9:17 AM 1/29/2026 Cleanup ; EXIT ; -> Cleanup ; BREAK ;
     * 12:41 PM 1/27/2026 latest conn_svcs block updated
@@ -1278,7 +1278,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
         } ; 
-    #>
+        #>
 
         #region START_LOG_OPTIONS #*======v START_LOG_OPTIONS v======
         $useSLogHOl = $true ; # one or 
@@ -1286,6 +1286,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         $useTransRotate = $false ; # TRANSCRIPTPATHROTATE
         $useStartTrans = $false ; # STARTTRANS
         $useTransNoDep = $false ; # TRANSCRIPT_NODEP
+        $useTransNoDepLITE = $false ; # TRANSCRIPT_NODEPLITE
         $useTransBasicScript = $false ; # BASIC_SCRIPT_TRANSCRIPT
         #region START_LOG_HOLISTIC #*------v START_LOG_HOLISTIC v------
         if($useSLogHOl){
@@ -1302,16 +1303,15 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             #$pltSL=[ordered]@{Path=$null ;NoTimeStamp=$false ;Tag=$null ;showdebug=$($showdebug) ; Verbose=$($VerbosePreference -eq 'Continue') ; whatif=$($WhatIfPreference) ;} ;
             #$pltSL=[ordered]@{Path=$null ;NoTimeStamp=$false ;Tag="$($ticket)-$($TenOrg)-LASTPASS-" ;showdebug=$($showdebug) ; Verbose=$($VerbosePreference -eq 'Continue') ; whatif=$($WhatIfPreference) ;} ;
             #$pltSL.Tag = $((@($ticket,$usr) |?{$_}) -join '-')
-            #if($ticket){$pltSL.Tag = $ticket} ;
+            if($ticket){$pltSL.Tag = $ticket} ;
             #$pltSL.Tag = $env:COMPUTERNAME ; 
-            #$pltSL.Tag = $((@($ticket,$usr) |?{$_}) -join '-')
-            $tagfields = 'ticket','DisplayName'
-            #'ticket','UserPrincipalName','folderscope' ; # DomainName TenOrg ModuleName 
-            $tagfields | foreach-object{$fld = $_ ; if(get-variable $fld -ea 0 |?{$_.value} ){$pltSL.Tag += @($((get-variable $fld).value))} } ; 
+            #$tagfields = 'ticket','DisplayName'
+            #$tagfields = 'ticket','UserPrincipalName','folderscope' ; # DomainName TenOrg ModuleName 
+            #$tagfields | foreach-object{$fld = $_ ; if(get-variable $fld -ea 0 |?{$_.value} ){$pltSL.Tag += @($((get-variable $fld).value))} } ; 
             if($pltSL.Tag -is [array]){$pltSL.Tag = $pltSL.Tag -join '-' } ; 
             #$transcript = ".\logs\$($Ticket)-$($DomainName)-$(split-path $rMyInvocation.InvocationName -leaf)-$(get-date -format 'yyyyMMdd-HHmmtt')-trans-log.txt" ; 
             #$pltSL.Tag += "-$($DomainName)"
-            <#
+            <# : optional block, variant, don't use both above $pltSL.Tag, and this (doubles trainling dash)
             if($rPSBoundParameters.keys){ # alt: leverage $rPSBoundParameters hash
                 $sTag = @() ; 
                 #$pltSL.TAG = $((@($rPSBoundParameters.keys) |?{$_}) -join ','); # join all params
@@ -1464,7 +1464,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             } ;
         } ; 
         #endregion START_LOG_HOLISTIC #*------^ END START_LOG_HOLISTIC ^------
-        # ...
+        #...
         #endregion START_LOG_OPTIONS #*======^ START_LOG_OPTIONS ^======
 
         #region SPLATDEFS ; # ------
