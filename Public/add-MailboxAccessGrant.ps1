@@ -1,6 +1,7 @@
 ﻿# add-MailboxAccessGrant.ps1
 
 #region ADD_MAILBOXACCESSGRANT ; #*------v add-MailboxAccessGrant v------
+#*------v add-MailboxAccessGrant.ps1 v------
 function add-MailboxAccessGrant {
     <#
     .SYNOPSIS
@@ -17,6 +18,7 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    * 5:15 PM 4/3/2026 substantial recode to support non-standard OU names (LF) in migrations OUs. 
     * 4:18 PM 3/30/2026 fixed borked $FallBackBaseUserOU typo; subbed in full begin block up to splat defs from new-mailboxshared()
     # 5:12 PM 10/13/2021 fixed long standing random add-adgroupmember bug (failed to see target sg/dg), by swapping in ADGM ex cmd;  pulled [int] from $ticket , to permit non-numeric & multi-tix
     # 11:36 AM 9/16/2021 string
@@ -563,7 +565,9 @@ function add-MailboxAccessGrant {
         # $rgxCU5 = [infra file]
         # OU that's used when can't find any baseuser for the owner's OU, default to a random shared from ($ADSiteCodeUS) (avoid crapping out):
         $FallBackBaseUserOU = "$($DomTORfqdn)/$($ADSiteCodeUS)/Generic Email Accounts" ;
-
+        # 3:46 PM 4/3/2026 add Migrations OU variant support
+        $rgxOUMigrations = ',OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
+        $rgxMigationsSite = ',OU=(\w+),OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
         #endregion LOCAL_CONSTANTS ; #*------^ END LOCAL_CONSTANTS ^------  
           
         #region ENCODED_CONTANTS ; #*------v ENCODED_CONTANTS v------
@@ -1562,7 +1566,15 @@ function add-MailboxAccessGrant {
         $SGUpdtSplat.Server = $($InputSplat.DomainController);
         $DGEnableSplat.DomainController = $($domaincontroller);
         $DGUpdtSplat.DomainController = $($domaincontroller);
-        $InputSplat.Site = ($Tmbx.identity.tostring().split('/')[1]) ;
+        #$InputSplat.Site = ($Tmbx.identity.tostring().split('/')[1]) ;
+        #$rgxOUMigrations = ',OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
+        #$rgxMigationsSite = ',OU=(\w+),OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
+        if($Tmbx.DistinguishedName -match $rgxOUMigrations){
+            $InputSplat.Site = [regex]::Match($Tmbx.DistinguishedName,$rgxMigationsSite).groups[1].value ;
+            if($InputSplat.Site){write-host -foregroundcolor green  "Resolved _MIGRATIONS tree OSiteCode:$($InputSplat.Site)" }else{ throw "Unable to resolve $($pltNmbx.Owner.DistinguishedName) into a SiteCode" ;BREAK }
+        }else{
+            $InputSplat.Site = ($Tmbx.identity.tostring().split('/')[1]) ;
+        } ;
 
         switch ((get-recipient -Identity $Inputsplat.Owner).RecipientType ) {
             "UserMailbox" {
@@ -1627,8 +1639,15 @@ function add-MailboxAccessGrant {
             $SiteCode = $($InputSplat.SiteOverride);
         } else {
             # we need to use the OwnerMbx - Owner currently is the alias, we want the object with it's dn
-            $SiteCode = $InputSplat.OwnerMbx.identity.tostring().split("/")[1]  ;
+            #$SiteCode = $InputSplat.OwnerMbx.identity.tostring().split("/")[1]  ;
+            if($InputSplat.OwnerMbx.DistinguishedName -match $rgxOUMigrations){
+                $SiteCode = [regex]::Match($InputSplat.OwnerMbx.DistinguishedName,$rgxMigationsSite).groups[1].value ;
+                if($SiteCode ){write-host -foregroundcolor green  "Resolved _MIGRATIONS tree OSiteCode:$($SiteCode )" }else{ throw "Unable to resolve $($pltNmbx.Owner.DistinguishedName) into a SiteCode" ;BREAK }
+            }else{
+                $SiteCode = ($InputSplat.OwnerMbx.identity.tostring().split('/')[1]) ;
+            } ;
         } ;
+        <# 4:16 PM 4/3/2026 PRIOR
         if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
             $FindOU = "^OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,";
         } ELSEif ($env:USERDOMAIN -eq $TOLMeta['legacyDomain']) {
@@ -1637,11 +1656,31 @@ function add-MailboxAccessGrant {
         } else {
             throw "UNRECOGNIZED USERDOMAIN:$($env:USERDOMAIN)" ;
         } ;
-
+        #>
+        # 4:16 PM 4/3/2026 REVISE TO TRY TO ACCOMODATE F-ERY IN MIGRATIONS TREE (THX LF)
+        if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
+            if($Tmbx.DistinguishedName -match $rgxOUMigrations){
+                $FindOU = "^OU=Email\sAccess," ; 
+                # MIGHT HAVE TO TEST A SERIES, IF LF REALLY MANGLED THE PATHS ACROSS DIVISIONS!
+            }ELSE{
+                $FindOU = "^OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,";
+            }
+        } ELSEif ($env:USERDOMAIN -eq $TOLMeta['legacyDomain']) {
+            # CN=Lab-SEC-Email-Thomas Jefferson,OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=LYN,DC=SUBDOM,DC=DOMAIN,DC=DOMAIN,DC=com
+            $FindOU = "^OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,"; ;
+        } else {
+            throw "UNRECOGNIZED USERDOMAIN:$($env:USERDOMAIN)" ;
+        } ;
         $SGSplat.DisplayName = "$($SiteCode)-SEC-Email-$($Tmbx.DisplayName)-G";
 
         TRY {
-            $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+            if($Tmbx.DistinguishedName -match $rgxOUMigrations){
+                #$OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                #OU=Email\sAccess,.*OU=_TTC_Sync_CMW_NoSync,OU=DIT,OU=_MIGRATIONS,
+                $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," } | Select-Object distinguishedname).distinguishedname.tostring() ;
+            }else{
+                $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+            }
         } CATCH {
             $ErrTrpd = $_ ;
             $smsg = "UNABLE TO LOCATE $($FindOU) BELOW SITECODE $($SiteCode)!. EXITING!" ; $smsg = "MESSAGE" ;
@@ -1770,14 +1809,18 @@ function add-MailboxAccessGrant {
             # create the secgrp
             $SGSplat.Name = $($SGSplat.DisplayName);
             $SGSplat.SamAccountName = $($SGSplat.DisplayName);
-            $SGSplat.ManagedBy = $($InputSplat.Owner);
+            # 4:52 PM 4/3/2026 owner is the alias, not samaccountname, use get-user to resolve it to the DN hard link regarldess of tree
+            #$SGSplat.ManagedBy = $($InputSplat.Owner);
+            if($SGSplat.ManagedBy = (get-user -id $inputsplat.owner -ea STOP).distinguishedname){} else { 
+                throw "unable to resolve: get-user -id $($inputsplat.owner) " ; 
+            } ;
             $SGSplat.Description = "Email - access to $($Tmbx.displayname)'s mailbox";
             $SGSplat.Server = $($InputSplat.DomainController) ;
             # build the Notes/Info field as a hashcode: OtherAttributes=@{    info="TargetMbx:SOMERECIP`r`nPermsExpire:6/19/2015"  } ;
             $SGSplat.OtherAttributes = @{info = $($Infostr) } ;
 
 
-            $smsg = "`$SGSplat:`n---"; $smsg = "MESSAGE" ;
+            $smsg = "`$SGSplat:`n---";
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
             foreach ($row in $SGSplat) {
                 foreach ($key in $row.keys) {

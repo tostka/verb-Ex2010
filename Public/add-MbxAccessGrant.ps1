@@ -1,4 +1,7 @@
-﻿#*------v add-MbxAccessGrant.ps1 v------
+﻿#
+
+
+#region ADD_MBXACCESSGRANT ; #*------v add-MbxAccessGrant v------
 function add-MbxAccessGrant {
     <#
     .SYNOPSIS
@@ -18,6 +21,7 @@ function add-MbxAccessGrant {
     AddedWebsite: 
     AddedTwitter: 
     REVISIONS
+    * 5:15 PM 4/3/2026 substantial recode to support non-standard OU names (LF) in migrations OUs. 
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     * 2:05 PM 4/27/2020 debugged, fully ported to published/installed use
     * 3:57 PM 4/9/2020 genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules
@@ -388,5 +392,4 @@ function add-MbxAccessGrant {
     #*======^ END SUB MAIN ^======
     #endregion SUBMAIN ; # ------
 }
-
-#*------^ add-MbxAccessGrant.ps1 ^------
+#endregion ADD_MBXACCESSGRANT ; #*------^ END add-MbxAccessGrant ^------
