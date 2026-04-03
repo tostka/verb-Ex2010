@@ -16,6 +16,7 @@ function new-MailboxGenericTOR {
     Github      : https://github.com/tostka/verb-ex2010
     Tags        : Exchange,ExchangeOnPremises,Mailbox,Creation,Maintenance,UserMailbox
     REVISIONS
+    * 2:24 PM 4/3/2026 added -CU5 registered test
     * 5:24 PM 1/28/2026 supress passstatusZ_tenorg error; Implement missing $SiteOverride passthrough ; REQUIRED FOR MIGRATIONS DOMAINS, THEY DON'T RESOLVE TO A FUNCTIONAL SITEOU (COMES BACK _MIGRATE)
     * 12:41 PM 1/27/2026 latest conn_svcs block updated
     * 2:48 PM 1/19/2026 -whatif's find ; bugfix: $pltCcOPSvcs.UserRole (postfilter, not match test)
@@ -1521,6 +1522,30 @@ function new-MailboxGenericTOR {
 
         # Cu5 override support (normally inherits from assigned owner/manager)
         if ($Cu5){
+            # CONFIRM IT'S SUPPORTED TAG:
+            TRY{
+                $eaps = get-emailaddresspolicy -ea STOP ; 
+                $CU5Supported = $eaps |foreach-object{
+                    if($_.recipientfilter -match "\(CustomAttribute5\s-eq\s'([\w\.]+)'\)"){
+                        $matches[1] | write-output  ; 
+                    }
+                }
+                if($CU5Supported){
+                    if($CU5Supported -contains $cu5){
+                        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):-CU5:$($CU5) supported" ; 
+                    }else{
+                        $smsg = "-CU5:$($CU5) NOT SUPPORTED" ; 
+                        $smsg += "`n$(($eaps|?{$_.recipientfilter -match 'CustomAttribute5'}|ft -a name,recipientfilter |out-string).trim())" ; 
+                        write-warning $smsg ;
+                        BREAK ; 
+                    } ; 
+                } ; 
+            } CATCH {$ErrTrapd=$Error[0] ;
+               write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+               $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+               write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+             } ;
+            
             #$pltInput.Cu5=$Cu5;
             # looks like it's adding on assign (?.?)7
             if($Cu5){$pltInput.add("Cu5",$Cu5) } ;
