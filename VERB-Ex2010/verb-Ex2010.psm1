@@ -5,26 +5,26 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 8.0.6
+Version     : 8.1.1
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
-CreatedDate : 1/18.0.60
+CreatedDate : 1/18.1.10
 FileName    : VERB-Ex2010.psm1
 License     : MIT
-Copyright   : (c) 1/18.0.60 Todd Kadrie
+Copyright   : (c) 1/18.1.10 Todd Kadrie
 Github      : https://github.com/tostka
 REVISIONS
 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
 * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
-* 1/18.0.60 - 1.0.0.0
+* 1/18.1.10 - 1.0.0.0
 # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
 # 11:34 AM 12/30/2019 ran vsc alias-expansion
 # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
 # 10:19 AM 11/1/2019 trimmed some whitespace
 # 10:05 AM 10/31/2019 added sample load/call info
-# 12:02 PM 5/8.0.69 added cx10,rx10,dx10 aliases
-# 11:29 AM 5/8.0.69 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+# 12:02 PM 5/8.1.19 added cx10,rx10,dx10 aliases
+# 11:29 AM 5/8.1.19 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
 # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
 # 4:15 PM 3/24/2018 updated pshhelp
 # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
@@ -75,6 +75,7 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    * 5:15 PM 4/3/2026 substantial recode to support non-standard OU names (LF) in migrations OUs. 
     * 4:18 PM 3/30/2026 fixed borked $FallBackBaseUserOU typo; subbed in full begin block up to splat defs from new-mailboxshared()
     # 5:12 PM 10/13/2021 fixed long standing random add-adgroupmember bug (failed to see target sg/dg), by swapping in ADGM ex cmd;  pulled [int] from $ticket , to permit non-numeric & multi-tix
     # 11:36 AM 9/16/2021 string
@@ -621,7 +622,9 @@ function add-MailboxAccessGrant {
         # $rgxCU5 = [infra file]
         # OU that's used when can't find any baseuser for the owner's OU, default to a random shared from ($ADSiteCodeUS) (avoid crapping out):
         $FallBackBaseUserOU = "$($DomTORfqdn)/$($ADSiteCodeUS)/Generic Email Accounts" ;
-
+        # 3:46 PM 4/3/2026 add Migrations OU variant support
+        $rgxOUMigrations = ',OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
+        $rgxMigationsSite = ',OU=(\w+),OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
         #endregion LOCAL_CONSTANTS ; #*------^ END LOCAL_CONSTANTS ^------  
           
         #region ENCODED_CONTANTS ; #*------v ENCODED_CONTANTS v------
@@ -1620,7 +1623,15 @@ function add-MailboxAccessGrant {
         $SGUpdtSplat.Server = $($InputSplat.DomainController);
         $DGEnableSplat.DomainController = $($domaincontroller);
         $DGUpdtSplat.DomainController = $($domaincontroller);
-        $InputSplat.Site = ($Tmbx.identity.tostring().split('/')[1]) ;
+        #$InputSplat.Site = ($Tmbx.identity.tostring().split('/')[1]) ;
+        #$rgxOUMigrations = ',OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
+        #$rgxMigationsSite = ',OU=(\w+),OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
+        if($Tmbx.DistinguishedName -match $rgxOUMigrations){
+            $InputSplat.Site = [regex]::Match($Tmbx.DistinguishedName,$rgxMigationsSite).groups[1].value ;
+            if($InputSplat.Site){write-host -foregroundcolor green  "Resolved _MIGRATIONS tree OSiteCode:$($InputSplat.Site)" }else{ throw "Unable to resolve $($pltNmbx.Owner.DistinguishedName) into a SiteCode" ;BREAK }
+        }else{
+            $InputSplat.Site = ($Tmbx.identity.tostring().split('/')[1]) ;
+        } ;
 
         switch ((get-recipient -Identity $Inputsplat.Owner).RecipientType ) {
             "UserMailbox" {
@@ -1685,8 +1696,15 @@ function add-MailboxAccessGrant {
             $SiteCode = $($InputSplat.SiteOverride);
         } else {
             # we need to use the OwnerMbx - Owner currently is the alias, we want the object with it's dn
-            $SiteCode = $InputSplat.OwnerMbx.identity.tostring().split("/")[1]  ;
+            #$SiteCode = $InputSplat.OwnerMbx.identity.tostring().split("/")[1]  ;
+            if($InputSplat.OwnerMbx.DistinguishedName -match $rgxOUMigrations){
+                $SiteCode = [regex]::Match($InputSplat.OwnerMbx.DistinguishedName,$rgxMigationsSite).groups[1].value ;
+                if($SiteCode ){write-host -foregroundcolor green  "Resolved _MIGRATIONS tree OSiteCode:$($SiteCode )" }else{ throw "Unable to resolve $($pltNmbx.Owner.DistinguishedName) into a SiteCode" ;BREAK }
+            }else{
+                $SiteCode = ($InputSplat.OwnerMbx.identity.tostring().split('/')[1]) ;
+            } ;
         } ;
+        <# 4:16 PM 4/3/2026 PRIOR
         if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
             $FindOU = "^OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,";
         } ELSEif ($env:USERDOMAIN -eq $TOLMeta['legacyDomain']) {
@@ -1695,11 +1713,31 @@ function add-MailboxAccessGrant {
         } else {
             throw "UNRECOGNIZED USERDOMAIN:$($env:USERDOMAIN)" ;
         } ;
-
+        #>
+        # 4:16 PM 4/3/2026 REVISE TO TRY TO ACCOMODATE F-ERY IN MIGRATIONS TREE (THX LF)
+        if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
+            if($Tmbx.DistinguishedName -match $rgxOUMigrations){
+                $FindOU = "^OU=Email\sAccess," ; 
+                # MIGHT HAVE TO TEST A SERIES, IF LF REALLY MANGLED THE PATHS ACROSS DIVISIONS!
+            }ELSE{
+                $FindOU = "^OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,";
+            }
+        } ELSEif ($env:USERDOMAIN -eq $TOLMeta['legacyDomain']) {
+            # CN=Lab-SEC-Email-Thomas Jefferson,OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=LYN,DC=SUBDOM,DC=DOMAIN,DC=DOMAIN,DC=com
+            $FindOU = "^OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,"; ;
+        } else {
+            throw "UNRECOGNIZED USERDOMAIN:$($env:USERDOMAIN)" ;
+        } ;
         $SGSplat.DisplayName = "$($SiteCode)-SEC-Email-$($Tmbx.DisplayName)-G";
 
         TRY {
-            $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+            if($Tmbx.DistinguishedName -match $rgxOUMigrations){
+                #$OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                #OU=Email\sAccess,.*OU=_TTC_Sync_CMW_NoSync,OU=DIT,OU=_MIGRATIONS,
+                $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," } | Select-Object distinguishedname).distinguishedname.tostring() ;
+            }else{
+                $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+            }
         } CATCH {
             $ErrTrpd = $_ ;
             $smsg = "UNABLE TO LOCATE $($FindOU) BELOW SITECODE $($SiteCode)!. EXITING!" ; $smsg = "MESSAGE" ;
@@ -1828,14 +1866,18 @@ function add-MailboxAccessGrant {
             # create the secgrp
             $SGSplat.Name = $($SGSplat.DisplayName);
             $SGSplat.SamAccountName = $($SGSplat.DisplayName);
-            $SGSplat.ManagedBy = $($InputSplat.Owner);
+            # 4:52 PM 4/3/2026 owner is the alias, not samaccountname, use get-user to resolve it to the DN hard link regarldess of tree
+            #$SGSplat.ManagedBy = $($InputSplat.Owner);
+            if($SGSplat.ManagedBy = (get-user -id $inputsplat.owner -ea STOP).distinguishedname){} else { 
+                throw "unable to resolve: get-user -id $($inputsplat.owner) " ; 
+            } ;
             $SGSplat.Description = "Email - access to $($Tmbx.displayname)'s mailbox";
             $SGSplat.Server = $($InputSplat.DomainController) ;
             # build the Notes/Info field as a hashcode: OtherAttributes=@{    info="TargetMbx:SOMERECIP`r`nPermsExpire:6/19/2015"  } ;
             $SGSplat.OtherAttributes = @{info = $($Infostr) } ;
 
 
-            $smsg = "`$SGSplat:`n---"; $smsg = "MESSAGE" ;
+            $smsg = "`$SGSplat:`n---";
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
             foreach ($row in $SGSplat) {
                 foreach ($key in $row.keys) {
@@ -2275,6 +2317,7 @@ function add-MbxAccessGrant {
     AddedWebsite: 
     AddedTwitter: 
     REVISIONS
+    * 5:15 PM 4/3/2026 substantial recode to support non-standard OU names (LF) in migrations OUs. 
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     * 2:05 PM 4/27/2020 debugged, fully ported to published/installed use
     * 3:57 PM 4/9/2020 genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules
@@ -16363,6 +16406,7 @@ function new-MailboxGenericTOR {
     Github      : https://github.com/tostka/verb-ex2010
     Tags        : Exchange,ExchangeOnPremises,Mailbox,Creation,Maintenance,UserMailbox
     REVISIONS
+    * 2:24 PM 4/3/2026 added -CU5 registered test
     * 5:24 PM 1/28/2026 supress passstatusZ_tenorg error; Implement missing $SiteOverride passthrough ; REQUIRED FOR MIGRATIONS DOMAINS, THEY DON'T RESOLVE TO A FUNCTIONAL SITEOU (COMES BACK _MIGRATE)
     * 12:41 PM 1/27/2026 latest conn_svcs block updated
     * 2:48 PM 1/19/2026 -whatif's find ; bugfix: $pltCcOPSvcs.UserRole (postfilter, not match test)
@@ -17868,6 +17912,30 @@ function new-MailboxGenericTOR {
 
         # Cu5 override support (normally inherits from assigned owner/manager)
         if ($Cu5){
+            # CONFIRM IT'S SUPPORTED TAG:
+            TRY{
+                $eaps = get-emailaddresspolicy -ea STOP ; 
+                $CU5Supported = $eaps |foreach-object{
+                    if($_.recipientfilter -match "\(CustomAttribute5\s-eq\s'([\w\.]+)'\)"){
+                        $matches[1] | write-output  ; 
+                    }
+                }
+                if($CU5Supported){
+                    if($CU5Supported -contains $cu5){
+                        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):-CU5:$($CU5) supported" ; 
+                    }else{
+                        $smsg = "-CU5:$($CU5) NOT SUPPORTED" ; 
+                        $smsg += "`n$(($eaps|?{$_.recipientfilter -match 'CustomAttribute5'}|ft -a name,recipientfilter |out-string).trim())" ; 
+                        write-warning $smsg ;
+                        BREAK ; 
+                    } ; 
+                } ; 
+            } CATCH {$ErrTrapd=$Error[0] ;
+               write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+               $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+               write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+             } ;
+            
             #$pltInput.Cu5=$Cu5;
             # looks like it's adding on assign (?.?)7
             if($Cu5){$pltInput.add("Cu5",$Cu5) } ;
@@ -22372,7 +22440,7 @@ Function Resolve-xopBuildSemVersToTextNameTDO {
         Exchange Server 2019 CU12 (2022H1) 4/20/2022   15.2.1118.7      15.02.1118.007  Exchange Server 2019 CU12 EX2019_CU12_2022H1 TRUE         
         Exchange Server 2019 CU11          9/28/2021   15.2.986.5       15.02.0986.005  Exchange Server 2019 CU11 EX2019_CU11        TRUE         
         Exchange Server 2019 CU10          6/29/2021   15.2.922.7       15.02.0922.007  Exchange Server 2019 CU10 EX2019_CU10        TRUE         
-        Exchange Server 2019 CU9           3/16/2021   15.2.858.5       15.02.0858.0.6  Exchange Server 2019 CU9  EX2019_CU9         TRUE         
+        Exchange Server 2019 CU9           3/16/2021   15.2.858.5       15.02.0858.005  Exchange Server 2019 CU9  EX2019_CU9         TRUE         
         Exchange Server 2019 CU8           12/15/2020  15.2.792.3       15.02.0792.003  Exchange Server 2019 CU8  EX2019_CU8         TRUE         
         Exchange Server 2019 CU7           9/15/2020   15.2.721.2       15.02.0721.002  Exchange Server 2019 CU7  EX2019_CU7         TRUE         
         Exchange Server 2019 CU6           6/16/2020   15.2.659.4       15.02.0659.004  Exchange Server 2019 CU6  EX2019_CU6         TRUE         
@@ -22551,7 +22619,7 @@ Exchange Server 2019 CU13 Apr24HU                          | 4/23/2024       | 1
 Exchange Server 2019 CU13 Mar24SU                          | 3/12/2024       | 15.2.1258.32     | 15.02.1258.032  | Exchange Server 2019 CU13            | EX2019_CU13_Mar24SU   |
 Exchange Server 2019 CU13 Nov23SU                          | 11/14/2023      | 15.2.1258.28     | 15.02.1258.028  | Exchange Server 2019 CU13            | EX2019_CU13_Nov23SU   |
 Exchange Server 2019 CU13 Oct23SU                          | 10/10/2023      | 15.2.1258.27     | 15.02.1258.027  | Exchange Server 2019 CU13            | EX2019_CU13_Oct23SU   |
-Exchange Server 2019 CU13 Aug23SUv2                        | 8/15/2023       | 15.2.1258.25     | 15.02.1258.0.6  | Exchange Server 2019 CU13            | EX2019_CU13_Aug23SUv2 |
+Exchange Server 2019 CU13 Aug23SUv2                        | 8/15/2023       | 15.2.1258.25     | 15.02.1258.025  | Exchange Server 2019 CU13            | EX2019_CU13_Aug23SUv2 |
 Exchange Server 2019 CU13 Aug23SU                          | 8/8/2023        | 15.2.1258.23     | 15.02.1258.023  | Exchange Server 2019 CU13            | EX2019_CU13_Aug23SU   |
 Exchange Server 2019 CU13 Jun23SU                          | 6/13/2023       | 15.2.1258.16     | 15.02.1258.016  | Exchange Server 2019 CU13            | EX2019_CU13_Jun23SU   |
 Exchange Server 2019 CU13 (2023H1)                         | 5/3/2023        | 15.2.1258.12     | 15.02.1258.012  | Exchange Server 2019 CU13            | EX2019_CU13_2023H1    | TRUE
@@ -22561,10 +22629,10 @@ Exchange Server 2019 CU12 Aug23SUv2                        | 8/15/2023       | 1
 Exchange Server 2019 CU12 Aug23SU                          | 8/8/2023        | 15.2.1118.36     | 15.02.1118.036  | Exchange Server 2019 CU12            | EX2019_CU12_Aug23SU   |
 Exchange Server 2019 CU12 Jun23SU                          | 6/13/2023       | 15.2.1118.30     | 15.02.1118.030  | Exchange Server 2019 CU12            | EX2019_CU12_Jun23SU   |
 Exchange Server 2019 CU12 Mar23SU                          | 3/14/2023       | 15.2.1118.26     | 15.02.1118.026  | Exchange Server 2019 CU12            | EX2019_CU12_Mar23SU   |
-Exchange Server 2019 CU12 Feb23SU                          | 2/14/2023       | 15.2.1118.25     | 15.02.1118.0.6  | Exchange Server 2019 CU12            | EX2019_CU12_Feb23SU   |
+Exchange Server 2019 CU12 Feb23SU                          | 2/14/2023       | 15.2.1118.25     | 15.02.1118.025  | Exchange Server 2019 CU12            | EX2019_CU12_Feb23SU   |
 Exchange Server 2019 CU12 Jan23SU                          | 1/10/2023       | 15.2.1118.21     | 15.02.1118.021  | Exchange Server 2019 CU12            | EX2019_CU12_Jan23SU   |
 Exchange Server 2019 CU12 Nov22SU                          | 11/8/2022       | 15.2.1118.20     | 15.02.1118.020  | Exchange Server 2019 CU12            | EX2019_CU12_Nov22SU   |
-Exchange Server 2019 CU12 Oct22SU                          | 10/11/2022      | 15.2.1118.15     | 15.02.1118.0.6  | Exchange Server 2019 CU12            | EX2019_CU12_Oct22SU   |
+Exchange Server 2019 CU12 Oct22SU                          | 10/11/2022      | 15.2.1118.15     | 15.02.1118.015  | Exchange Server 2019 CU12            | EX2019_CU12_Oct22SU   |
 Exchange Server 2019 CU12 Aug22SU                          | 8/9/2022        | 15.2.1118.12     | 15.02.1118.012  | Exchange Server 2019 CU12            | EX2019_CU12_Aug22SU   |
 Exchange Server 2019 CU12 May22SU                          | 5/10/2022       | 15.2.1118.9      | 15.02.1118.009  | Exchange Server 2019 CU12            | EX2019_CU12_May22SU   |
 Exchange Server 2019 CU12 (2022H1)                         | 4/20/2022       | 15.2.1118.7      | 15.02.1118.007  | Exchange Server 2019 CU12            | EX2019_CU12_2022H1    | TRUE
@@ -22586,10 +22654,10 @@ Exchange Server 2019 CU10 Nov21SU                          | 11/9/2021       | 1
 Exchange Server 2019 CU10 Oct21SU                          | 10/12/2021      | 15.2.922.14      | 15.02.0922.014  | Exchange Server 2019 CU10            | EX2019_CU10_Oct21SU   |
 Exchange Server 2019 CU10 Jul21SU                          | 7/13/2021       | 15.2.922.13      | 15.02.0922.013  | Exchange Server 2019 CU10            | EX2019_CU10_Jul21SU   |
 Exchange Server 2019 CU10                                  | 6/29/2021       | 15.2.922.7       | 15.02.0922.007  | Exchange Server 2019 CU10            | EX2019_CU10           | TRUE
-Exchange Server 2019 CU9 Jul21SU                           | 7/13/2021       | 15.2.858.15      | 15.02.0858.0.6  | Exchange Server 2019 CU9             | EX2019_CU9_Jul21SU    |
+Exchange Server 2019 CU9 Jul21SU                           | 7/13/2021       | 15.2.858.15      | 15.02.0858.015  | Exchange Server 2019 CU9             | EX2019_CU9_Jul21SU    |
 Exchange Server 2019 CU9 May21SU                           | 5/11/2021       | 15.2.858.12      | 15.02.0858.012  | Exchange Server 2019 CU9             | EX2019_CU9_May21SU    |
 Exchange Server 2019 CU9 Apr21SU                           | 4/13/2021       | 15.2.858.10      | 15.02.0858.010  | Exchange Server 2019 CU9             | EX2019_CU9_Apr21SU    |
-Exchange Server 2019 CU9                                   | 3/16/2021       | 15.2.858.5       | 15.02.0858.0.6  | Exchange Server 2019 CU9             | EX2019_CU9            | TRUE
+Exchange Server 2019 CU9                                   | 3/16/2021       | 15.2.858.5       | 15.02.0858.005  | Exchange Server 2019 CU9             | EX2019_CU9            | TRUE
 Exchange Server 2019 CU8 May21SU                           | 5/11/2021       | 15.2.792.15      | 15.02.0792.015  | Exchange Server 2019 CU8             | EX2019_CU8_May21SU    |
 Exchange Server 2019 CU8 Apr21SU                           | 4/13/2021       | 15.2.792.13      | 15.02.0792.013  | Exchange Server 2019 CU8             | EX2019_CU8_Apr21SU    |
 Exchange Server 2019 CU8 Mar21SU                           | 3/2/2021        | 15.2.792.10      | 15.02.0792.010  | Exchange Server 2019 CU8             | EX2019_CU8_Mar21SU    |
@@ -22645,7 +22713,7 @@ Exchange Server 2016 CU22                                  | 9/28/2021       | 1
 Exchange Server 2016 CU21 Mar22SU                          | 3/8/2022        | 15.1.2308.27     | 15.01.2308.027  | Exchange Server 2016 CU21            | EX2016_CU21_Mar22SU   |
 Exchange Server 2016 CU21 Jan22SU                          | 1/11/2022       | 15.1.2308.21     | 15.01.2308.021  | Exchange Server 2016 CU21            | EX2016_CU21_Jan22SU   |
 Exchange Server 2016 CU21 Nov21SU                          | 11/9/2021       | 15.1.2308.20     | 15.01.2308.020  | Exchange Server 2016 CU21            | EX2016_CU21_Nov21SU   |
-Exchange Server 2016 CU21 Oct21SU                          | 10/12/2021      | 15.1.2308.15     | 15.01.2308.0.6  | Exchange Server 2016 CU21            | EX2016_CU21_Oct21SU   |
+Exchange Server 2016 CU21 Oct21SU                          | 10/12/2021      | 15.1.2308.15     | 15.01.2308.015  | Exchange Server 2016 CU21            | EX2016_CU21_Oct21SU   |
 Exchange Server 2016 CU21 Jul21SU                          | 7/13/2021       | 15.1.2308.14     | 15.01.2308.014  | Exchange Server 2016 CU21            | EX2016_CU21_Jul21SU   |
 Exchange Server 2016 CU21                                  | 6/29/2021       | 15.1.2308.8      | 15.01.2308.008  | Exchange Server 2016 CU21            | EX2016_CU21           | TRUE
 Exchange Server 2016 CU20 Jul21SU                          | 7/13/2021       | 15.1.2242.12     | 15.01.2242.012  | Exchange Server 2016 CU20            | EX2016_CU20_Jul21SU   |
@@ -22767,7 +22835,7 @@ Update Rollup 8 for Exchange Server 2010 SP2               | 12/9/2013       | 1
 Update Rollup 7 for Exchange Server 2010 SP2               | 8/3/2013        | 14.2.375.0       | 14.02.0375.000  | Exchange Server 2010 SP2             | EX2010_SP2_UR7        |
 Update Rollup 6 Exchange Server 2010 SP2                   | 2/12/2013       | 14.2.342.3       | 14.02.0342.003  | Exchange Server 2010 SP2             | EX2010_SP2_UR6        |
 Update Rollup 5 v2 for Exchange Server 2010 SP2            | 12/10/2012      | 14.2.328.10      | 14.02.0328.010  | Exchange Server 2010 SP2             | EX2010_SP2_UR5_v2     |
-Update Rollup 5 for Exchange Server 2010 SP2               | 11/13/2012      | 14.3.328.5       | 14.03.0328.0.6  | Exchange Server 2010 SP2             | EX2010_SP2_UR5        |
+Update Rollup 5 for Exchange Server 2010 SP2               | 11/13/2012      | 14.3.328.5       | 14.03.0328.005  | Exchange Server 2010 SP2             | EX2010_SP2_UR5        |
 Update Rollup 4 v2 for Exchange Server 2010 SP2            | 10/9/2012       | 14.2.318.4       | 14.02.0318.004  | Exchange Server 2010 SP2             | EX2010_SP2_UR4_v2     |
 Update Rollup 4 for Exchange Server 2010 SP2               | 8/13/2012       | 14.2.318.2       | 14.02.0318.002  | Exchange Server 2010 SP2             | EX2010_SP2_UR4        |
 Update Rollup 3 for Exchange Server 2010 SP2               | 5/29/2012       | 14.2.309.2       | 14.02.0309.002  | Exchange Server 2010 SP2             | EX2010_SP2_UR3        |
@@ -22784,7 +22852,7 @@ Update Rollup 4 for Exchange Server 2010 SP1               | 7/27/2011       | 1
 Update Rollup 3 for Exchange Server 2010 SP1               | 4/6/2011        | 14.1.289.7       | 14.01.0289.007  | Exchange Server 2010 SP1             | EX2010_SP1_UR3        |
 Update Rollup 2 for Exchange Server 2010 SP1               | 12/9/2010       | 14.1.270.1       | 14.01.0270.001  | Exchange Server 2010 SP1             | EX2010_SP1_UR2        |
 Update Rollup 1 for Exchange Server 2010 SP1               | 10/4/2010       | 14.1.255.2       | 14.01.0255.002  | Exchange Server 2010 SP1             | EX2010_SP1_UR1        |
-Exchange Server 2010 SP1                                   | 8/23/2010       | 14.1.218.15      | 14.01.0218.0.6  | Exchange Server 2010 SP1             | EX2010_SP1            | TRUE
+Exchange Server 2010 SP1                                   | 8/23/2010       | 14.1.218.15      | 14.01.0218.015  | Exchange Server 2010 SP1             | EX2010_SP1            | TRUE
 Update Rollup 5 for Exchange Server 2010                   | 12/13/2010      | 14.0.726.0       | 14.00.0726.000  | Exchange Server 2010 RTM             | EX2010_UR5            |
 Update Rollup 4 for Exchange Server 2010                   | 6/10/2010       | 14.0.702.1       | 14.00.0702.001  | Exchange Server 2010 RTM             | EX2010_UR4            |
 Update Rollup 3 for Exchange Server 2010                   | 4/13/2010       | 14.0.694.0       | 14.00.0694.000  | Exchange Server 2010 RTM             | EX2010_UR3            |
@@ -25464,8 +25532,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Remove-InvalidVariableNameC
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUp7sW2zG2XUBADIOWhp59iSFO
-# Nb6gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUzCOMFayVfpKc/7gVGVkT94ZC
+# MV+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -25480,9 +25548,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Remove-InvalidVariableNameC
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSZTEYO
-# mSsQnoofoondPcopaKWY2DANBgkqhkiG9w0BAQEFAASBgIO70J1SHAuAngGI4+Jt
-# ImTO5BNhmp9pq4est20cSd5yVOwdCuAyT6+KdR8RiSIBkcQVGVkTbBBcQhbIqbwj
-# HK3MB2ovbsgzhVwOC0aRjEwtcaHrXyw2nERVVWzzLlN71czRsRQIKsQYunHl//im
-# qHCWZEepPDmB+AHnbxpsMm5s
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRFwRlO
+# lQoUoT2PviGCTnxuBsHtojANBgkqhkiG9w0BAQEFAASBgGmPBzVgpWqW3xd51U2R
+# kAdXWLtvo9lmFkSgPrkFydl0ydg711L3343KCDgM+IQcahz+ElMXNsEwNSHrtIwA
+# +5BSBhhESEUYl1beZS9MNiunPIqgiol6oLMLQ8TxVHiWEnJ157oVA1PuZNHmotXI
+# YMNOxI+T/MsAlV0MZtRq+2RR
 # SIG # End signature block
