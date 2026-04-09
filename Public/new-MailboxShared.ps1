@@ -20,6 +20,10 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 6:42 PM 4/9/2026 extended revising f'ery, around locating - manually polling, 
+        often creating - missing or non-standard OU storage for shared, room/equip & 
+        secgrps for email access - and then updated this, new-mailboxgenerictor; 
+        get-sitembxou; and new-mailboxshared to accomodate the migration blank-ups 
     * 4:18 PM 3/30/2026 fixed borked $FallBackBaseUserOU typo; updated latest START_LOG_HOLISTIC
     * 4:17 PM 1/30/2026 fixed $odn owner.mbx.dn bug
     * 9:17 AM 1/29/2026 Cleanup ; EXIT ; -> Cleanup ; BREAK ;
@@ -594,13 +598,15 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         #endregion COMMON_CONSTANTS ; #*------^ END COMMON_CONSTANTS ^------
     
         #region LOCAL_CONSTANTS ; #*------v LOCAL_CONSTANTS v------
-
+        $dbgDate = '4/9/2026' ; # debugging ipmo force loads variants not in modules
         $Retries = 4 ; # number of re-attempts
         $RetrySleep = 5 ; # seconds to wait between retries
         # $rgxCU5 = [infra file]
         # OU that's used when can't find any baseuser for the owner's OU, default to a random shared from ($ADSiteCodeUS) (avoid crapping out):
         $FallBackBaseUserOU = "$($DomTORfqdn)/$($ADSiteCodeUS)/Generic Email Accounts" ;
-
+        # 3:46 PM 4/3/2026 add Migrations OU variant support
+        $rgxOUMigrations = ',OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
+        $rgxMigationsSite = ',OU=(\w+),OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
         #endregion LOCAL_CONSTANTS ; #*------^ END LOCAL_CONSTANTS ^------  
           
         #region ENCODED_CONTANTS ; #*------v ENCODED_CONTANTS v------
@@ -1702,17 +1708,92 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             $SiteCode=$InputSplat.SiteCode.tostring();
         } ;
 
-        If($InputSplat.NonGeneric) {
-            if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $false)   ) {
-
-            } else { Cleanup ; BREAK ;}
-        } elseIf($Room -OR $Equipement) {
-            if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Resource $true ) ) {
-            } else { Cleanup ; BREAK ;}
+        # if we need the OwnerDn 
+        if ( ($OwnerMbx = (get-mailbox -identity $($pltNmbx.Owner) -ea 0)) -OR ($OwnerMbx = (get-remotemailbox -identity $($pltNmbx.Owner) -ea 0)) ) {
+            if ($ownermbx.DistinguishedName -match $rgxOUMigrations) {
+                $OSiteCode = [regex]::Match($ownermbx.DistinguishedName, $rgxMigationsSite).groups[1].value ;
+                if ($OSiteCode) {
+                    $smsg = "Resolved _MIGRATIONS tree OSiteCode:$($OSiteCode)" ;
+                    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)"  ;
+                } else {
+                    throw "Unable to resolve $($pltNmbx.Owner.DistinguishedName) into a SiteCode" ;
+                    Break ;
+                }
+            } else {
+                $OSiteCode = $Ownermbx.identity.tostring().split('/')[1]
+            } ;
         } else {
-            if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $true ) ) {
-            } else { Cleanup ; BREAK ;}
+            throw "Unable to resolve $($pltNmbx.Owner) to any existing OP or EXO mailbox" ;
+            Break ;
+        } ;
+
+        $pltGSmbx = [ordered]@{
+            Sitecode = $SiteCode ;
+            Generic = [boolean]($InputSplat.NonGeneric) ;
+            Resource = $false ; 
+            modelDistinguishedName = $null ;
         }
+        if ($ownermbx.DistinguishedName -match $rgxOUMigrations) {
+            $pltGSmbx.modelDistinguishedName = $ownermbx.DistinguishedName ; 
+        }else{}
+        
+        If($InputSplat.NonGeneric) {
+            $pltGSmbx.Generic = $false ; 
+        } elseIf($Room -OR $Equipement) {
+            $pltGSmbx.Resource = $true ; 
+        } else {
+            $pltGSmbx.Generic = $true 
+        } ; 
+        $tCmdlet = 'get-SiteMbxOU' ; $BMod = 'verb-ADMS' ; 
+        if($psISE -AND ((get-date ).tostring() -match $dbgDate)){ 
+            if((gcm $tCmdlet).source -eq $BMod){
+                Do{
+                    gci "D:\scripts\$($tCmdlet)_func.ps1" -ea STOP | ipmo -fo -verb  ;
+                }until((gcm $tCmdlet).source -ne $BMod)
+            } ;
+        } ; 
+        $smsg = "Get-SiteMbxOU w`n$(($pltGSmbx|out-string).trim())" ; 
+        write-verbose $smsg ; 
+        if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU @pltGSmbx)   ) {
+        } else { Cleanup ; BREAK ;}
+
+        <#xxx
+        If($InputSplat.NonGeneric) {
+            if ($ownermbx.DistinguishedName -match $rgxOUMigrations) {
+                
+                #if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $false -modelDistinguishedName $ownermbx.DistinguishedName)   ) {
+                $pltGSmbx.Generic = $false ; 
+                $pltGSmbx.modelDistinguishedName = $ownermbx.DistinguishedName ; 
+                #if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $false -modelDistinguishedName $ownermbx.DistinguishedName)   ) {
+                if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU @PltGSmbx)   ) {
+                } else { Cleanup ; BREAK ;}
+            } else {
+                #$OSiteCode = $Ownermbx.identity.tostring().split('/')[1]
+                #if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $false)   ) {
+                #if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $false  -modelDistinguishedName $ownermbx.DistinguishedName)   ) {
+                $pltGSmbx.Generic = $false ; 
+                $pltGSmbx.modelDistinguishedName = $ownermbx.DistinguishedName ; 
+                if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU @PltGSmbx)   ) {
+                } else { Cleanup ; BREAK ;}
+            } ;
+            
+        } elseIf($Room -OR $Equipement) {
+            if ($ownermbx.DistinguishedName -match $rgxOUMigrations) {
+                if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Resource $true  -modelDistinguishedName $ownermbx.DistinguishedName) ) {
+            }else{
+                if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Resource $true ) ) {
+                } else { Cleanup ; BREAK ;}
+            }
+        } else {
+            if ($ownermbx.DistinguishedName -match $rgxOUMigrations ) {
+                if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $true -modelDistinguishedName $ownermbx.DistinguishedName) ) {
+                } else { Cleanup ; BREAK ;}
+            }else{
+                if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $true ) ) {
+                } else { Cleanup ; BREAK ;}
+            }
+        }
+        #> # XXX
 
         # add forced office designation, to match $SiteCode/OU
         # New-Mailbox doesn't support both -Shared & -Office in the same syntax set, move it to $MbxSetSplat

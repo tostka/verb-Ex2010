@@ -16,6 +16,7 @@ function new-MailboxGenericTOR {
     Github      : https://github.com/tostka/verb-ex2010
     Tags        : Exchange,ExchangeOnPremises,Mailbox,Creation,Maintenance,UserMailbox
     REVISIONS
+    * 6:45 PM 4/9/2026 added temp code to force load this variant over mod copy
     * 2:24 PM 4/3/2026 added -CU5 registered test
     * 5:24 PM 1/28/2026 supress passstatusZ_tenorg error; Implement missing $SiteOverride passthrough ; REQUIRED FOR MIGRATIONS DOMAINS, THEY DON'T RESOLVE TO A FUNCTIONAL SITEOU (COMES BACK _MIGRATE)
     * 12:41 PM 1/27/2026 latest conn_svcs block updated
@@ -713,6 +714,8 @@ function new-MailboxGenericTOR {
         #endregion COMMON_CONSTANTS ; #*------^ END COMMON_CONSTANTS ^------
     
         #region LOCAL_CONSTANTS ; #*------v LOCAL_CONSTANTS v------
+
+        $dbgDate = '4/9/2026' ; # debugging ipmo force loads variants not in modules
 
         #  add password generator
         [Reflection.Assembly]::LoadWithPartialName("System.Web") | out-null ;
@@ -1553,12 +1556,14 @@ function new-MailboxGenericTOR {
             $pltInput.add("Cu5",$null) ;
         }  ;
     
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):new-MailboxShared w`n$(($pltInput|out-string).trim())" ;
-        if(($psISE -ANd (get-date  -format 'M/d/yyyy') -eq '1/19/2026')){
-            if((gcm new-mailboxshared).source -eq 'verb-Ex2010'){
-                ipmo -fo -verb 'D:\scripts\new-MailboxShared_func.ps1'
-            }
-        } ;
+        $tCmdlet = 'new-MailboxShared' ; $BMod = 'VERB-ex2010' ; 
+        if($psISE -AND ((get-date ).tostring() -match $dbgDate)){ 
+            if((gcm $tCmdlet).source -eq $BMod){
+                Do{
+                    gci "D:\scripts\$($tCmdlet)_func.ps1" -ea STOP | ipmo -fo -verb  ;
+                }until((gcm $tCmdlet).source -ne $BMod)
+            } ;
+        } ; 
         if(-not($NoOutput)){
             $bRet = new-MailboxShared @pltInput ; 
             $bRet | write-output ;
