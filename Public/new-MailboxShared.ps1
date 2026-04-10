@@ -598,7 +598,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         #endregion COMMON_CONSTANTS ; #*------^ END COMMON_CONSTANTS ^------
     
         #region LOCAL_CONSTANTS ; #*------v LOCAL_CONSTANTS v------
-        $dbgDate = '4/9/2026' ; # debugging ipmo force loads variants not in modules
+        $dbgDate = '4/10/2026' ; # debugging ipmo force loads variants not in modules
         $Retries = 4 ; # number of re-attempts
         $RetrySleep = 5 ; # seconds to wait between retries
         # $rgxCU5 = [infra file]
@@ -1729,20 +1729,30 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
         $pltGSmbx = [ordered]@{
             Sitecode = $SiteCode ;
-            Generic = [boolean]($InputSplat.NonGeneric) ;
-            Resource = $false ; 
-            modelDistinguishedName = $null ;
+            #Generic = $null ;
+            #Resource = $null; 
+            #modelDistinguishedName = $null ;
         }
         if ($ownermbx.DistinguishedName -match $rgxOUMigrations) {
-            $pltGSmbx.modelDistinguishedName = $ownermbx.DistinguishedName ; 
-        }else{}
+            $pltGSmbx.add('modelDistinguishedName',$ownermbx.DistinguishedName)
+            #$pltGSmbx.modelDistinguishedName = $ownermbx.DistinguishedName ; 
+        }else{
+            $pltGSmbx.add('modelDistinguishedName',$ownermbx.DistinguishedName)
+            #$pltGSmbx.modelDistinguishedName = $ownermbx.DistinguishedName ; 
+        }
         
         If($InputSplat.NonGeneric) {
-            $pltGSmbx.Generic = $false ; 
+            if($pltGSmbx.keys -contains 'generic'){$pltGSmbx.remove('Generic')}
+            #$pltGSmbx.Generic = $null ; 
+            #$pltGSmbx.Resource = $null ; 
         } elseIf($Room -OR $Equipement) {
-            $pltGSmbx.Resource = $true ; 
+            #$pltGSmbx.Resource = $true ; 
+            $pltGSmbx.add('Resource',$true) ; 
+            #$pltGSmbx.Generic = $null ;
         } else {
-            $pltGSmbx.Generic = $true 
+            #$pltGSmbx.Generic = $true 
+            $pltGSmbx.add('Generic',$true ) ; 
+            #$pltGSmbx.Resource = $null ; 
         } ; 
         $tCmdlet = 'get-SiteMbxOU' ; $BMod = 'verb-ADMS' ; 
         if($psISE -AND ((get-date ).tostring() -match $dbgDate)){ 
