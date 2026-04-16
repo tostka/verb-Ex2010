@@ -20,10 +20,16 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 3:00 PM 4/15/2026 UPDATED SAMACCOUNTNAME & NAME (LDAP CN) TO STRICT STRIP - ALPHANUMS LEAVE UNRECOGNIZABLE OBJECTS!
+        fixed Cu5 rgx error: doesn't accomodate any migr domains, just TTC, rem'd out forces 
+        cu5 to take precedence (it's tested via EAP ch3eck up top anyway) 
+        Updated ADDesc to use $env:username, instead of hardcode initials.  
+    * 3:34 PM 4/14/2026 added dbg ipmo -fo -verb non-mod function testing;       
     * 6:42 PM 4/9/2026 extended revising f'ery, around locating - manually polling, 
         often creating - missing or non-standard OU storage for shared, room/equip & 
         secgrps for email access - and then updated this, new-mailboxgenerictor; 
         get-sitembxou; and new-mailboxshared to accomodate the migration blank-ups 
+    * 5:15 PM 4/3/2026 substantial recode to support non-standard OU names (LF) in migrations OUs. 
     * 4:18 PM 3/30/2026 fixed borked $FallBackBaseUserOU typo; updated latest START_LOG_HOLISTIC
     * 4:17 PM 1/30/2026 fixed $odn owner.mbx.dn bug
     * 9:17 AM 1/29/2026 Cleanup ; EXIT ; -> Cleanup ; BREAK ;
@@ -267,7 +273,10 @@ new-MailboxShared.ps1 - Create New Generic Mbx
     ) ;
     BEGIN{
         $Verbose = [boolean]($VerbosePreference -eq 'Continue') ; 
-
+        # SamAccountname banned characters + space
+        $rgxBanSamA = '[\"\/\\\[\]\:\;\|\=\,\+\*\?\<\>\s]' ; 
+        # Name/LDAP cn= name, banned characters
+        $rgxBanCNName = '[\,\+\"\\\<\>\;\=\/]' 
         #region FUNCTIONS_INTERNAL ; #*======v FUNCTIONS_INTERNAL v======
         # Pull the CUser mod dir out of psmodpaths:
         #$CUModPath = $env:psmodulepath.split(';')|?{$_ -like '*\Users\*'} ;
@@ -598,7 +607,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         #endregion COMMON_CONSTANTS ; #*------^ END COMMON_CONSTANTS ^------
     
         #region LOCAL_CONSTANTS ; #*------v LOCAL_CONSTANTS v------
-        $dbgDate = '4/10/2026' ; # debugging ipmo force loads variants not in modules
+        $dbgDate = '4/15/2026' ; # debugging ipmo force loads variants not in modules
         $Retries = 4 ; # number of re-attempts
         $RetrySleep = 5 ; # seconds to wait between retries
         # $rgxCU5 = [infra file]
@@ -673,7 +682,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         #endregion ENCODED_CONTANTS ; #*------^ END ENCODED_CONTANTS ^------
 
         #endregion CONSTANTS_AND_ENVIRO ; #*======^ CONSTANTS_AND_ENVIRO ^======
-     
+        
         $useSMTPCFG = $true ; 
         #region USE_SMTPCFG ; #*------v USE_SMTPCFG v------
         if($useSMTPCFG){
@@ -1620,13 +1629,14 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         };
 
         # 3:07 PM 10/4/2017 Cu5 override support (normally inherits from assigned owner/manager)
+        # 3:35 PM 4/15/2026 the below is blanking cu5 because dw isn't in the $rgxcu5 spec! dumpm it!
         if ($Cu5){
-            if ($Cu5 -match $rgxCU5 ) {
+            #if ($Cu5 -match $rgxCU5 ) {
                 # pulled switch out, it wasn't actually translating, just rgx of the final tags
                 $InputSplat.Cu5=$Cu5;
-            } else {
-                $InputSplat.Cu5=$null ;
-            }  ;
+            #} else {
+            #    $InputSplat.Cu5=$null ;
+            #}  ;
         }; #  # if-E Cu5
 
 
@@ -1933,8 +1943,22 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                     $DnameClean= Remove-StringLatinCharacters -string $DnameClean ;
                 } ;
                 # strip all nonalphnums from samacct!
-                $InputSplat.samaccountname=$([System.Text.RegularExpressions.Regex]::Replace($DnameClean,"[^1-9a-zA-Z_]",""));
-                if($InputSplat.samaccountname.length -gt 20) { $InputSplat.samaccountname=$InputSplat.samaccountname.tostring().substring(0,20) };
+                #$InputSplat.samaccountname=$([System.Text.RegularExpressions.Regex]::Replace($DnameClean,"[^1-9a-zA-Z_]",""));
+                #if($InputSplat.samaccountname.length -gt 20) { $InputSplat.samaccountname=$InputSplat.samaccountname.tostring().substring(0,20) };
+                #$InputSplat.samaccountname =  -join (($DnameClean -replace '[^a-zA-Z0-9]', '').ToCharArray()[0..19]) ;
+                # no do the strict strip on banned characters, plus spaces
+                #$rgxBanSamA = '[\"\/\\\[\]\:\;\|\=\,\+\*\?\<\>\s]' ; 
+                $InputSplat.samaccountname = -join (($DnameClean -replace $rgxBanSamA, '').ToCharArray()[0..19]) ;
+                try {$conflict = $null ; $conflict = get-aduser $InputSplat.samaccountname -server $InputSplat.DomainController ;} CATCH {} ;
+                $incr = 1 ;  
+                Do{
+                    if($conflict){
+                        $incr++ ; 
+                        $InputSplat.samaccountname = "$(-join (($DnameClean -replace '[^a-zA-Z0-9]', '').ToCharArray()[0..18]))$($incr)" ; 
+                    }
+                    try {$conflict = $null ; $conflict = get-aduser $InputSplat.samaccountname -server $InputSplat.DomainController ;} CATCH {} ;
+                }while($conflict) ; 
+
 
                 # base generics off of baseuser
                 # deter BaseUser as a random user in the $($MbxSplat.OrganizationalUnit)
@@ -2013,7 +2037,9 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
             if ( $InputSplat.BUserAD=(get-user -identity $($InputSplat.BaseUser.samaccountname) -domaincontroller $($InputSplat.domaincontroller) -ea continue)  ) {
             } else { Cleanup ; BREAK ;} ;
-            $InputSplat.ADDesc="$(get-date -format 'MM/dd/yyyy') for $($InputSplat.OwnerMbx.samaccountname) $($InputSplat.ticket) -tsk" ;
+            #$InputSplat.ADDesc="$(get-date -format 'MM/dd/yyyy') for $($InputSplat.OwnerMbx.samaccountname) $($InputSplat.ticket) -tsk" ;
+            # flip it to $env:username
+            $InputSplat.ADDesc="$(get-date -format 'MM/dd/yyyy') for $($InputSplat.OwnerMbx.samaccountname) $($InputSplat.ticket) -$($env:username)" ;
 
             # check for conflicting samaccountname, and increment
             $bConflicted=$false ;
@@ -2036,14 +2062,23 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 $MbxSplat.Remove("shared");
             }
 
+            # build the name as an explicit LDAP cn Name strip
+            # Name/LDAP cn= name, banned characters
+            #$rgxBanCNName = '[\,\+\"\\\<\>\;\=\/]' 
+            #$DnameClean is the diacritical/latin cleaned version fo the Displayname
+            if($DnameClean){
+                $MbxSplat.Name=-join (($DnameClean -replace $rgxBanCNName,'').ToCharArray()[0..63]) ;
+            }else{
+                $MbxSplat.Name=-join (($InputSplat.DisplayName -replace $rgxBanCNName,'').ToCharArray()[0..63]) ;
+            }
 
             # 64char limit on names
             if($InputSplat.DisplayName.length -gt 64){
-                $smsg= "`n **** NOTE TRUNCATING NAME, -GT 64 CHARS!  ****`N" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
-                $MbxSplat.Name=$InputSplat.DisplayName.Substring(0,63) ;
+                $smsg= "`n **** NOTE TRUNCATING DISPLAYNAME, -GT 64 CHARS!  ****`N" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
+                #$MbxSplat.Name=$InputSplat.DisplayName.Substring(0,63) ;
                 $MbxSplat.DisplayName=$InputSplat.DisplayName.Substring(0,63) ;
             } else {
-                $MbxSplat.Name=$InputSplat.DisplayName;
+                #$MbxSplat.Name=$InputSplat.DisplayName;
                 $MbxSplat.DisplayName=$InputSplat.DisplayName;
             };
 
