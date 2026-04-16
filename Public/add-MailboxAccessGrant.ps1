@@ -18,6 +18,8 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    * 3:06 PM 4/15/2026 shifted to Name/Cn & samaccountname as strict stripped char versions
+    * 4:15 PM 4/14/2026 captured outputs of add- cmds (blowing pipeline); 
     * 5:15 PM 4/3/2026 substantial recode to support non-standard OU names (LF) in migrations OUs. 
     * 4:18 PM 3/30/2026 fixed borked $FallBackBaseUserOU typo; subbed in full begin block up to splat defs from new-mailboxshared()
     # 5:12 PM 10/13/2021 fixed long standing random add-adgroupmember bug (failed to see target sg/dg), by swapping in ADGM ex cmd;  pulled [int] from $ticket , to permit non-numeric & multi-tix
@@ -226,8 +228,12 @@ function add-MailboxAccessGrant {
             [switch] $whatIf
     ) ;
     BEGIN {
-
+        $dbgDate = '4/15/2026' ; # debugging ipmo force loads variants not in modules
         $Verbose = [boolean]($VerbosePreference -eq 'Continue') ; 
+        # Name/Ldap CN banned chars
+        $rgxBanCNName = '[\,\+\"\\\<\>\;\=\/]' ; 
+        # samAccountName banned chars
+        $rgxBanSamA = '[\"\/\\\[\]\:\;\|\=\,\+\*\?\<\>\s]' ; 
 
         #region FUNCTIONS_INTERNAL ; #*======v FUNCTIONS_INTERNAL v======
         # Pull the CUser mod dir out of psmodpaths:
@@ -1673,13 +1679,17 @@ function add-MailboxAccessGrant {
         } ;
         $SGSplat.DisplayName = "$($SiteCode)-SEC-Email-$($Tmbx.DisplayName)-G";
 
+        <#
         TRY {
             if($Tmbx.DistinguishedName -match $rgxOUMigrations){
                 #$OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
                 #OU=Email\sAccess,.*OU=_TTC_Sync_CMW_NoSync,OU=DIT,OU=_MIGRATIONS,
-                $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                #$OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                # leverage verb-adms\get-SiteMbxOU
             }else{
-                $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                #$OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                # leverage verb-adms\get-SiteMbxOU
+
             }
         } CATCH {
             $ErrTrpd = $_ ;
@@ -1694,6 +1704,40 @@ function add-MailboxAccessGrant {
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } ; #Error|Warn
             Exit ;
         } ;
+        #>
+        # port in code from new-mailboxshared
+        #-=-=-=-=-=-=-=-=
+        $pltGSmbx = [ordered]@{
+            Sitecode = $SiteCode ;
+            Type = 'PermissionGroup' ; 
+        }
+        if ($Tmbx.DistinguishedName -match $rgxOUMigrations) {
+            $pltGSmbx.add('modelDistinguishedName',$Tmbx.DistinguishedName) ; 
+        }else{
+            $pltGSmbx.add('modelDistinguishedName',$Tmbx.DistinguishedName) ; 
+        }
+        <#
+        If($InputSplat.NonGeneric) {
+            if($pltGSmbx.keys -contains 'generic'){$pltGSmbx.remove('Generic')}
+        } elseIf($Room -OR $Equipement) {
+            $pltGSmbx.add('Resource',$true) ;
+        } else {
+            $pltGSmbx.add('Generic',$true ) ;
+        } ;
+        #>
+        $tCmdlet = 'get-SiteMbxOU' ; $BMod = 'verb-ADMS' ;
+        if($psISE -AND ((get-date ).tostring() -match $dbgDate)){
+            if((gcm $tCmdlet).source -eq $BMod){
+                Do{
+                    gci "D:\scripts\$($tCmdlet)_func.ps1" -ea STOP | ipmo -fo -verb  ;
+                }until((gcm $tCmdlet).source -ne $BMod)
+            } ;
+        } ;
+        $smsg = "Get-SiteMbxOU w`n$(($pltGSmbx|out-string).trim())" ;
+        write-verbose $smsg ;
+        if ( $OU  = (Get-SiteMbxOU @pltGSmbx)   ) {
+        } else { Cleanup ; BREAK ;}
+        #-=-=-=-=-=-=-=-=
 
         $smsg = "$SiteCode" ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
@@ -1704,7 +1748,10 @@ function add-MailboxAccessGrant {
         $smsg = "Checking specified SecGrp Members..." ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
         # 3:50 PM 10/13/2021 flip ea stop to continue, we want it to get through, even if it throws error, and continue will complain
-        $SGMembers = ($InputSplat.members.split(",") | ForEach-Object { get-recipient $_ -ea continue | select -expand primarysmtpaddress  | select -unique})
+        $SGMembers = ($InputSplat.members.split(",") | ForEach-Object {
+             get-recipient $_ -ea continue | select -expand primarysmtpaddress  | select -unique
+            }
+        )
         $smsg = "Checking for existing $($SGSplat.DisplayName)..." ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
 
@@ -1712,8 +1759,29 @@ function add-MailboxAccessGrant {
             $smsg = "`$SGSrchName:$($SGSrchName)`n`$SGSplat.DisplayName: $($SGSplat.DisplayName)"; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Debug } ;
         } ;
 
-        $SGSrchName = $($SGSplat.DisplayName);
-        $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController) -ErrorAction stop;
+        # 4:38 PM 4/14/2026 need samacctname generated 1st
+        # THIS IS ALPHANUM STRIP - NOT LEGIBLE
+        #$SGSplat.SamAccountName =  -join (($SGSplat.DisplayName -replace '[^a-zA-Z0-9]', '').ToCharArray()[0..19]) ;
+        # SHIFT TO STRICT BAN CHAR STRIP
+        #$rgxBanSamA = '[\"\/\\\[\]\:\;\|\=\,\+\*\?\<\>\s]' ; 
+        $SGSplat.SamAccountName =  -join (($SGSplat.DisplayName -replace $rgxBanSamA, '').ToCharArray()[0..19]) ;
+        try {$conflict = $null ;$conflict = get-adgroup -id $SGSplat.SamAccountName -server $InputSplat.DomainController ;} CATCH {} ;
+        $incr = 1 ;
+        Do{
+            if($conflict){
+                $incr++ ;
+                $SGSplat.SamAccountName = "$( -join (($SGSplat.DisplayName -replace '[^a-zA-Z0-9]', '').ToCharArray()[0..18]) )$($incr)" ;
+            }
+            try {$conflict = $null ;$conflict = get-adgroup -id $SGSplat.SamAccountName -server $InputSplat.DomainController ;} CATCH {} ;
+        }while($conflict) ; 
+
+        $SGSrchName = $($SGSplat.samaccountname);
+        # 4:31 PM 4/14/2026 samacct isn't defined yet, search on DisplayName, and get-adgroup needs try/catch to suppress hit fails
+        # and can't search on dname, it's not in default properties, have to preconstruct accurate samacct, and search it
+        TRY{
+            $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController) -ErrorAction stop;
+            #$oSG = Get-ADGroup -Filter { Displayname -eq $SGSplat.DisplayName } -server $($InputSplat.DomainController) -ErrorAction stop;            
+        }CATCH{}
 
         if ($oSG) {
             if ($bDebug) {
@@ -1807,8 +1875,41 @@ function add-MailboxAccessGrant {
             $smsg = "$($SGSplat.DisplayName) Not found. Testing Create with the following paraemters..."  ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
             # create the secgrp
-            $SGSplat.Name = $($SGSplat.DisplayName);
-            $SGSplat.SamAccountName = $($SGSplat.DisplayName);
+            #$SGSplat.Name = $($SGSplat.DisplayName); 
+            # LDAP cn/nAME name restrictcions 64char max, ban: , + " \ < > ; = / (must be escaped, strip NON-NUMS SIMPLER)
+            #$SGSplat.Name = -join (($SGSplat.DisplayName -replace '[,\+"\\<>;=/]', '').ToCharArray()[0..63]) ;
+            # ILLEG ALPHANUM STRIP
+            #$SGSplat.Name =  -join (( $SGSplat.DisplayName -replace '[^a-zA-Z0-9\s]','').ToCharArray()[0..63]) ;
+            # do legible banned char strip instead
+            #$rgxBanCNName = '[\,\+\"\\\<\>\;\=\/]' ; 
+            $SGSplat.Name = -join (($SGSplat.DisplayName -replace $rgxBanCNName, '').ToCharArray()[0..63]) ; 
+            try {$conflict = $null ;$conflict = get-adgroup -id $SGSplat.Name -server $InputSplat.DomainController ;} CATCH {} ;
+            $incr = 1 ;
+            Do{
+                if($conflict){
+                    $incr++ ;
+                    $SGSplat.Name = "$( -join (( $SGSplat.DisplayName -replace '[^a-zA-Z0-9\s]','').ToCharArray()[0..62]) )$($incr)" ;
+                }
+                try {$conflict = $null ;$conflict = get-adgroup -id $SGSplat.Name -server $InputSplat.DomainController ;} CATCH {} ;
+            }while($conflict) ; 
+
+            # 8:45 AM 4/13/2026 with Migrations oddities, we need to strip the dname of non-alphanums for the samacctname & identity
+            # sAMAccountName: 20chars max, ban:/ \ [ ] : ; | = , + * ? < >
+            #$SGSplat.SamAccountName = $($SGSplat.DisplayName -replace '[\W]',''); # strip all non-alphnanum from the dname, doesn't cover 2-20 length req
+            #$SGSplat.SamAccountName = [regex]::match($SGSplat.DisplayName,'[-A-Za-z0-9]{2,20}').value ; # this accomds the perm of dash as well
+            <# 4:37 PM 4/14/2026 had to move the samaactname generation up before existing search
+            $SGSplat.SamAccountName =  -join (($SGSplat.DisplayName -replace '[^a-zA-Z0-9]', '').ToCharArray()[0..19]) ;
+            try {$conflict = $null ;$conflict = get-adgroup -id $SGSplat.SamAccountName -server $InputSplat.DomainController ;} CATCH {} ;
+            $incr = 1 ;
+            Do{
+                if($conflict){
+                    $incr++ ;
+                    $SGSplat.SamAccountName = "$( -join (($SGSplat.DisplayName -replace '[^a-zA-Z0-9]', '').ToCharArray()[0..18]) )$($incr)" ;
+                }
+                try {$conflict = $null ;$conflict = get-adgroup -id $SGSplat.SamAccountName -server $InputSplat.DomainController ;} CATCH {} ;
+            }while($conflict) ; 
+            #>
+
             # 4:52 PM 4/3/2026 owner is the alias, not samaccountname, use get-user to resolve it to the DN hard link regarldess of tree
             #$SGSplat.ManagedBy = $($InputSplat.Owner);
             if($SGSplat.ManagedBy = (get-user -id $inputsplat.owner -ea STOP).distinguishedname){} else { 
@@ -1843,7 +1944,7 @@ function add-MailboxAccessGrant {
             $smsg = "---`nWhatif $($SGSplat.Name) creation...";
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
             # unlike most other modules, ADMS and it's new-ADGroup does *not* return the created object. Have to qry the object back, cold. 
-            New-AdGroup @SGSplat -whatif ;
+            $nADGRes = New-AdGroup @SGSplat -whatif ;
             $DGEnableSplat.identity = $SGSplat.SamAccountName ;
             $DGUpdtSplat.identity = $SGSplat.SamAccountName ;
 
@@ -1861,7 +1962,7 @@ function add-MailboxAccessGrant {
                 } else {
                     $smsg = "Executing...";
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-                    New-AdGroup @SGSplat  ;
+                    $nADGRes = New-AdGroup @SGSplat  ;
                     Do { write-host "." -NoNewLine; Start-Sleep -s 1 } Until (Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController)) ;
                     #$oSG= (get-adgroup "$($SGSplat.DisplayName)" -server $($InputSplat.Domain) -ea stop );
                     $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController) -ErrorAction stop;
@@ -1933,7 +2034,7 @@ function add-MailboxAccessGrant {
                             + PSComputerName        : DC.DOMAIN.COM
                         #> 
                         # flip the adds to adgm
-                        Add-DistributionGroupMember @pltAddDGM -member $mbr ; 
+                        $adgRes = Add-DistributionGroupMember @pltAddDGM -member $mbr ; 
                     } else {
                         $smsg = "SKIPPING:$($mbr.samaccountname) is already a member of $($oSG.samaccountname)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
@@ -1973,9 +2074,10 @@ function add-MailboxAccessGrant {
 
             # AD SendAs too
 
-            $mbxadp = $Tmbx | Get-ADPermission -domaincontroller $($InputSplat.domaincontroller) -ea Silentlycontinue |
-                 Where-Object { ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and ($_.user -match ".*-(SEC|Data)-Email-.*$") };
-
+            #$mbxadp = $Tmbx | Get-ADPermission -domaincontroller $($InputSplat.domaincontroller) -ea Silentlycontinue |
+            #     Where-Object { ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and ($_.user -match ".*-(SEC|Data)-Email-.*$") };
+            $mbxadp = Get-ADPermission -Identity $Tmbx.identity -domaincontroller $($InputSplat.domaincontroller) -ea Silentlycontinue |
+                Where-Object { ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and ($_.user -match ".*-(SEC|Data)-Email-.*$") };
             $smsg = "`nChecking AD SendAs Permission on $($Tmbx.samaccountname) mailbox to accessing user:`n $($oSG.Name)...`n(blank if none)" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
 
@@ -2061,7 +2163,7 @@ function add-MailboxAccessGrant {
                         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     } ; 
                     Try {
-                        add-mailboxpermission @GrantSplat ;
+                        $admpRes = add-mailboxpermission @GrantSplat ;
                         $Exit = $Retries ;
                     } Catch {
                         $ErrTrapd = $Error[0] ;
@@ -2086,7 +2188,7 @@ function add-MailboxAccessGrant {
                         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     } ; 
                     Try {
-                        add-adpermission -identity $($TMbx.Identity) @ADMbxGrantSplat ;
+                        $addedadmbxp = add-adpermission -identity $($TMbx.Identity) @ADMbxGrantSplat ;
                         $Exit = $Retries ;
                     } Catch {
                         $ErrTrapd = $Error[0] ;
@@ -2126,7 +2228,7 @@ function add-MailboxAccessGrant {
                         # do loop until up to 4 retries...
                         Do {
                             Try {
-                                add-DistributionGroupMember @pltAddDGM ;
+                                $dgRet = add-DistributionGroupMember @pltAddDGM ;
                                 #-identity $tdl.alias -Member $TMbx.distinguishedname -domaincontroller $($InputSplat.domaincontroller) -whatif:$($whatif) ;
 
                                 $Exit = $Retries ;
@@ -2212,7 +2314,7 @@ function add-MailboxAccessGrant {
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                 }  ;
 
-                $smsg = "`nUpdated $($oSG.Name) Membership...`n" ;
+                $smsg = "`nUpdated $($oSG.Displayname) Membership...`n" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                 write-host -foregroundcolor green "$((get-date).ToString("HH:mm:ss")):---";
                 #if ($mbrs = Get-ADGroupMember -identity $oSG.samaccountname -server $($DomainController) | Select-Object distinguishedName ) {
