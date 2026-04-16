@@ -1,4 +1,4 @@
-﻿#
+﻿# add-MbxAccessGrant
 
 
 #region ADD_MBXACCESSGRANT ; #*------v add-MbxAccessGrant v------
@@ -20,8 +20,7 @@ function add-MbxAccessGrant {
     AddedCredit : 
     AddedWebsite: 
     AddedTwitter: 
-    REVISIONS
-    * 5:15 PM 4/3/2026 substantial recode to support non-standard OU names (LF) in migrations OUs. 
+    REVISIONS   
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     * 2:05 PM 4/27/2020 debugged, fully ported to published/installed use
     * 3:57 PM 4/9/2020 genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules
@@ -227,7 +226,7 @@ function add-MbxAccessGrant {
     ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
     # Get parameters this function was invoked with
     $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters 
-
+    $dbgDate = '4/15/2026' ; # debugging ipmo force loads variants not in modules
     # 2:50 PM 5/18/2016 add SITE retry code
     $Retries = 4 ; # number of re-attempts
     $RetrySleep = 5 ; # seconds to wait between retries
@@ -380,6 +379,14 @@ function add-MbxAccessGrant {
     if($whatIf){$pltInput.add("whatIf",$whatIf) } ;
 
     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):add-MbxAccessGrant w`n$(($pltInput|out-string).trim())" ;
+    $tCmdlet = 'add-MailboxAccessGrant' ; $BMod = 'VERB-ex2010' ;
+    if($psISE -AND ((get-date ).tostring() -match $dbgDate)){
+        if((gcm $tCmdlet).source -eq $BMod){
+            Do{
+                gci "D:\scripts\$($tCmdlet)_func.ps1" -ea STOP | ipmo -fo -verb  ;
+            }until((gcm $tCmdlet).source -ne $BMod)
+        } ;
+    } ;
     if(-not($NoOutput)){
         $bRet = add-MailboxAccessGrant @pltInput ;  
         $bRet | write-output ;
