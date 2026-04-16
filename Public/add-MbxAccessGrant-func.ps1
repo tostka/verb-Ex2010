@@ -219,7 +219,7 @@ function add-MbxAccessGrant {
     [switch] $whatIf) ;
 
     # NoPrompt Suppress YYY confirmation prompts
-
+    $dbgDate = '4/14/2026' ; # debugging ipmo force loads variants not in modules
     # Get the name of this function
     ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
     # Get parameters this function was invoked with
@@ -377,6 +377,14 @@ function add-MbxAccessGrant {
     if($whatIf){$pltInput.add("whatIf",$whatIf) } ;
 
     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):add-MbxAccessGrant w`n$(($pltInput|out-string).trim())" ;
+    $tCmdlet = 'add-MailboxAccessGrant' ; $BMod = 'VERB-ex2010' ;
+    if($psISE -AND ((get-date ).tostring() -match $dbgDate)){
+        if((gcm $tCmdlet).source -eq $BMod){
+            Do{
+                gci "D:\scripts\$($tCmdlet)_func.ps1" -ea STOP | ipmo -fo -verb  ;
+            }until((gcm $tCmdlet).source -ne $BMod)
+        } ;
+    } ;
     if(-not($NoOutput)){
         $bRet = add-MailboxAccessGrant @pltInput ;  
         $bRet | write-output ;
