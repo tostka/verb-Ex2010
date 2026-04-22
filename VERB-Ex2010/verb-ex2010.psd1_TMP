@@ -12,7 +12,7 @@
 RootModule = 'VERB-Ex2010.psm1'
 
 # Version number of this module.
-ModuleVersion = '8.1.1'
+ModuleVersion = '8.1.2'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'Exchange 2010 PS Module-related generic functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('add-MailboxAccessGrant','Remove-InvalidVariableNameChars','2b4','2b4c','fb4','add-MbxAccessGrant','_cleanup','Connect-Ex2010','Connect-ExchangeServerTDO','_connect-ExOP','get-ADExchangeServerTDO','Connect-Ex2010XO','Connect-ExchangeServerTDO','_connect-ExOP','connect-OPServices','Connect-ExchangeServerTDO','_connect-ExOP','get-ADExchangeServerTDO','load-ADMS','get-GCFast','2b4','2b4c','fb4','connect-XopLocalManagementShell','Convert-xopAdminDisplayVersionTDO','cx10cmw','cx10tol','cx10tor','disable-ForestView','disable-xopExServer','Disconnect-Ex2010','enable-ForestView','get-ADExchangeServerTDO','get-DAGDatabaseCopyStatus','Get-ex16ExchangeServerTDO','Get-ex16MaintenanceModeTDO','Get-ExchangeOrganizationTDO','Get-ExchServerFromExServersGroup','get-ExRootSiteOUs','get-IISLocalBoundCertifcateTDO','get-MailboxDatabaseQuotas','Get-MessageTrackingLogTDO','resolve-EnvironmentTDO','write-log','Start-Log','Connect-ExchangeServerTDO','_connect-ExOP','get-ADExchangeServerTDO','load-ADMS','get-GCFast','resolve-NetworkLocalTDO','out-Clipboard','convertFrom-MarkdownTable','Remove-InvalidVariableNameChars','remove-SmtpPlusAddress','Initialize-xopEventIDTable','push-TLSLatest','test-LocalExchangeInfoTDO','2b4','2b4c','fb4','Get-SetupTextVersionTDO','get-UserMailADSummary','get-xopExchangeLocalVersionTDO','get-xopLocalExSetupVersionTDO','get-xopLocalExSetupVersionTDO','get-xopServerAdminDisplayVersion','import-EMSLocalModule','Initialize-xopEventIDTable','Invoke-ExchangeCommand','load-EMSLatest','Load-EMSSnap','new-MailboxGenericTOR','Remove-InvalidVariableNameChars','2b4','2b4c','fb4','new-MailboxShared','Remove-InvalidVariableNameChars','2b4','2b4c','fb4','preview-EAPUpdate','Reconnect-Ex2010','Reconnect-Ex2010XO','remove-EMSLocalModule','remove-SmtpPlusAddress','Resolve-ADUserToLocalMailObjectExchangeGuid','Resolve-ADUserToOPMailboxExchangeGuid','resolve-ExchangeServerVersionTDO','Resolve-OPMailObjectToADUsermsExchMailboxGuid','resolve-RecipientEAP','Resolve-xopBuildSemVersToTextNameTDO','convertFrom-MarkdownTable','Resolve-xopMajorVersionTDO','rx10cmw','rx10tol','rx10tor','Start-ex16MaintenanceMode','start-Ex16ServicesInDependencyOrder','start-ExMaintModeExpress','Stop-ex16MaintenanceMode','stop-Ex16ServicesInDependencyOrder','Test-ExchangeOrganizationTDO','test-ExOPPSession','test-EXOPConnection','test-LocalExchangeInfoTDO','test-xopExchangeInstallWatermarkTDO','toggle-ForestView')
+FunctionsToExport = @('add-MailboxAccessGrant','Remove-InvalidVariableNameChars','2b4','2b4c','fb4','add-MbxAccessGrant','_cleanup','add-MbxAccessGrant','_cleanup','Connect-Ex2010','Connect-ExchangeServerTDO','_connect-ExOP','get-ADExchangeServerTDO','Connect-Ex2010XO','Connect-ExchangeServerTDO','_connect-ExOP','connect-OPServices','Connect-ExchangeServerTDO','_connect-ExOP','get-ADExchangeServerTDO','load-ADMS','get-GCFast','2b4','2b4c','fb4','connect-XopLocalManagementShell','Convert-xopAdminDisplayVersionTDO','cx10cmw','cx10tol','cx10tor','disable-ForestView','disable-xopExServer','Disconnect-Ex2010','enable-ForestView','get-ADExchangeServerTDO','get-DAGDatabaseCopyStatus','Get-ex16ExchangeServerTDO','Get-ex16MaintenanceModeTDO','Get-ExchangeOrganizationTDO','Get-ExchServerFromExServersGroup','get-ExRootSiteOUs','get-IISLocalBoundCertifcateTDO','get-MailboxDatabaseQuotas','Get-MessageTrackingLogTDO','resolve-EnvironmentTDO','write-log','Start-Log','Connect-ExchangeServerTDO','_connect-ExOP','get-ADExchangeServerTDO','load-ADMS','get-GCFast','resolve-NetworkLocalTDO','out-Clipboard','convertFrom-MarkdownTable','Remove-InvalidVariableNameChars','remove-SmtpPlusAddress','Initialize-xopEventIDTable','push-TLSLatest','test-LocalExchangeInfoTDO','2b4','2b4c','fb4','Get-SetupTextVersionTDO','get-UserMailADSummary','get-xopExchangeLocalVersionTDO','get-xopLocalExSetupVersionTDO','get-xopLocalExSetupVersionTDO','get-xopServerAdminDisplayVersion','import-EMSLocalModule','Initialize-xopEventIDTable','Invoke-ExchangeCommand','load-EMSLatest','Load-EMSSnap','new-MailboxGenericTOR','Remove-InvalidVariableNameChars','2b4','2b4c','fb4','new-MailboxShared','Remove-InvalidVariableNameChars','2b4','2b4c','fb4','preview-EAPUpdate','Reconnect-Ex2010','Reconnect-Ex2010XO','remove-EMSLocalModule','remove-SmtpPlusAddress','Resolve-ADUserToLocalMailObjectExchangeGuid','Resolve-ADUserToOPMailboxExchangeGuid','resolve-ExchangeServerVersionTDO','Resolve-OPMailObjectToADUsermsExchMailboxGuid','resolve-RecipientEAP','Resolve-xopBuildSemVersToTextNameTDO','convertFrom-MarkdownTable','Resolve-xopMajorVersionTDO','rx10cmw','rx10tol','rx10tor','Start-ex16MaintenanceMode','start-Ex16ServicesInDependencyOrder','start-ExMaintModeExpress','Stop-ex16MaintenanceMode','stop-Ex16ServicesInDependencyOrder','Test-ExchangeOrganizationTDO','test-ExOPPSession','test-EXOPConnection','test-LocalExchangeInfoTDO','test-xopExchangeInstallWatermarkTDO','toggle-ForestView')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU1le3ggsU+roCSQysyzolslq3
-# EEWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQURwyUQtnAdcD8p3+By/AflwXG
+# E+agggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,10 +142,10 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS+GR0J
-# qTAcX+1rePNZA/AJFEI2UDANBgkqhkiG9w0BAQEFAASBgE8+8Yzwy+ci35nDzj4C
-# I1+nEBY7OWFvJgZu+v2mxwK6Bk1rhR3syFrFK1zlb1Ly8MVXN8ZTElmSgxvT39Rn
-# WEiMHSzuL1JCMlRrN8gNXJNe/6BJjAMCgwf3ADPY8T3SFFgkmmonJPggPeA4tzB6
-# 4sK6XVXIROZ25szMf+FJR24L
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQYbxIS
+# hQJv9D44bHw+CEBMJdvbJDANBgkqhkiG9w0BAQEFAASBgJYO+6wvL2n5qHPz8s3W
+# sEt/CK5SiK4LI10soNr6/KhdXt89xXMwKYgJ5C2ZyJtdh/ndIkCbkpnv9lsqgwvG
+# e4cuTbUIh2iA4n3PTwrmSHU6w9Qxxif0FN/o60f1XzT8GGoTuFtb70bmsW9RsZ2f
+# 6SsVNklpRXsvmOqZOySO4SMR
 # SIG # End signature block
 
