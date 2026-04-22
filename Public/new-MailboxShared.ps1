@@ -20,6 +20,7 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 2:02 PM 4/21/2026 #2650, added `n to bump givenname down off of the INFO: header line
     * 3:00 PM 4/15/2026 UPDATED SAMACCOUNTNAME & NAME (LDAP CN) TO STRICT STRIP - ALPHANUMS LEAVE UNRECOGNIZABLE OBJECTS!
         fixed Cu5 rgx error: doesn't accomodate any migr domains, just TTC, rem'd out forces 
         cu5 to take precedence (it's tested via EAP ch3eck up top anyway) 
@@ -607,7 +608,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         #endregion COMMON_CONSTANTS ; #*------^ END COMMON_CONSTANTS ^------
     
         #region LOCAL_CONSTANTS ; #*------v LOCAL_CONSTANTS v------
-        $dbgDate = '4/15/2026' ; # debugging ipmo force loads variants not in modules
+        $dbgDate = '4/22/2026'; # debugging ipmo force loads variants not in modules
         $Retries = 4 ; # number of re-attempts
         $RetrySleep = 5 ; # seconds to wait between retries
         # $rgxCU5 = [infra file]
@@ -2647,7 +2648,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                         $smsg= "Mailbox Information:" ;if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                         $smsg= "$(($mbxo | select @{Name='LogonName';Expression={$_.SamAccountName }},Name,DisplayName,Alias,database,UserPrincipalName,RetentionPolicy,CustomAttribute5,CustomAttribute9,RecipientType,RecipientTypeDetails | out-string).trim())" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
-                        $smsg= "$(($Adu | select GivenName,Surname,Manager,Company,Office,Title,StreetAddress,City,StateOrProvince,c,co,countryCode,PostalCode,Phone,Fax,Description | out-string).trim())";
+                        $smsg= "`n$(($Adu | select GivenName,Surname,Manager,Company,Office,Title,StreetAddress,City,StateOrProvince,c,co,countryCode,PostalCode,Phone,Fax,Description | out-string).trim())";
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                         if($NonGeneric -eq $false){
                             $smsg= "ActiveSyncMailboxPolicy:$($cmbxo.ActiveSyncMailboxPolicy.tostring())" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
