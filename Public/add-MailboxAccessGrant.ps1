@@ -18,6 +18,8 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    * 3:52 PM 4/28/2026 revised preexist group test to use get-group
+    * 4:31 PM 4/24/2026 ADD: try/catch retry loop to perm adds and adgroup updates
     * 3:06 PM 4/15/2026 shifted to Name/Cn & samaccountname as strict stripped char versions
     * 4:15 PM 4/14/2026 captured outputs of add- cmds (blowing pipeline); 
     * 5:15 PM 4/3/2026 substantial recode to support non-standard OU names (LF) in migrations OUs. 
@@ -228,7 +230,7 @@ function add-MailboxAccessGrant {
             [switch] $whatIf
     ) ;
     BEGIN {
-        $dbgDate = '4/22/2026'; # debugging ipmo force loads variants not in modules
+        $dbgDate = '4/27/2026'; # debugging ipmo force loads variants not in modules
         $Verbose = [boolean]($VerbosePreference -eq 'Continue') ; 
         # Name/Ldap CN banned chars
         $rgxBanCNName = '[\,\+\"\\\<\>\;\=\/]' ; 
@@ -1779,7 +1781,8 @@ function add-MailboxAccessGrant {
         # 4:31 PM 4/14/2026 samacct isn't defined yet, search on DisplayName, and get-adgroup needs try/catch to suppress hit fails
         # and can't search on dname, it's not in default properties, have to preconstruct accurate samacct, and search it
         TRY{
-            $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController) -ErrorAction stop;
+            #$oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController) -ErrorAction stop;
+            $oSG = get-group -id $SGSplat.DisplayName -domaincontroller $domaincontroller -ea 0 | ?{$_.RecipientTypeDetails -eq 'MailUniversalSecurityGroup'} ; 
             #$oSG = Get-ADGroup -Filter { Displayname -eq $SGSplat.DisplayName } -server $($InputSplat.DomainController) -ErrorAction stop;            
         }CATCH{}
 
@@ -1962,7 +1965,27 @@ function add-MailboxAccessGrant {
                 } else {
                     $smsg = "Executing...";
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-                    $nADGRes = New-AdGroup @SGSplat  ;
+                    $Exit = 0 ;
+                    Do {
+                        Try {
+                            $nADGRes = New-AdGroup @SGSplat  ;
+                            $Exit = $Retries ;
+                        } Catch {
+                            $ErrTrapd=$Error[0] ;
+                            $smsg = "Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+                            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;            
+                            $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            #Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                            Start-Sleep -Seconds $RetrySleep ;
+                            $Exit ++ ;
+                            $smsg= "Failed to exec cmd because: $($Error[0])" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
+                            $smsg= "Try #: $($Exit)" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
+                            If ($Exit -eq $Retries) {$smsg= "Unable to exec cmd!" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; } ;
+                        } # try-E
+                    } Until ($Exit -eq $Retries) # loop-E
                     Do { write-host "." -NoNewLine; Start-Sleep -s 1 } Until (Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController)) ;
                     #$oSG= (get-adgroup "$($SGSplat.DisplayName)" -server $($InputSplat.Domain) -ea stop );
                     $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController) -ErrorAction stop;
@@ -1973,11 +1996,51 @@ function add-MailboxAccessGrant {
                     $smsg = "Enable-DistributionGroup w`n$(($DGEnableSplat|out-string).trim())" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                     # capture the enabl - EMS ps returns the intact $osg DG object
-                    $oDG = Enable-DistributionGroup @DGEnableSplat ;
+                    $Exit = 0 ;
+                    Do {
+                        Try {
+                            $oDG = Enable-DistributionGroup @DGEnableSplat ;
+                            $Exit = $Retries ;
+                        } Catch {
+                            $ErrTrapd=$Error[0] ;
+                            $smsg = "Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+                            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;            
+                            $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            #Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                            Start-Sleep -Seconds $RetrySleep ;
+                            $Exit ++ ;
+                            $smsg= "Failed to exec cmd because: $($Error[0])" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
+                            $smsg= "Try #: $($Exit)" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
+                            If ($Exit -eq $Retries) {$smsg= "Unable to exec cmd!" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; } ;
+                        } # try-E
+                    } Until ($Exit -eq $Retries) # loop-E
                     $smsg = "Set HiddenFromAddressListsEnabled:Set-DistributionGroup w`n$(($DGUpdtSplat|out-string).trim())" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                     # but set-dg does *not* return the updated object, it has to be re-queried for current status. 
-                    Set-DistributionGroup @DGUpdtSplat ;
+                    $Exit = 0 ;
+                    Do {
+                        Try {
+                            Set-DistributionGroup @DGUpdtSplat ;
+                            $Exit = $Retries ;
+                        } Catch {
+                            $ErrTrapd=$Error[0] ;
+                            $smsg = "Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+                            else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;            
+                            $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            #Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                            Start-Sleep -Seconds $RetrySleep ;
+                            $Exit ++ ;
+                            $smsg= "Failed to exec cmd because: $($Error[0])" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
+                            $smsg= "Try #: $($Exit)" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
+                            If ($Exit -eq $Retries) {$smsg= "Unable to exec cmd!" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; } ;
+                        } # try-E
+                    } Until ($Exit -eq $Retries) # loop-E
                     $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -prop * -server $($InputSplat.DomainController) -ErrorAction stop;
                     $smsg = "Final SecGrp Config:$($oSG.SamAccountname)`n:$(($oSG | fl Name,GroupCategory,GroupScope,msExchRecipientDisplayType,showInAddressBook,mail|out-string).trim())" ;
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
@@ -2034,7 +2097,27 @@ function add-MailboxAccessGrant {
                             + PSComputerName        : DC.DOMAIN.COM
                         #> 
                         # flip the adds to adgm
-                        $adgRes = Add-DistributionGroupMember @pltAddDGM -member $mbr ; 
+                        $Exit = 0 ;
+                        Do {
+                            Try {
+                                $adgRes = Add-DistributionGroupMember @pltAddDGM -member $mbr ; 
+                                $Exit = $Retries ;
+                            } Catch {
+                                $ErrTrapd=$Error[0] ;
+                                $smsg = "Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+                                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;            
+                                $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                #Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                                Start-Sleep -Seconds $RetrySleep ;
+                                $Exit ++ ;
+                                $smsg= "Failed to exec cmd because: $($Error[0])" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
+                                $smsg= "Try #: $($Exit)" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
+                                If ($Exit -eq $Retries) {$smsg= "Unable to exec cmd!" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; } ;
+                            } # try-E
+                        } Until ($Exit -eq $Retries) # loop-E
                     } else {
                         $smsg = "SKIPPING:$($mbr.samaccountname) is already a member of $($oSG.samaccountname)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
