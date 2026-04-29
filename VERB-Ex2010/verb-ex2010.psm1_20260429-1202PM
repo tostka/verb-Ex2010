@@ -5,26 +5,26 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 8.0.6
+Version     : 8.1.2
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
-CreatedDate : 1/18.0.60
+CreatedDate : 1/18.1.20
 FileName    : VERB-Ex2010.psm1
 License     : MIT
-Copyright   : (c) 1/18.0.60 Todd Kadrie
+Copyright   : (c) 1/18.1.20 Todd Kadrie
 Github      : https://github.com/tostka
 REVISIONS
 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
 * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
-* 1/18.0.60 - 1.0.0.0
+* 1/18.1.20 - 1.0.0.0
 # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
 # 11:34 AM 12/30/2019 ran vsc alias-expansion
 # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
 # 10:19 AM 11/1/2019 trimmed some whitespace
 # 10:05 AM 10/31/2019 added sample load/call info
-# 12:02 PM 5/8.0.69 added cx10,rx10,dx10 aliases
-# 11:29 AM 5/8.0.69 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+# 12:02 PM 5/8.1.29 added cx10,rx10,dx10 aliases
+# 11:29 AM 5/8.1.29 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
 # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
 # 4:15 PM 3/24/2018 updated pshhelp
 # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
@@ -75,6 +75,9 @@ function add-MailboxAccessGrant {
     Github      : https://github.com/tostka
     Tags        : Powershell,Exchange,Permissions,Exchange2010
     REVISIONS
+    * 3:06 PM 4/15/2026 shifted to Name/Cn & samaccountname as strict stripped char versions
+    * 4:15 PM 4/14/2026 captured outputs of add- cmds (blowing pipeline); 
+    * 5:15 PM 4/3/2026 substantial recode to support non-standard OU names (LF) in migrations OUs. 
     * 4:18 PM 3/30/2026 fixed borked $FallBackBaseUserOU typo; subbed in full begin block up to splat defs from new-mailboxshared()
     # 5:12 PM 10/13/2021 fixed long standing random add-adgroupmember bug (failed to see target sg/dg), by swapping in ADGM ex cmd;  pulled [int] from $ticket , to permit non-numeric & multi-tix
     # 11:36 AM 9/16/2021 string
@@ -282,8 +285,12 @@ function add-MailboxAccessGrant {
             [switch] $whatIf
     ) ;
     BEGIN {
-
+        $dbgDate = '4/22/2026'; # debugging ipmo force loads variants not in modules
         $Verbose = [boolean]($VerbosePreference -eq 'Continue') ; 
+        # Name/Ldap CN banned chars
+        $rgxBanCNName = '[\,\+\"\\\<\>\;\=\/]' ; 
+        # samAccountName banned chars
+        $rgxBanSamA = '[\"\/\\\[\]\:\;\|\=\,\+\*\?\<\>\s]' ; 
 
         #region FUNCTIONS_INTERNAL ; #*======v FUNCTIONS_INTERNAL v======
         # Pull the CUser mod dir out of psmodpaths:
@@ -621,7 +628,9 @@ function add-MailboxAccessGrant {
         # $rgxCU5 = [infra file]
         # OU that's used when can't find any baseuser for the owner's OU, default to a random shared from ($ADSiteCodeUS) (avoid crapping out):
         $FallBackBaseUserOU = "$($DomTORfqdn)/$($ADSiteCodeUS)/Generic Email Accounts" ;
-
+        # 3:46 PM 4/3/2026 add Migrations OU variant support
+        $rgxOUMigrations = ',OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
+        $rgxMigationsSite = ',OU=(\w+),OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
         #endregion LOCAL_CONSTANTS ; #*------^ END LOCAL_CONSTANTS ^------  
           
         #region ENCODED_CONTANTS ; #*------v ENCODED_CONTANTS v------
@@ -1620,7 +1629,15 @@ function add-MailboxAccessGrant {
         $SGUpdtSplat.Server = $($InputSplat.DomainController);
         $DGEnableSplat.DomainController = $($domaincontroller);
         $DGUpdtSplat.DomainController = $($domaincontroller);
-        $InputSplat.Site = ($Tmbx.identity.tostring().split('/')[1]) ;
+        #$InputSplat.Site = ($Tmbx.identity.tostring().split('/')[1]) ;
+        #$rgxOUMigrations = ',OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
+        #$rgxMigationsSite = ',OU=(\w+),OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
+        if($Tmbx.DistinguishedName -match $rgxOUMigrations){
+            $InputSplat.Site = [regex]::Match($Tmbx.DistinguishedName,$rgxMigationsSite).groups[1].value ;
+            if($InputSplat.Site){write-host -foregroundcolor green  "Resolved _MIGRATIONS tree OSiteCode:$($InputSplat.Site)" }else{ throw "Unable to resolve $($pltNmbx.Owner.DistinguishedName) into a SiteCode" ;BREAK }
+        }else{
+            $InputSplat.Site = ($Tmbx.identity.tostring().split('/')[1]) ;
+        } ;
 
         switch ((get-recipient -Identity $Inputsplat.Owner).RecipientType ) {
             "UserMailbox" {
@@ -1685,8 +1702,15 @@ function add-MailboxAccessGrant {
             $SiteCode = $($InputSplat.SiteOverride);
         } else {
             # we need to use the OwnerMbx - Owner currently is the alias, we want the object with it's dn
-            $SiteCode = $InputSplat.OwnerMbx.identity.tostring().split("/")[1]  ;
+            #$SiteCode = $InputSplat.OwnerMbx.identity.tostring().split("/")[1]  ;
+            if($InputSplat.OwnerMbx.DistinguishedName -match $rgxOUMigrations){
+                $SiteCode = [regex]::Match($InputSplat.OwnerMbx.DistinguishedName,$rgxMigationsSite).groups[1].value ;
+                if($SiteCode ){write-host -foregroundcolor green  "Resolved _MIGRATIONS tree OSiteCode:$($SiteCode )" }else{ throw "Unable to resolve $($pltNmbx.Owner.DistinguishedName) into a SiteCode" ;BREAK }
+            }else{
+                $SiteCode = ($InputSplat.OwnerMbx.identity.tostring().split('/')[1]) ;
+            } ;
         } ;
+        <# 4:16 PM 4/3/2026 PRIOR
         if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
             $FindOU = "^OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,";
         } ELSEif ($env:USERDOMAIN -eq $TOLMeta['legacyDomain']) {
@@ -1695,11 +1719,35 @@ function add-MailboxAccessGrant {
         } else {
             throw "UNRECOGNIZED USERDOMAIN:$($env:USERDOMAIN)" ;
         } ;
-
+        #>
+        # 4:16 PM 4/3/2026 REVISE TO TRY TO ACCOMODATE F-ERY IN MIGRATIONS TREE (THX LF)
+        if ($env:USERDOMAIN -eq $TORMeta['legacyDomain']) {
+            if($Tmbx.DistinguishedName -match $rgxOUMigrations){
+                $FindOU = "^OU=Email\sAccess," ; 
+                # MIGHT HAVE TO TEST A SERIES, IF LF REALLY MANGLED THE PATHS ACROSS DIVISIONS!
+            }ELSE{
+                $FindOU = "^OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,";
+            }
+        } ELSEif ($env:USERDOMAIN -eq $TOLMeta['legacyDomain']) {
+            # CN=Lab-SEC-Email-Thomas Jefferson,OU=Email Access,OU=SEC Groups,OU=Managed Groups,OU=LYN,DC=SUBDOM,DC=DOMAIN,DC=DOMAIN,DC=com
+            $FindOU = "^OU=Email\sAccess,OU=SEC\sGroups,OU=Managed\sGroups,"; ;
+        } else {
+            throw "UNRECOGNIZED USERDOMAIN:$($env:USERDOMAIN)" ;
+        } ;
         $SGSplat.DisplayName = "$($SiteCode)-SEC-Email-$($Tmbx.DisplayName)-G";
 
+        <#
         TRY {
-            $OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+            if($Tmbx.DistinguishedName -match $rgxOUMigrations){
+                #$OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                #OU=Email\sAccess,.*OU=_TTC_Sync_CMW_NoSync,OU=DIT,OU=_MIGRATIONS,
+                #$OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=_TTC_Sync_CMW_NoSync,OU=$($SiteCode),OU=_MIGRATIONS," } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                # leverage verb-adms\get-SiteMbxOU
+            }else{
+                #$OU = (Get-ADObject -filter { ObjectClass -eq 'organizationalunit' } -server $($DomainController) | Where-Object { $_.distinguishedname -match "^$($FindOU).*OU=$($SiteCode),.*,DC=ad,DC=toro((lab)*),DC=com$" } | Select-Object distinguishedname).distinguishedname.tostring() ;
+                # leverage verb-adms\get-SiteMbxOU
+
+            }
         } CATCH {
             $ErrTrpd = $_ ;
             $smsg = "UNABLE TO LOCATE $($FindOU) BELOW SITECODE $($SiteCode)!. EXITING!" ; $smsg = "MESSAGE" ;
@@ -1713,6 +1761,40 @@ function add-MailboxAccessGrant {
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error } ; #Error|Warn
             Exit ;
         } ;
+        #>
+        # port in code from new-mailboxshared
+        #-=-=-=-=-=-=-=-=
+        $pltGSmbx = [ordered]@{
+            Sitecode = $SiteCode ;
+            Type = 'PermissionGroup' ; 
+        }
+        if ($Tmbx.DistinguishedName -match $rgxOUMigrations) {
+            $pltGSmbx.add('modelDistinguishedName',$Tmbx.DistinguishedName) ; 
+        }else{
+            $pltGSmbx.add('modelDistinguishedName',$Tmbx.DistinguishedName) ; 
+        }
+        <#
+        If($InputSplat.NonGeneric) {
+            if($pltGSmbx.keys -contains 'generic'){$pltGSmbx.remove('Generic')}
+        } elseIf($Room -OR $Equipement) {
+            $pltGSmbx.add('Resource',$true) ;
+        } else {
+            $pltGSmbx.add('Generic',$true ) ;
+        } ;
+        #>
+        $tCmdlet = 'get-SiteMbxOU' ; $BMod = 'verb-ADMS' ;
+        if($psISE -AND ((get-date ).tostring() -match $dbgDate)){
+            if((gcm $tCmdlet).source -eq $BMod){
+                Do{
+                    gci "D:\scripts\$($tCmdlet)_func.ps1" -ea STOP | ipmo -fo -verb  ;
+                }until((gcm $tCmdlet).source -ne $BMod)
+            } ;
+        } ;
+        $smsg = "Get-SiteMbxOU w`n$(($pltGSmbx|out-string).trim())" ;
+        write-verbose $smsg ;
+        if ( $OU  = (Get-SiteMbxOU @pltGSmbx)   ) {
+        } else { Cleanup ; BREAK ;}
+        #-=-=-=-=-=-=-=-=
 
         $smsg = "$SiteCode" ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
@@ -1723,7 +1805,10 @@ function add-MailboxAccessGrant {
         $smsg = "Checking specified SecGrp Members..." ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
         # 3:50 PM 10/13/2021 flip ea stop to continue, we want it to get through, even if it throws error, and continue will complain
-        $SGMembers = ($InputSplat.members.split(",") | ForEach-Object { get-recipient $_ -ea continue | select -expand primarysmtpaddress  | select -unique})
+        $SGMembers = ($InputSplat.members.split(",") | ForEach-Object {
+             get-recipient $_ -ea continue | select -expand primarysmtpaddress  | select -unique
+            }
+        )
         $smsg = "Checking for existing $($SGSplat.DisplayName)..." ;
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
 
@@ -1731,8 +1816,29 @@ function add-MailboxAccessGrant {
             $smsg = "`$SGSrchName:$($SGSrchName)`n`$SGSplat.DisplayName: $($SGSplat.DisplayName)"; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Debug } ;
         } ;
 
-        $SGSrchName = $($SGSplat.DisplayName);
-        $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController) -ErrorAction stop;
+        # 4:38 PM 4/14/2026 need samacctname generated 1st
+        # THIS IS ALPHANUM STRIP - NOT LEGIBLE
+        #$SGSplat.SamAccountName =  -join (($SGSplat.DisplayName -replace '[^a-zA-Z0-9]', '').ToCharArray()[0..19]) ;
+        # SHIFT TO STRICT BAN CHAR STRIP
+        #$rgxBanSamA = '[\"\/\\\[\]\:\;\|\=\,\+\*\?\<\>\s]' ; 
+        $SGSplat.SamAccountName =  -join (($SGSplat.DisplayName -replace $rgxBanSamA, '').ToCharArray()[0..19]) ;
+        try {$conflict = $null ;$conflict = get-adgroup -id $SGSplat.SamAccountName -server $InputSplat.DomainController ;} CATCH {} ;
+        $incr = 1 ;
+        Do{
+            if($conflict){
+                $incr++ ;
+                $SGSplat.SamAccountName = "$( -join (($SGSplat.DisplayName -replace '[^a-zA-Z0-9]', '').ToCharArray()[0..18]) )$($incr)" ;
+            }
+            try {$conflict = $null ;$conflict = get-adgroup -id $SGSplat.SamAccountName -server $InputSplat.DomainController ;} CATCH {} ;
+        }while($conflict) ; 
+
+        $SGSrchName = $($SGSplat.samaccountname);
+        # 4:31 PM 4/14/2026 samacct isn't defined yet, search on DisplayName, and get-adgroup needs try/catch to suppress hit fails
+        # and can't search on dname, it's not in default properties, have to preconstruct accurate samacct, and search it
+        TRY{
+            $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController) -ErrorAction stop;
+            #$oSG = Get-ADGroup -Filter { Displayname -eq $SGSplat.DisplayName } -server $($InputSplat.DomainController) -ErrorAction stop;            
+        }CATCH{}
 
         if ($oSG) {
             if ($bDebug) {
@@ -1826,16 +1932,53 @@ function add-MailboxAccessGrant {
             $smsg = "$($SGSplat.DisplayName) Not found. Testing Create with the following paraemters..."  ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
             # create the secgrp
-            $SGSplat.Name = $($SGSplat.DisplayName);
-            $SGSplat.SamAccountName = $($SGSplat.DisplayName);
-            $SGSplat.ManagedBy = $($InputSplat.Owner);
+            #$SGSplat.Name = $($SGSplat.DisplayName); 
+            # LDAP cn/nAME name restrictcions 64char max, ban: , + " \ < > ; = / (must be escaped, strip NON-NUMS SIMPLER)
+            #$SGSplat.Name = -join (($SGSplat.DisplayName -replace '[,\+"\\<>;=/]', '').ToCharArray()[0..63]) ;
+            # ILLEG ALPHANUM STRIP
+            #$SGSplat.Name =  -join (( $SGSplat.DisplayName -replace '[^a-zA-Z0-9\s]','').ToCharArray()[0..63]) ;
+            # do legible banned char strip instead
+            #$rgxBanCNName = '[\,\+\"\\\<\>\;\=\/]' ; 
+            $SGSplat.Name = -join (($SGSplat.DisplayName -replace $rgxBanCNName, '').ToCharArray()[0..63]) ; 
+            try {$conflict = $null ;$conflict = get-adgroup -id $SGSplat.Name -server $InputSplat.DomainController ;} CATCH {} ;
+            $incr = 1 ;
+            Do{
+                if($conflict){
+                    $incr++ ;
+                    $SGSplat.Name = "$( -join (( $SGSplat.DisplayName -replace '[^a-zA-Z0-9\s]','').ToCharArray()[0..62]) )$($incr)" ;
+                }
+                try {$conflict = $null ;$conflict = get-adgroup -id $SGSplat.Name -server $InputSplat.DomainController ;} CATCH {} ;
+            }while($conflict) ; 
+
+            # 8:45 AM 4/13/2026 with Migrations oddities, we need to strip the dname of non-alphanums for the samacctname & identity
+            # sAMAccountName: 20chars max, ban:/ \ [ ] : ; | = , + * ? < >
+            #$SGSplat.SamAccountName = $($SGSplat.DisplayName -replace '[\W]',''); # strip all non-alphnanum from the dname, doesn't cover 2-20 length req
+            #$SGSplat.SamAccountName = [regex]::match($SGSplat.DisplayName,'[-A-Za-z0-9]{2,20}').value ; # this accomds the perm of dash as well
+            <# 4:37 PM 4/14/2026 had to move the samaactname generation up before existing search
+            $SGSplat.SamAccountName =  -join (($SGSplat.DisplayName -replace '[^a-zA-Z0-9]', '').ToCharArray()[0..19]) ;
+            try {$conflict = $null ;$conflict = get-adgroup -id $SGSplat.SamAccountName -server $InputSplat.DomainController ;} CATCH {} ;
+            $incr = 1 ;
+            Do{
+                if($conflict){
+                    $incr++ ;
+                    $SGSplat.SamAccountName = "$( -join (($SGSplat.DisplayName -replace '[^a-zA-Z0-9]', '').ToCharArray()[0..18]) )$($incr)" ;
+                }
+                try {$conflict = $null ;$conflict = get-adgroup -id $SGSplat.SamAccountName -server $InputSplat.DomainController ;} CATCH {} ;
+            }while($conflict) ; 
+            #>
+
+            # 4:52 PM 4/3/2026 owner is the alias, not samaccountname, use get-user to resolve it to the DN hard link regarldess of tree
+            #$SGSplat.ManagedBy = $($InputSplat.Owner);
+            if($SGSplat.ManagedBy = (get-user -id $inputsplat.owner -ea STOP).distinguishedname){} else { 
+                throw "unable to resolve: get-user -id $($inputsplat.owner) " ; 
+            } ;
             $SGSplat.Description = "Email - access to $($Tmbx.displayname)'s mailbox";
             $SGSplat.Server = $($InputSplat.DomainController) ;
             # build the Notes/Info field as a hashcode: OtherAttributes=@{    info="TargetMbx:SOMERECIP`r`nPermsExpire:6/19/2015"  } ;
             $SGSplat.OtherAttributes = @{info = $($Infostr) } ;
 
 
-            $smsg = "`$SGSplat:`n---"; $smsg = "MESSAGE" ;
+            $smsg = "`$SGSplat:`n---";
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
             foreach ($row in $SGSplat) {
                 foreach ($key in $row.keys) {
@@ -1858,7 +2001,7 @@ function add-MailboxAccessGrant {
             $smsg = "---`nWhatif $($SGSplat.Name) creation...";
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
             # unlike most other modules, ADMS and it's new-ADGroup does *not* return the created object. Have to qry the object back, cold. 
-            New-AdGroup @SGSplat -whatif ;
+            $nADGRes = New-AdGroup @SGSplat -whatif ;
             $DGEnableSplat.identity = $SGSplat.SamAccountName ;
             $DGUpdtSplat.identity = $SGSplat.SamAccountName ;
 
@@ -1876,7 +2019,7 @@ function add-MailboxAccessGrant {
                 } else {
                     $smsg = "Executing...";
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn
-                    New-AdGroup @SGSplat  ;
+                    $nADGRes = New-AdGroup @SGSplat  ;
                     Do { write-host "." -NoNewLine; Start-Sleep -s 1 } Until (Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController)) ;
                     #$oSG= (get-adgroup "$($SGSplat.DisplayName)" -server $($InputSplat.Domain) -ea stop );
                     $oSG = Get-ADGroup -Filter { SamAccountName -eq $SGSrchName } -server $($InputSplat.DomainController) -ErrorAction stop;
@@ -1948,7 +2091,7 @@ function add-MailboxAccessGrant {
                             + PSComputerName        : DC.DOMAIN.COM
                         #> 
                         # flip the adds to adgm
-                        Add-DistributionGroupMember @pltAddDGM -member $mbr ; 
+                        $adgRes = Add-DistributionGroupMember @pltAddDGM -member $mbr ; 
                     } else {
                         $smsg = "SKIPPING:$($mbr.samaccountname) is already a member of $($oSG.samaccountname)" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
@@ -1988,9 +2131,10 @@ function add-MailboxAccessGrant {
 
             # AD SendAs too
 
-            $mbxadp = $Tmbx | Get-ADPermission -domaincontroller $($InputSplat.domaincontroller) -ea Silentlycontinue |
-                 Where-Object { ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and ($_.user -match ".*-(SEC|Data)-Email-.*$") };
-
+            #$mbxadp = $Tmbx | Get-ADPermission -domaincontroller $($InputSplat.domaincontroller) -ea Silentlycontinue |
+            #     Where-Object { ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and ($_.user -match ".*-(SEC|Data)-Email-.*$") };
+            $mbxadp = Get-ADPermission -Identity $Tmbx.identity -domaincontroller $($InputSplat.domaincontroller) -ea Silentlycontinue |
+                Where-Object { ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and ($_.user -match ".*-(SEC|Data)-Email-.*$") };
             $smsg = "`nChecking AD SendAs Permission on $($Tmbx.samaccountname) mailbox to accessing user:`n $($oSG.Name)...`n(blank if none)" ;
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
 
@@ -2076,7 +2220,7 @@ function add-MailboxAccessGrant {
                         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     } ; 
                     Try {
-                        add-mailboxpermission @GrantSplat ;
+                        $admpRes = add-mailboxpermission @GrantSplat ;
                         $Exit = $Retries ;
                     } Catch {
                         $ErrTrapd = $Error[0] ;
@@ -2101,7 +2245,7 @@ function add-MailboxAccessGrant {
                         else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     } ; 
                     Try {
-                        add-adpermission -identity $($TMbx.Identity) @ADMbxGrantSplat ;
+                        $addedadmbxp = add-adpermission -identity $($TMbx.Identity) @ADMbxGrantSplat ;
                         $Exit = $Retries ;
                     } Catch {
                         $ErrTrapd = $Error[0] ;
@@ -2141,7 +2285,7 @@ function add-MailboxAccessGrant {
                         # do loop until up to 4 retries...
                         Do {
                             Try {
-                                add-DistributionGroupMember @pltAddDGM ;
+                                $dgRet = add-DistributionGroupMember @pltAddDGM ;
                                 #-identity $tdl.alias -Member $TMbx.distinguishedname -domaincontroller $($InputSplat.domaincontroller) -whatif:$($whatif) ;
 
                                 $Exit = $Retries ;
@@ -2227,7 +2371,7 @@ function add-MailboxAccessGrant {
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                 }  ;
 
-                $smsg = "`nUpdated $($oSG.Name) Membership...`n" ;
+                $smsg = "`nUpdated $($oSG.Displayname) Membership...`n" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ; #Error|Warn|Debug
                 write-host -foregroundcolor green "$((get-date).ToString("HH:mm:ss")):---";
                 #if ($mbrs = Get-ADGroupMember -identity $oSG.samaccountname -server $($DomainController) | Select-Object distinguishedName ) {
@@ -2274,7 +2418,7 @@ function add-MbxAccessGrant {
     AddedCredit : 
     AddedWebsite: 
     AddedTwitter: 
-    REVISIONS
+    REVISIONS   
     # 10:30 AM 10/13/2021 pulled [int] from $ticket , to permit non-numeric & multi-tix
     * 2:05 PM 4/27/2020 debugged, fully ported to published/installed use
     * 3:57 PM 4/9/2020 genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules
@@ -2480,6 +2624,406 @@ function add-MbxAccessGrant {
     ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
     # Get parameters this function was invoked with
     $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters 
+    $dbgDate = '4/22/2026' ; # debugging ipmo force loads variants not in modules
+    # 2:50 PM 5/18/2016 add SITE retry code
+    $Retries = 4 ; # number of re-attempts
+    $RetrySleep = 5 ; # seconds to wait between retries
+
+    # 12:26 PM 5/31/2017 maintain-offboards.ps1 regex constants
+    #$rgxBannedOUs=[infra file]
+    #$rgxUserOUs==[infra file]
+
+
+    # 12:49 PM 5/10/2016 updated the BP INIT block to stnd
+    #region INIT; # ------
+    #*======v SCRIPT/DOMAIN/MACHINE/INITIALIZATION-DECLARE-BOILERPLATE v======
+    # * vers: 8:31 AM 5/3/2016: updated tightened up, reflects most common matl want in every script
+    # * 2:10 PM 2/4/2015 shifted to here to accommodate include locations
+    # pick up the bDebug from the $ShowDebug switch parameter
+    # SCRIPT-CONFIG MATERIAL TO SET THE UNDERLYING $DBGPREF:
+    if ($Whatif){$bWhatif=$true ; Write-Verbose -Verbose:$true "`$Whatif is $true (`$bWhatif:$bWhatif)" ; };
+    if($bdebug){$ErrorActionPreference = 'Stop' ; write-debug "(Setting `$ErrorActionPreference:$ErrorActionPreference;"};
+
+    if($showDebug){
+        write-host -foregroundcolor green "`SHOWDEBUG: `$PSScriptRoot:$($PSScriptRoot)`n`$PSCommandPath:$($PSCommandPath)" ;
+    } ;
+    # most of this falls apart once you move a script to a module - all resolve to the module .ps(m|d)1 file, have to use ${CmdletName} for funcs, instead
+    if ($psISE -AND (!($PSScriptRoot) -AND !($PSCommandPath))){
+            $ScriptDir = Split-Path -Path $psISE.CurrentFile.FullPath ;
+            $ScriptBaseName = split-path -leaf $psise.currentfile.fullpath ;
+            $ScriptNameNoExt = [system.io.path]::GetFilenameWithoutExtension($psise.currentfile.fullpath) ;
+            $PSScriptRoot = $ScriptDir ;
+            if($PSScriptRoot -ne $ScriptDir){ write-warning "UNABLE TO UPDATE BLANK `$PSScriptRoot TO CURRENT `$ScriptDir!"} ;
+            $PSCommandPath = $psise.currentfile.fullpath ;
+            if($PSCommandPath -ne $psise.currentfile.fullpath){ write-warning "UNABLE TO UPDATE BLANK `$PSCommandPath TO CURRENT `$psise.currentfile.fullpath!"} ;
+    } else {
+        if($host.version.major -lt 3){
+            $PSScriptRoot = Split-Path $MyInvocation.MyCommand.Path -Parent ;
+            $PSCommandPath = $myInvocation.ScriptName ;
+            $ScriptBaseName = (Split-Path -Leaf ((&{$myInvocation}).ScriptName))  ;
+            $ScriptNameNoExt = [system.io.path]::GetFilenameWithoutExtension($MyInvocation.InvocationName) ;
+        } elseif($PSScriptRoot) {
+            $ScriptDir = $PSScriptRoot ;
+            if($PSCommandPath){
+                $ScriptBaseName = split-path -leaf $PSCommandPath ;
+                $ScriptNameNoExt = [system.io.path]::GetFilenameWithoutExtension($PSCommandPath) ;
+            } else {
+                $PSCommandPath = $myInvocation.ScriptName ;
+                $ScriptBaseName = (Split-Path -Leaf ((&{$myInvocation}).ScriptName))  ;
+                $ScriptNameNoExt = [system.io.path]::GetFilenameWithoutExtension($MyInvocation.InvocationName) ;
+            } ;
+        } else {
+            if($MyInvocation.MyCommand.Path) {
+                $PSScriptRoot = Split-Path $MyInvocation.MyCommand.Path -Parent ;
+                $ScriptBaseName = (Split-Path -Leaf ((&{$myInvocation}).ScriptName))  ;
+                $ScriptNameNoExt = [system.io.path]::GetFilenameWithoutExtension($MyInvocation.InvocationName) ;
+            } else {
+                throw "UNABLE TO POPULATE SCRIPT PATH, EVEN `$MyInvocation IS BLANK!" ;
+            } ;
+        } ;
+    } ;
+    # ISE also has not perfect but roughly equiv workingdir (unless script cd's):
+    #$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath('.\')
+    write-verbose "`$ScriptDir:$($ScriptDir)`n`$ScriptBaseName:$($ScriptBaseName)`n`$ScriptNameNoExt:$($ScriptNameNoExt)`n`$PSScriptRoot:$($PSScriptRoot)`n`$PSCommandPath:$($PSCommandPath)" ;
+    
+
+    # 11:19 AM 2/24/2017 add password generator
+    [Reflection.Assembly]::LoadWithPartialName("System.Web") | out-null ;
+
+    # Clear error variable
+    $Error.Clear() ;
+
+    #endregion INIT; # ------
+
+    #region FUNCTIONS ; # ------
+    #*======v FUNCTIONS v======
+
+
+    function _cleanup  {
+        # clear all objects and exit
+        # 11:15 AM 5/11/2021 renamed helper func Cleanup -> _cleanup
+        # 1:36 PM 11/16/2018 Cleanup:stop-transcriptlog left tscript running, test again and re-stop
+        # 8:15 AM 10/2/2018 Cleanup:make it defer to $script:cleanup() (needs to be preloaded before verb-transcript call in script), added missing semis, replaced all $bDebug -> $showDebug
+        # 2:02 PM 9/21/2018 missing $timestampnow, hardcode
+        # 8:45 AM 10/13/2015 reset $DebugPreference to default SilentlyContinue, if on
+        # # 8:46 AM 3/11/2015 at some time from then to 1:06 PM 3/26/2015 added ISE Transcript
+        # 8:39 AM 12/10/2014 shifted to stop-transcriptLog function
+        # 7:43 AM 1/24/2014 always stop the running transcript before exiting
+        if ($showdebug) {"_cleanup  "} ;
+        #stop-transcript ;
+        <#actually, with write-log in use, I don't even need cleanup /ISE logging, it's already covered in new-mailboxshared() etc)
+        if($host.Name -eq "Windows PowerShell ISE Host"){
+            # 8:46 AM 3/11/2015 shift the logfilename gen out here, so that we can arch it
+            #$Logname= (join-path -path (join-path -path $scriptDir -childpath "logs") -childpath ($scriptNameNoExt + "-" + (get-date -uformat "%Y%m%d-%H%M" ) + "-ISEtrans.log")) ;
+            # 2:16 PM 4/27/2015 shift to static timestamp $timeStampNow
+            #$Logname= (join-path -path (join-path -path $scriptDir -childpath "logs") -childpath ($scriptNameNoExt + "-" + $timeStampNow + "-ISEtrans.log")) ;
+            # 2:02 PM 9/21/2018 missing $timestampnow, hardcode
+            $Logname=(join-path -path (join-path -path $scriptDir -childpath "logs") -childpath ($scriptNameNoExt + "-" + (get-date -format 'yyyyMMdd-HHmmtt') + "-ISEtrans.log")) ;
+            write-host "`$Logname: $Logname";
+            Start-iseTranscript -logname $Logname ;
+            #Archive-Log $Logname ;
+            # 1:23 PM 4/23/2015 standardize processing file so that we can send a link to open the transcript for review
+            $transcript = $Logname ;
+        } else {
+            if($showdebug){ write-debug "$(Get-Date -Format 'HH:mm:ss'):Stop Transcript" };
+            Stop-TranscriptLog ;
+            #if($showdebug){ write-debug "$(Get-Date -Format 'HH:mm:ss'):Archive Transcript" };
+            #Archive-Log $transcript ;
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):`$transcript:$(($transcript|out-string).trim())" ;
+        } # if-E
+        # 1:36 PM 11/16/2018 _cleanup  :stop-transcriptlog left tscript running, test again and re-stop
+        if (Test-Transcribing) {
+            Stop-Transcript
+            if ($showdebug) {write-host -foregroundcolor green "`$transcript:$transcript"} ;
+        }  # if-E
+        #>
+        #11:10 AM 4/2/2015 add an exit comment
+        Write-Verbose -Verbose:$verbose "END $BARSD4 $scriptBaseName $BARSD4"  ;
+        Write-Verbose -Verbose:$verbose "$BARSD40" ;
+        # finally restore the DebugPref if set
+        if ($ShowDebug -OR ($DebugPreference = "Continue")) {
+            Write-Verbose -Verbose:$true "Resetting `$DebugPreference from 'Continue' back to default 'SilentlyContinue'" ;
+            $showdebug=$false ;
+            # 8:41 AM 10/13/2015 also need to enable write-debug output (and turn this off at end of script, it's a global, normally SilentlyContinue)
+            $DebugPreference = "SilentlyContinue" ;
+        } # if-E
+        exit ;
+    #} ;
+    } ; #*------^ END Function _cleanup   ^------
+
+
+
+
+    #*======^ END Functions ^======
+    #endregion FUNCTIONS ; # ------
+
+    #region SUBMAIN ; # ------
+    #*======v SUB MAIN v======
+
+
+    $pltInput=[ordered]@{} ;
+
+    if ($PSCommandPath) { $pltInput.add("ParentPath", $PSCommandPath) } ;
+    if($TargetID){$pltInput.add("TargetID",$TargetID) } ;
+    if($SecGrpName){$pltInput.add("SecGrpName",$SecGrpName) } ;
+    if($Owner){$pltInput.add("Owner",$Owner) } ;
+    if($PermsDays){$pltInput.add("PermsDays",$PermsDays) } ;
+    if($SiteOverride){$pltInput.add("SiteOverride",$SiteOverride) } ;
+    if($Members){$pltInput.add("Members",$Members) } ;
+    if($Ticket){$pltInput.add("Ticket",$Ticket) } ;
+    if($NoPrompt){$pltInput.add("NoPrompt",$NoPrompt) } ;
+    if($domaincontroller){$pltInput.add("domaincontroller",$domaincontroller) } ;
+    if($showDebug){$pltInput.add("showDebug",$showDebug) } ;
+    if($whatIf){$pltInput.add("whatIf",$whatIf) } ;
+
+    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):add-MbxAccessGrant w`n$(($pltInput|out-string).trim())" ;
+    $tCmdlet = 'add-MailboxAccessGrant' ; $BMod = 'VERB-ex2010' ;
+    if($psISE -AND ((get-date ).tostring() -match $dbgDate)){
+        if((gcm $tCmdlet).source -eq $BMod){
+            Do{
+                gci "D:\scripts\$($tCmdlet)_func.ps1" -ea STOP | ipmo -fo -verb  ;
+            }until((gcm $tCmdlet).source -ne $BMod)
+        } ;
+    } ;
+    if(-not($NoOutput)){
+        $bRet = add-MailboxAccessGrant @pltInput ;  
+        $bRet | write-output ;
+    } else { 
+        add-MailboxAccessGrant @pltInput
+    } ; 
+    #_cleanup   ;
+    #Exit ;
+
+    #*======^ END SUB MAIN ^======
+    #endregion SUBMAIN ; # ------
+}
+
+#*------^ add-MbxAccessGrant.ps1 ^------
+
+
+#*------v add-MbxAccessGrant-func.ps1 v------
+function add-MbxAccessGrant {
+    <#
+    .SYNOPSIS
+    add-MbxAccessGrant.ps1 - Wrapper/pre-processor function to Add Mbx Access to a specified mailbox (leverages generic add-MailboxAccessGrant())
+    .NOTES
+    Version     : 1.0.1
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2020-
+    FileName    : 
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Exchange,Permissions,Mailbox,Exchange2010
+    AddedCredit : 
+    AddedWebsite: 
+    AddedTwitter: 
+    REVISIONS
+    * 2:05 PM 4/27/2020 debugged, fully ported to published/installed use
+    * 3:57 PM 4/9/2020 genericized for pub, moved material into infra, updated hybrid mod loads, cleaned up comments/remmed material ; updated to use start-log, debugged to funciton on jumpbox, w divided modules
+    * 2:30 PM 10/1/2019 fixed 2405 errant duped catch block post merge
+    * 1:54 PM 10/1/2019 manually merged branch master with the long open/outstanding branch tostka/update-new-MailboxGenericTOR.ps1
+    # 9:54 AM 9/27/2019 added `a beep to all "YYY" prompts, to draw attn while multitasking
+    # 8:34 AM 6/27/2019 fixed add-adgroupmember autoresolution param break - had typo -member which worked until they added a new conflicting -membertimetolive param, should have been -members (tho' add-dgmember uses -member)
+    # 2:32 PM 6/13/2019 converted to function: add-MbxAccessGrant(), passed
+    debugging, saving out to add-MbxAccessGrant-function.ps1 ->
+    add-MbxAccessGrant.ps1 and backing up the original
+    # 11:05 AM 6/13/2019 updated get-admininitials(), # 12:50 PM 6/13/2019 repl get-timestamp() -> Get-Date -Format 'HH:mm:ss' throughout
+    # 2:19 PM 4/29/2019 add TOL to the domain param validateset on get-gcfast copy (sync'd in from verb-ex2010.ps1 vers)
+    # 11:43 AM 2/15/2019 debugged update through a prod revision
+    # 11:15 AM 2/15/2019 copied in bug-fixed write-log() with fixed debug support
+    # 10:41 AM 2/15/2019 updated write-log to latest deferring version
+    # 10:39 AM 2/15/2019 added full write-log logging support
+    # 3:24 PM 2/6/2019 #1416:needs -prop * to pull msExchRecipientDisplayType,showInAddressBook,mail etc
+    # 8:36 AM 9/6/2018 switched secgrp to Global->Universal scope, mail-enabled as DG, and hiddenfromaddressbook, debugged out issues, used in prod creation
+    # 10:28 AM 6/27/2018 add $domaincontroller param option - skips dc discovery process and uses the spec, also updated $findOU code to work with TOL dom
+    # 11:05 AM 3/29/2018 #1116: added trycatch, UST lacked the secgrp ou and was failing ou lookup
+    # 10:31 AM 11/22/2017 shifted a block of "User mbx grant:" confirmation into review block, also tightened up the formatted whitespace to make the material pasted into cw reflect all that you need to know on the grant status. also added distrib code
+    # 1:17 PM 11/15/2017 949: no, this needs to be the obj (was extracting samaccountname)
+    # 12:35 PM 11/15/2017 debugged EXO-hosted Owner code to function. worked granting GRANTEE2 (exo) access to shared 'SharedTestEXOOwner' OP
+    # 11:58 AM 11/15/2017 945: accommodate EXO-hosted Owners by testing with get-remotemailbox -AND get-mailbox on the owner spec.
+    # 12:57 PM 9/25/2017 standardized mbxp & adperm field output and format i the review settings block
+    # 11:29 AM 6/23/2017 fix typos, added 'DomainControler', without the vari-spec $
+    # 8:16 AM 6/23/2017 we're getting mismatches/misses on AD work - prolly because we're using the -server $domain, rather than a SPECIFIC GC! replic lag is killing us!
+    #   switch to the same gc the Ex cmds are using
+    #   rplc -server $($InputSplat.Domain)  -> -server $($InputSplat.DomainController)
+    #   rplc -server $Domain -> -server $($DomainController)
+    # 1:41 PM 6/13/2017 spliced in latest 3/16/16 get-gcfast()
+    # 1:37 PM 5/30/2017 855: pretest get-command, fails if it doesn't even have it at all
+    # 1:21 PM 5/30/2017 1484: block that adds the $tmbx to the maintain-offboards.ps1 target AccGrant group for the region
+    # 1:20 PM 5/30/2017 pencil in new AG group add when grant is done.
+    # 11:27 AM 5/22/2017 add $NoPrompt
+    # 9:44 AM 3/2/2017 suppress ID null errors on close BP
+    # 9:07 AM 3/2/2017: Example code:  Don't force load EMS/Add-EMSRemote if there's an existing functional get-exchangeserver command (suppress clobber errors)
+    # 9:41 AM 3/2/2017 merged in updated Add-EMSRemote Set
+    # 9:07 AM 3/2/2017: Add-EMSRemote set: Example code:  Don't force load EMS/Add-EMSRemote if there's an existing functional get-exchangeserver command (suppress clobber errors)
+    # 9:07 AM 3/2/2017 Don't force load EMS/Add-EMSRemote if there's an existing functional get-exchangeserver command (suppress clobber errors)
+    # 12:15 PM 2/27/2017 trailing membership test was still failing, tore out blocks of new code and recycled what's used up in the Existing quote who cares if it's a DN vs a name
+    # 12:11 PM 2/27/2017 fixed compat in SITE (prolly SITE too) - resolved any Owner entered as email, to the samaccountname ; #1081: drop the pipe!
+     $oSG | Get-ADGroupMember -server $Domain | select distinguishedName ; #1263 threw up trying to do the get-aduser on the members, # 1283 replace user lookup with this (skip the getxxx member, pull members right out of properties)
+    # 1:04 PM 2/24/2017 tweak below
+    #12:56 PM 2/24/2017 doesn't run worth a damn SITE-> SITE/SITE, force it to abort (avoid half-built remote objects that take too long to replicate back to SITE)
+    # 12:24 PM 2/24/2017 fixed updated membership report bug - pulled pipe, probably dehydrated object issue sin remote ps
+    # 12:11 PM 2/24/2017 fix vscode/code.exe char set damage: It replaced dashes (-) with "?"
+    # fix -join typo/damage
+    # 12:44 PM 10/18/2016 update rgx for ticket to accommodate 5-digit (or 6) CW numbers "^\d{6}$"=>^\d{5,6}$
+    # 9:11 AM 9/30/2016 added pretest if(get-command -name set-AdServerSettings -ea 0)
+    # # 12:22 PM 6/21/2016 secgrp membership seldom comes through clean, add a refresh loop
+    # 10:52 AM 6/20/2016 fixed typo $InputSplatSiteOverride => $InputSplat.SiteOverride (broke -SiteOverride function)
+    # 11:02 AM 6/7/2016 updated get-aduser review cmds to use the same dc, not the -domain global.ad.toro.com etc
+    # 1:34 PM 5/26/2016 confirmed/verified works fine with SITE-hosted mbx under 376336 
+    # 11:45 AM 5/19/2016 corrected $tmbx ref's to use $tmbx.identity v. $tmbx.samaccountname, now working. Retry code in place for SITE, but it didn't trigger during testing
+    # 2:37 PM 5/18/2016 implmented Secgrp OU and Secgrp stnd name
+    # 2:28 PM 5/18/2016 support dmg's latest unilateral changes:With the recent AD changes, all email access groups should be named     XXX-SEC-Email-firstname lastname-G and stored in XXX\Managed Groups\SEC Groups\Email Access. The generics were also renamed to XXX\Generic Email Accounts.
+
+    # 2:17 PM 5/10/2016 used successfully to set a SITE manager perm's on an SERVERMail02-hosted user. didn't time out, Set-MailboxPermission command completed after ~3 secs
+    #     fixed bad param example, remmed out non-functional Owner in the SGSplat (nosuch param), and re-enabled the ManagedBy on the SG - it's not a mbx,
+    #     so why not set ManagedBy, doesn't get used by the org chart in SP
+    # 2:38 PM 3/17/2016 stop populating anything into any managed-by; it's an OrgChart political value now. Rename ManagedBy param and object names in here to 'Owner'
+    # 1:12 PM 2/11/2016 fixed new bug in get-GCFast, wasn't detecting blank $site
+    # 12:20 PM 2/11/2016 updated to standard EMS/AD Call block & Add-EMSRemote()
+    # 9:36 AM 2/11/2016 just shifting to a single copy, with no # Requires at all, losing the -psv2.ps1 version
+    # 2:23 PM 2/10/2016 debugged mismatched {}, working from SITE now
+    # 1:54 PM 2/10/2016 recoded to work on SITE and SITE, this version just needs the #Requires -Version 3 for psv2 enabled to be a psv3 version
+    #         added fundemental upgrade to the AD Site detection, to work from SITE/SITENAME and SITE SITENAME
+    # 12:07 PM 2/10/2016 Psv2 variant - at this point, the only real diff is the rem'd rem'd #Requires -Version 3 for psv2
+    # 7:40 AM Add-EMSRemote: 2/5/2016 another damn cls REM IT! I want to see all the connectivity info, switched wh->wv, added explicit echo's of what it's doing.
+    # 10:41 AM 1/13/2016 updated Add-EMSRemote set & removed Clear-Host's
+    # 10:02 AM 1/13/2016: fixed cls bug due to spurious ";cls" included in the try/catch boilerplate: Write-Error "$((get-date).ToString('HH:mm:ss')): Command: $($_.InvocationInfo.MyCommand)" ;cls => Write-Error "$((get-date).ToString('HH:mm:ss')): Command: $($_.InvocationInfo.MyCommand)" ;
+    # 1:02 PM 12/18/2015 missing SYD as well
+    # 11:42 AM 12/18/2015: building a Psv2-compliant version (-psv2.ps1):
+
+    - sub out all [ordered] (-psv2 only)
+    - rem'd #Requires -Version 3 (-psv2 only)
+    - added explicit .tostring() in front of all string handlers (.substring() etc) (added to both versions)
+    # 3:08 PM 10/29/2015 added in XIA aware from other recent script updates, and -server xxx to all get-ad* that didn't have it
+    #2:49 PM 10/29/2015 add entire MEL site, nothing in the OU or Secgrp name switch blocks
+    # 9:08 AM 10/14/2015 added debugpref maint code to get write-debug to work
+    # 8:04 AM 10/14/2015 add sendAS adperms
+    # 7:31 AM 10/14/2015 added -dc specs to all *-user & *-mailbox cmds, to ensure we're pulling back data from same dc that was updated in the set-* commands
+    # 7:19 AM 10/14/2015 fixed some typos, made sure all $InputSplat.domaincontroller were $()'d
+    # 9:13 AM 10/12/2015 force $Grantsplat=$Tmbx to use $Tmbx.Samacctname, defaulting to displayname which isn't consistently resolvable, samacctname should be.
+    # 1:17 PM 10/6/2015 update to spec, seems to work
+    # splice in Add-EMSRemote set & get-gcfast
+    # 10:49 AM 10/6/2015: updated vers of Get-AdminInitials
+    # 2:49 PM 10/2/2015 updated catch block to be detailed
+    # 10:57 AM 8/14/2015 defaulted PermsDays to 60 (was going to 999)
+    # 10:46 AM 8/14/2015 add param examples for the PermsDays spec
+    # 9:35 AM 8/14/2015 updated params examples to reflect use of -ticket & -siteoverride
+    # 11:00 AM 8/12/2015 also add an Info ref for the admin doing the work
+    # 10:37 AM 8/12/2015 I see from dumping all matching secgrps ...
+      $AllSGs = Get-ADGroup  -filter {GroupCategory  -eq "Security"  -and GroupScope -eq "Global"} -properties info,description;
+      $AllSGs = $AllSgs |?{$_.Name -match "^\w{3}-(SEC|Data)-Email-.*$"} ; ($AllSGs | measure).count ;
+      # have to 2-stage filter as the get-adgroup -filter has no -match regex operator support
+      ... that dawn used to use these, oldest record I see, was from 2005, most recent appears to have been 2011. But she was recording sometimes recording the incident req# - which is a useful item to include (esp if you don't want folks monkeyin with the Notes/Info
+      value and breaking automation to clean these up!).
+      So we need to add incident number to the add-MbxAccessGrant.ps1, that means a parameter and a 3rd line in the Info append
+    #11:32 AM 8/5/2015 fixed trailing ) in Updated IRO-SEC-Email-Jodie Gilroy-G)
+    #11:43 AM 7/20/2015 line 197added a :space after displayname:
+    # 12:18 PM 7/17/2015 added -ea silentlycontinue to get-mailboxpermission - it was causing it to bomb script when no match found
+    # 1:55 PM 6/15/2015 initial version
+
+
+    #-=-=DISTRIB SCRIPT (ALL EX SERVERS)-=-=-=-=-=-=
+    [array]$files = (gci -path "\\$env:COMPUTERNAME\c$\usr\work\exch\scripts\add-MbxAccessGrant.ps1" | ?{$_.Name -match "(?i:(.*\.(PS1|CMD)))$" })  ;[array]$srvrs = get-exchangeserver | ?{(($_.IsMailboxServer) -OR ($_.IsHubTransportServer))} | select  @{Name='COMPUTER';Expression={$_.Name }} ;$srvrs = $srvrs|?{$_.computer -ne $($env:COMPUTERNAME) } ; $srvrs | % { write-host "$($_.computer)" ; copy $files -Destination \\$($_.computer)\c$\scripts\ -whatif ; } ; get-date ;
+    #-=-=-=-=-=-=-=-=
+
+
+    .DESCRIPTION 
+    add-MbxAccessGrant.ps1 - Add Mbx Access to a specified mailbox
+
+    .PARAMETER TargetID
+    Target Mailbox for Access Grant[name,emailaddr,alias]
+    .PARAMETER SecGrpName
+    Custom override default generated name for Perm-hosting Security Group[[SIT]-SEC-Email-[DisplayName]-G]
+    .PARAMETER Owner
+    Specify the userid to be responsible for access-grant-approvals[name,emailaddr,alias]
+    .PARAMETER SiteOverride
+    Specify a 3-letter Site Code. Used to force DL name/placement to vary from TargetID's current site[3-letter Site code]
+    .PARAMETER PermsDays
+    Specify the number of day's the access-grant should be in place. (60 default. 999=permanent)[30-60,999]")]
+    .PARAMETER Members
+    Comma-delimited string of potential users to be granted access[name,emailaddr,alias]
+    .PARAMETER ticket
+    Incident number for the change request[[int]nnnnnn]
+    .PARAMETER TenOrg 
+	TenantTag value, indicating Tenants to connect to[-TenOrg 'TOL']
+	.PARAMETER Credential
+	Credential to use for this connection [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
+	.PARAMETER UserRole
+	Role of account (SID|CSID|UID|B2BI|CSVC|ESvc|LSvc)[-UserRole SID]
+    .PARAMETER NoPrompt
+    Suppress YYY confirmation prompts
+    .PARAMETER domaincontroller
+    Option to hardcode a specific DC [-domaincontroller xxxx]
+    .PARAMETER Whatif
+    Parameter to run a Test no-change pass, and log results [-Whatif switch]
+    .PARAMETER ShowProgress
+    Parameter to display progress meter [-ShowProgress switch]
+    .PARAMETER ShowDebug
+    Parameter to display Debugging messages [-ShowDebug switch]
+    .PARAMETER NoOutput
+    Switch to enable output (success/fail), defaults false, but adding to support tested function execution.
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output.
+    .EXAMPLE
+    .\add-MbxAccessGrant.ps1 -ticket 123456 -SiteOverride SITE -TargetID lynctest13 -Owner LOGON -PermsDays 999 -members "GRANTEE1,GRANTEE2" -showDebug -whatIf ;
+    Parameter Whatif test with Debug messages displayed
+    .LINK
+    #>
+
+
+    <# SecGrp Name spec: =
+    2:29 PM 5/18/2016updated per dawn:
+            XXX-SEC-Email-firstname lastname-G
+    # orig spec:
+    ($sSite + "-Data-Email-" + $Tmbx.DisplayName + "-G") ;
+    Create the grp :Scope: Global, Type:Secureity
+    Add members.
+    Add mbx permission to the grp:
+    add-mailboxpermission "bossvisiplex" -User "IRO-Data-Email-Boss Visiplex" -AccessRights FullAccess -whatif ;
+    #>
+
+    Param(
+        [Parameter(HelpMessage="Target Mailbox for Access Grant[name,emailaddr,alias]")]
+        [string]$TargetID,
+        [Parameter(HelpMessage="Custom override default generated name for Perm-hosting Security Group[[SIT]-SEC-Email-[DisplayName]-G]")]
+        [string]$SecGrpName,
+        [Parameter(HelpMessage="Specify the userid to be responsible for access-grant-approvals[name,emailaddr,alias]")]
+        [string]$Owner,
+        [Parameter(HelpMessage="Specify the number of day's the access-grant should be in place. (60 default. 999=permanent)[30-60,999]")]
+        [ValidateRange(7,999)]
+        [int]$PermsDays,
+        [Parameter(HelpMessage="Specify a 3-letter Site Code. Used to force DL name/placement to vary from TargetID's current site[3-letter Site code]")]
+        [string]$SiteOverride,
+        [Parameter(HelpMessage="Comma-delimited string of potential users to be granted access[name,emailaddr,alias]")]
+        [string]$Members,
+        [Parameter(HelpMessage="Incident number for the change request[[int]nnnnnn]")]
+        [int]$Ticket,
+        [Parameter(HelpMessage="Suppress YYY confirmation prompts [-NoPrompt]")]
+        [switch] $NoPrompt,
+        [Parameter(HelpMessage="Option to hardcode a specific DC [-domaincontroller xxxx]")]
+        [string]$domaincontroller,
+        $TenOrg = 'TOR',
+	    [Parameter(HelpMessage="Credential to use for cloud actions [-credential [credential obj variable]")][System.Management.Automation.PSCredential]
+	    $Credential,
+	    [ValidateSet('SID','CSID','UID','B2BI','CSVC')]
+	    [string]$UserRole='SID',
+        [Parameter(HelpMessage='Debugging Flag [$switch]')]
+        [switch] $showDebug,
+        [Parameter(HelpMessage='Whatif Flag [$switch]')]
+    [switch] $whatIf) ;
+
+    # NoPrompt Suppress YYY confirmation prompts
+    $dbgDate = '4/22/2026'; # debugging ipmo force loads variants not in modules
+    # Get the name of this function
+    ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+    # Get parameters this function was invoked with
+    $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters 
 
     # 2:50 PM 5/18/2016 add SITE retry code
     $Retries = 4 ; # number of re-attempts
@@ -2633,20 +3177,28 @@ function add-MbxAccessGrant {
     if($whatIf){$pltInput.add("whatIf",$whatIf) } ;
 
     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):add-MbxAccessGrant w`n$(($pltInput|out-string).trim())" ;
+    $tCmdlet = 'add-MailboxAccessGrant' ; $BMod = 'VERB-ex2010' ;
+    if($psISE -AND ((get-date ).tostring() -match $dbgDate)){
+        if((gcm $tCmdlet).source -eq $BMod){
+            Do{
+                gci "D:\scripts\$($tCmdlet)_func.ps1" -ea STOP | ipmo -fo -verb  ;
+            }until((gcm $tCmdlet).source -ne $BMod)
+        } ;
+    } ;
     if(-not($NoOutput)){
         $bRet = add-MailboxAccessGrant @pltInput ;  
         $bRet | write-output ;
     } else { 
         add-MailboxAccessGrant @pltInput
     } ; 
-    #_cleanup   ;
+    _cleanup   ;
     #Exit ;
 
     #*======^ END SUB MAIN ^======
     #endregion SUBMAIN ; # ------
 }
 
-#*------^ add-MbxAccessGrant.ps1 ^------
+#*------^ add-MbxAccessGrant-func.ps1 ^------
 
 
 #*------v Connect-Ex2010.ps1 v------
@@ -16363,6 +16915,8 @@ function new-MailboxGenericTOR {
     Github      : https://github.com/tostka/verb-ex2010
     Tags        : Exchange,ExchangeOnPremises,Mailbox,Creation,Maintenance,UserMailbox
     REVISIONS
+    * 6:45 PM 4/9/2026 added temp code to force load this variant over mod copy
+    * 2:24 PM 4/3/2026 added -CU5 registered test
     * 5:24 PM 1/28/2026 supress passstatusZ_tenorg error; Implement missing $SiteOverride passthrough ; REQUIRED FOR MIGRATIONS DOMAINS, THEY DON'T RESOLVE TO A FUNCTIONAL SITEOU (COMES BACK _MIGRATE)
     * 12:41 PM 1/27/2026 latest conn_svcs block updated
     * 2:48 PM 1/19/2026 -whatif's find ; bugfix: $pltCcOPSvcs.UserRole (postfilter, not match test)
@@ -17059,6 +17613,8 @@ function new-MailboxGenericTOR {
         #endregion COMMON_CONSTANTS ; #*------^ END COMMON_CONSTANTS ^------
     
         #region LOCAL_CONSTANTS ; #*------v LOCAL_CONSTANTS v------
+
+        $dbgDate = '4/22/2026'; # debugging ipmo force loads variants not in modules
 
         #  add password generator
         [Reflection.Assembly]::LoadWithPartialName("System.Web") | out-null ;
@@ -17868,6 +18424,30 @@ function new-MailboxGenericTOR {
 
         # Cu5 override support (normally inherits from assigned owner/manager)
         if ($Cu5){
+            # CONFIRM IT'S SUPPORTED TAG:
+            TRY{
+                $eaps = get-emailaddresspolicy -ea STOP ; 
+                $CU5Supported = $eaps |foreach-object{
+                    if($_.recipientfilter -match "\(CustomAttribute5\s-eq\s'([\w\.]+)'\)"){
+                        $matches[1] | write-output  ; 
+                    }
+                }
+                if($CU5Supported){
+                    if($CU5Supported -contains $cu5){
+                        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):-CU5:$($CU5) supported" ; 
+                    }else{
+                        $smsg = "-CU5:$($CU5) NOT SUPPORTED" ; 
+                        $smsg += "`n$(($eaps|?{$_.recipientfilter -match 'CustomAttribute5'}|ft -a name,recipientfilter |out-string).trim())" ; 
+                        write-warning $smsg ;
+                        BREAK ; 
+                    } ; 
+                } ; 
+            } CATCH {$ErrTrapd=$Error[0] ;
+               write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+               $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+               write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+             } ;
+            
             #$pltInput.Cu5=$Cu5;
             # looks like it's adding on assign (?.?)7
             if($Cu5){$pltInput.add("Cu5",$Cu5) } ;
@@ -17875,12 +18455,14 @@ function new-MailboxGenericTOR {
             $pltInput.add("Cu5",$null) ;
         }  ;
     
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):new-MailboxShared w`n$(($pltInput|out-string).trim())" ;
-        if(($psISE -ANd (get-date  -format 'M/d/yyyy') -eq '1/19/2026')){
-            if((gcm new-mailboxshared).source -eq 'verb-Ex2010'){
-                ipmo -fo -verb 'D:\scripts\new-MailboxShared_func.ps1'
-            }
-        } ;
+        $tCmdlet = 'new-MailboxShared' ; $BMod = 'VERB-ex2010' ; 
+        if($psISE -AND ((get-date ).tostring() -match $dbgDate)){ 
+            if((gcm $tCmdlet).source -eq $BMod){
+                Do{
+                    gci "D:\scripts\$($tCmdlet)_func.ps1" -ea STOP | ipmo -fo -verb  ;
+                }until((gcm $tCmdlet).source -ne $BMod)
+            } ;
+        } ; 
         if(-not($NoOutput)){
             $bRet = new-MailboxShared @pltInput ; 
             $bRet | write-output ;
@@ -17919,6 +18501,17 @@ function new-MailboxShared {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 2:02 PM 4/21/2026 #2650, added `n to bump givenname down off of the INFO: header line
+    * 3:00 PM 4/15/2026 UPDATED SAMACCOUNTNAME & NAME (LDAP CN) TO STRICT STRIP - ALPHANUMS LEAVE UNRECOGNIZABLE OBJECTS!
+        fixed Cu5 rgx error: doesn't accomodate any migr domains, just TTC, rem'd out forces 
+        cu5 to take precedence (it's tested via EAP ch3eck up top anyway) 
+        Updated ADDesc to use $env:username, instead of hardcode initials.  
+    * 3:34 PM 4/14/2026 added dbg ipmo -fo -verb non-mod function testing;       
+    * 6:42 PM 4/9/2026 extended revising f'ery, around locating - manually polling, 
+        often creating - missing or non-standard OU storage for shared, room/equip & 
+        secgrps for email access - and then updated this, new-mailboxgenerictor; 
+        get-sitembxou; and new-mailboxshared to accomodate the migration blank-ups 
+    * 5:15 PM 4/3/2026 substantial recode to support non-standard OU names (LF) in migrations OUs. 
     * 4:18 PM 3/30/2026 fixed borked $FallBackBaseUserOU typo; updated latest START_LOG_HOLISTIC
     * 4:17 PM 1/30/2026 fixed $odn owner.mbx.dn bug
     * 9:17 AM 1/29/2026 Cleanup ; EXIT ; -> Cleanup ; BREAK ;
@@ -18162,7 +18755,10 @@ new-MailboxShared.ps1 - Create New Generic Mbx
     ) ;
     BEGIN{
         $Verbose = [boolean]($VerbosePreference -eq 'Continue') ; 
-
+        # SamAccountname banned characters + space
+        $rgxBanSamA = '[\"\/\\\[\]\:\;\|\=\,\+\*\?\<\>\s]' ; 
+        # Name/LDAP cn= name, banned characters
+        $rgxBanCNName = '[\,\+\"\\\<\>\;\=\/]' 
         #region FUNCTIONS_INTERNAL ; #*======v FUNCTIONS_INTERNAL v======
         # Pull the CUser mod dir out of psmodpaths:
         #$CUModPath = $env:psmodulepath.split(';')|?{$_ -like '*\Users\*'} ;
@@ -18493,13 +19089,15 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         #endregion COMMON_CONSTANTS ; #*------^ END COMMON_CONSTANTS ^------
     
         #region LOCAL_CONSTANTS ; #*------v LOCAL_CONSTANTS v------
-
+        $dbgDate = '4/22/2026'; # debugging ipmo force loads variants not in modules
         $Retries = 4 ; # number of re-attempts
         $RetrySleep = 5 ; # seconds to wait between retries
         # $rgxCU5 = [infra file]
         # OU that's used when can't find any baseuser for the owner's OU, default to a random shared from ($ADSiteCodeUS) (avoid crapping out):
         $FallBackBaseUserOU = "$($DomTORfqdn)/$($ADSiteCodeUS)/Generic Email Accounts" ;
-
+        # 3:46 PM 4/3/2026 add Migrations OU variant support
+        $rgxOUMigrations = ',OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
+        $rgxMigationsSite = ',OU=(\w+),OU=_MIGRATIONS,DC=global,DC=ad,DC=toro,DC=com$' ;
         #endregion LOCAL_CONSTANTS ; #*------^ END LOCAL_CONSTANTS ^------  
           
         #region ENCODED_CONTANTS ; #*------v ENCODED_CONTANTS v------
@@ -18566,7 +19164,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         #endregion ENCODED_CONTANTS ; #*------^ END ENCODED_CONTANTS ^------
 
         #endregion CONSTANTS_AND_ENVIRO ; #*======^ CONSTANTS_AND_ENVIRO ^======
-     
+        
         $useSMTPCFG = $true ; 
         #region USE_SMTPCFG ; #*------v USE_SMTPCFG v------
         if($useSMTPCFG){
@@ -19513,13 +20111,14 @@ new-MailboxShared.ps1 - Create New Generic Mbx
         };
 
         # 3:07 PM 10/4/2017 Cu5 override support (normally inherits from assigned owner/manager)
+        # 3:35 PM 4/15/2026 the below is blanking cu5 because dw isn't in the $rgxcu5 spec! dumpm it!
         if ($Cu5){
-            if ($Cu5 -match $rgxCU5 ) {
+            #if ($Cu5 -match $rgxCU5 ) {
                 # pulled switch out, it wasn't actually translating, just rgx of the final tags
                 $InputSplat.Cu5=$Cu5;
-            } else {
-                $InputSplat.Cu5=$null ;
-            }  ;
+            #} else {
+            #    $InputSplat.Cu5=$null ;
+            #}  ;
         }; #  # if-E Cu5
 
 
@@ -19601,17 +20200,102 @@ new-MailboxShared.ps1 - Create New Generic Mbx
             $SiteCode=$InputSplat.SiteCode.tostring();
         } ;
 
-        If($InputSplat.NonGeneric) {
-            if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $false)   ) {
-
-            } else { Cleanup ; BREAK ;}
-        } elseIf($Room -OR $Equipement) {
-            if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Resource $true ) ) {
-            } else { Cleanup ; BREAK ;}
+        # if we need the OwnerDn 
+        if ( ($OwnerMbx = (get-mailbox -identity $($pltNmbx.Owner) -ea 0)) -OR ($OwnerMbx = (get-remotemailbox -identity $($pltNmbx.Owner) -ea 0)) ) {
+            if ($ownermbx.DistinguishedName -match $rgxOUMigrations) {
+                $OSiteCode = [regex]::Match($ownermbx.DistinguishedName, $rgxMigationsSite).groups[1].value ;
+                if ($OSiteCode) {
+                    $smsg = "Resolved _MIGRATIONS tree OSiteCode:$($OSiteCode)" ;
+                    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)"  ;
+                } else {
+                    throw "Unable to resolve $($pltNmbx.Owner.DistinguishedName) into a SiteCode" ;
+                    Break ;
+                }
+            } else {
+                $OSiteCode = $Ownermbx.identity.tostring().split('/')[1]
+            } ;
         } else {
-            if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $true ) ) {
-            } else { Cleanup ; BREAK ;}
+            throw "Unable to resolve $($pltNmbx.Owner) to any existing OP or EXO mailbox" ;
+            Break ;
+        } ;
+
+        $pltGSmbx = [ordered]@{
+            Sitecode = $SiteCode ;
+            #Generic = $null ;
+            #Resource = $null; 
+            #modelDistinguishedName = $null ;
         }
+        if ($ownermbx.DistinguishedName -match $rgxOUMigrations) {
+            $pltGSmbx.add('modelDistinguishedName',$ownermbx.DistinguishedName)
+            #$pltGSmbx.modelDistinguishedName = $ownermbx.DistinguishedName ; 
+        }else{
+            $pltGSmbx.add('modelDistinguishedName',$ownermbx.DistinguishedName)
+            #$pltGSmbx.modelDistinguishedName = $ownermbx.DistinguishedName ; 
+        }
+        
+        If($InputSplat.NonGeneric) {
+            if($pltGSmbx.keys -contains 'generic'){$pltGSmbx.remove('Generic')}
+            #$pltGSmbx.Generic = $null ; 
+            #$pltGSmbx.Resource = $null ; 
+        } elseIf($Room -OR $Equipement) {
+            #$pltGSmbx.Resource = $true ; 
+            $pltGSmbx.add('Resource',$true) ; 
+            #$pltGSmbx.Generic = $null ;
+        } else {
+            #$pltGSmbx.Generic = $true 
+            $pltGSmbx.add('Generic',$true ) ; 
+            #$pltGSmbx.Resource = $null ; 
+        } ; 
+        $tCmdlet = 'get-SiteMbxOU' ; $BMod = 'verb-ADMS' ; 
+        if($psISE -AND ((get-date ).tostring() -match $dbgDate)){ 
+            if((gcm $tCmdlet).source -eq $BMod){
+                Do{
+                    gci "D:\scripts\$($tCmdlet)_func.ps1" -ea STOP | ipmo -fo -verb  ;
+                }until((gcm $tCmdlet).source -ne $BMod)
+            } ;
+        } ; 
+        $smsg = "Get-SiteMbxOU w`n$(($pltGSmbx|out-string).trim())" ; 
+        write-verbose $smsg ; 
+        if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU @pltGSmbx)   ) {
+        } else { Cleanup ; BREAK ;}
+
+        <#xxx
+        If($InputSplat.NonGeneric) {
+            if ($ownermbx.DistinguishedName -match $rgxOUMigrations) {
+                
+                #if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $false -modelDistinguishedName $ownermbx.DistinguishedName)   ) {
+                $pltGSmbx.Generic = $false ; 
+                $pltGSmbx.modelDistinguishedName = $ownermbx.DistinguishedName ; 
+                #if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $false -modelDistinguishedName $ownermbx.DistinguishedName)   ) {
+                if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU @PltGSmbx)   ) {
+                } else { Cleanup ; BREAK ;}
+            } else {
+                #$OSiteCode = $Ownermbx.identity.tostring().split('/')[1]
+                #if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $false)   ) {
+                #if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $false  -modelDistinguishedName $ownermbx.DistinguishedName)   ) {
+                $pltGSmbx.Generic = $false ; 
+                $pltGSmbx.modelDistinguishedName = $ownermbx.DistinguishedName ; 
+                if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU @PltGSmbx)   ) {
+                } else { Cleanup ; BREAK ;}
+            } ;
+            
+        } elseIf($Room -OR $Equipement) {
+            if ($ownermbx.DistinguishedName -match $rgxOUMigrations) {
+                if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Resource $true  -modelDistinguishedName $ownermbx.DistinguishedName) ) {
+            }else{
+                if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Resource $true ) ) {
+                } else { Cleanup ; BREAK ;}
+            }
+        } else {
+            if ($ownermbx.DistinguishedName -match $rgxOUMigrations ) {
+                if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $true -modelDistinguishedName $ownermbx.DistinguishedName) ) {
+                } else { Cleanup ; BREAK ;}
+            }else{
+                if ( $MbxSplat.OrganizationalUnit = (Get-SiteMbxOU  -Sitecode $SiteCode -Generic $true ) ) {
+                } else { Cleanup ; BREAK ;}
+            }
+        }
+        #> # XXX
 
         # add forced office designation, to match $SiteCode/OU
         # New-Mailbox doesn't support both -Shared & -Office in the same syntax set, move it to $MbxSetSplat
@@ -19741,8 +20425,22 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                     $DnameClean= Remove-StringLatinCharacters -string $DnameClean ;
                 } ;
                 # strip all nonalphnums from samacct!
-                $InputSplat.samaccountname=$([System.Text.RegularExpressions.Regex]::Replace($DnameClean,"[^1-9a-zA-Z_]",""));
-                if($InputSplat.samaccountname.length -gt 20) { $InputSplat.samaccountname=$InputSplat.samaccountname.tostring().substring(0,20) };
+                #$InputSplat.samaccountname=$([System.Text.RegularExpressions.Regex]::Replace($DnameClean,"[^1-9a-zA-Z_]",""));
+                #if($InputSplat.samaccountname.length -gt 20) { $InputSplat.samaccountname=$InputSplat.samaccountname.tostring().substring(0,20) };
+                #$InputSplat.samaccountname =  -join (($DnameClean -replace '[^a-zA-Z0-9]', '').ToCharArray()[0..19]) ;
+                # no do the strict strip on banned characters, plus spaces
+                #$rgxBanSamA = '[\"\/\\\[\]\:\;\|\=\,\+\*\?\<\>\s]' ; 
+                $InputSplat.samaccountname = -join (($DnameClean -replace $rgxBanSamA, '').ToCharArray()[0..19]) ;
+                try {$conflict = $null ; $conflict = get-aduser $InputSplat.samaccountname -server $InputSplat.DomainController ;} CATCH {} ;
+                $incr = 1 ;  
+                Do{
+                    if($conflict){
+                        $incr++ ; 
+                        $InputSplat.samaccountname = "$(-join (($DnameClean -replace '[^a-zA-Z0-9]', '').ToCharArray()[0..18]))$($incr)" ; 
+                    }
+                    try {$conflict = $null ; $conflict = get-aduser $InputSplat.samaccountname -server $InputSplat.DomainController ;} CATCH {} ;
+                }while($conflict) ; 
+
 
                 # base generics off of baseuser
                 # deter BaseUser as a random user in the $($MbxSplat.OrganizationalUnit)
@@ -19821,7 +20519,9 @@ new-MailboxShared.ps1 - Create New Generic Mbx
 
             if ( $InputSplat.BUserAD=(get-user -identity $($InputSplat.BaseUser.samaccountname) -domaincontroller $($InputSplat.domaincontroller) -ea continue)  ) {
             } else { Cleanup ; BREAK ;} ;
-            $InputSplat.ADDesc="$(get-date -format 'MM/dd/yyyy') for $($InputSplat.OwnerMbx.samaccountname) $($InputSplat.ticket) -tsk" ;
+            #$InputSplat.ADDesc="$(get-date -format 'MM/dd/yyyy') for $($InputSplat.OwnerMbx.samaccountname) $($InputSplat.ticket) -tsk" ;
+            # flip it to $env:username
+            $InputSplat.ADDesc="$(get-date -format 'MM/dd/yyyy') for $($InputSplat.OwnerMbx.samaccountname) $($InputSplat.ticket) -$($env:username)" ;
 
             # check for conflicting samaccountname, and increment
             $bConflicted=$false ;
@@ -19844,14 +20544,23 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                 $MbxSplat.Remove("shared");
             }
 
+            # build the name as an explicit LDAP cn Name strip
+            # Name/LDAP cn= name, banned characters
+            #$rgxBanCNName = '[\,\+\"\\\<\>\;\=\/]' 
+            #$DnameClean is the diacritical/latin cleaned version fo the Displayname
+            if($DnameClean){
+                $MbxSplat.Name=-join (($DnameClean -replace $rgxBanCNName,'').ToCharArray()[0..63]) ;
+            }else{
+                $MbxSplat.Name=-join (($InputSplat.DisplayName -replace $rgxBanCNName,'').ToCharArray()[0..63]) ;
+            }
 
             # 64char limit on names
             if($InputSplat.DisplayName.length -gt 64){
-                $smsg= "`n **** NOTE TRUNCATING NAME, -GT 64 CHARS!  ****`N" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
-                $MbxSplat.Name=$InputSplat.DisplayName.Substring(0,63) ;
+                $smsg= "`n **** NOTE TRUNCATING DISPLAYNAME, -GT 64 CHARS!  ****`N" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
+                #$MbxSplat.Name=$InputSplat.DisplayName.Substring(0,63) ;
                 $MbxSplat.DisplayName=$InputSplat.DisplayName.Substring(0,63) ;
             } else {
-                $MbxSplat.Name=$InputSplat.DisplayName;
+                #$MbxSplat.Name=$InputSplat.DisplayName;
                 $MbxSplat.DisplayName=$InputSplat.DisplayName;
             };
 
@@ -20420,7 +21129,7 @@ new-MailboxShared.ps1 - Create New Generic Mbx
                         $smsg= "Mailbox Information:" ;if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                         $smsg= "$(($mbxo | select @{Name='LogonName';Expression={$_.SamAccountName }},Name,DisplayName,Alias,database,UserPrincipalName,RetentionPolicy,CustomAttribute5,CustomAttribute9,RecipientType,RecipientTypeDetails | out-string).trim())" ;
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
-                        $smsg= "$(($Adu | select GivenName,Surname,Manager,Company,Office,Title,StreetAddress,City,StateOrProvince,c,co,countryCode,PostalCode,Phone,Fax,Description | out-string).trim())";
+                        $smsg= "`n$(($Adu | select GivenName,Surname,Manager,Company,Office,Title,StreetAddress,City,StateOrProvince,c,co,countryCode,PostalCode,Phone,Fax,Description | out-string).trim())";
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
                         if($NonGeneric -eq $false){
                             $smsg= "ActiveSyncMailboxPolicy:$($cmbxo.ActiveSyncMailboxPolicy.tostring())" ; if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } ;
@@ -22202,335 +22911,342 @@ The above settings need to exactly match one or more of the EAP's to generate th
 
 #*------v Resolve-xopBuildSemVersToTextNameTDO.ps1 v------
 Function Resolve-xopBuildSemVersToTextNameTDO {
-    <#
-    .SYNOPSIS
-    Resolve-xopBuildSemVersToTextNameTDO - Resolves Exchange Server SemanticVersion BuildNumber to MS Build/Release information details
-    .NOTES
-    Version     : 0.0.
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 20250711-0423PM
-    FileName    : Resolve-xopBuildSemVersToTextNameTDO.ps1
-    License     : (none asserted)
-    Copyright   : (none asserted)
-    Github      : https://github.com/tostka/verb-ex2010
-    Tags        : Powershell,Exchange,ExchangeServer,Install,Patch,Maintenance
-    AddedCredit : 
-    AddedWebsite: 
-    AddedTwitter: URL
-    REVISIONS
-    * 2:58 PM 11/26/2025 fixed bug in $Version -OR $AllVersions test: pre-blanked $smsg (failing when it inherited data from calling ap)
-    * 10:27 AM 11/24/2025 updated CBH, ref to xopBuilLibrary.psm1\Get-SetupTextVersionTDO, for clarity, updated table to reflect lastest SE, 2019 & 2016 builds:
-        EXSE_RTM_Oct25SU EX2019_CU15_Oct25SU EX2016_CU23_Oct25SU (rest are unmodified); pulled irrelev AddedCredit ref to 821's similar limited vers (below)
-    * 9:24 AM 10/22/2025 FIXED REGION TAGS
-    * 10:22 AM 9/25/2025 ADD: -AllVersions to return the raw versions table ; added IsInstallable field, to tag installable base RTM/SP/CU releases; 
-        CBH: add fields specs for -AllVersions; 
-        add: demos for postfiltering -AllVersions returned data to find installable 
-    * 4:07 PM 9/24/2025 flip return from [hashtable] to [pscustomobject]; 
-         add alias & param alias for install-Exchange15-TTC.ps1\Get-FileVersion() emulation; pull -LongBuildNumber: the shift to [system.version]$Version obviates differences: 
-        it autoflattens zero-pads to short format when .tostring()'d. So all compares are effectively to the shortversionnumber, regardless of input format.
-    * 4:25 PM 9/23/2025 flipped -Version [string]->[version], does it's own type validation; updated table added NickName in format: EX[vers]_[SpCU]_[HuSu]
-    * 4:02 PM 9/22/2025 init; Updated BuildToProductName indexed hash to specs posted as of 04/25/2025 at https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates
-        Maxes reflected in this script, as of that time:
-         - Exchange Server SE RTM Oct25SU 	October 14, 2025 	15.2.2562.29 	15.02.2562.029
-         - Exchange Server 2019 CU15 Oct25SU 	October 14, 2025 	15.2.1748.39 	15.02.1748.039
-         -    Exchange Server 2016 CU23 Oct25SU 	October 14, 2025 	15.1.2507.61 	15.01.2507.061
-         - Exchange Server 2013 CU23 Mar23SU 	March 14, 2023 	15.0.1497.48 	15.00.1497.048
-         - Update Rollup 32 for Exchange Server 2010 SP3 	March 2, 2021 	14.3.513.0 	14.03.0513.000
-         - Update Rollup 23 for Exchange Server 2007 SP3 	March 21, 2017 	8.3.517.0 	8.03.0517.000
-         - Exchange Server 2003 post-SP2 	August 2008 	6.5.7654.4
-         - Exchange 2000 Server post-SP3 	August 2008 	6.0.6620.7
-         - Exchange Server version 5.5 SP4 	November 1, 2000 	5.5.2653
-         - Exchange Server 5.0 SP2 	February 19, 1998 	5.0.1460
-         - Exchange Server 4.0 SP5 	May 5, 1998 	4.0.996
+      <#
+      .SYNOPSIS
+      Resolve-xopBuildSemVersToTextNameTDO - Resolves Exchange Server SemanticVersion BuildNumber to MS Build/Release information details
+      .NOTES
+      Version     : 0.0.
+      Author      : Todd Kadrie
+      Website     : http://www.toddomation.com
+      Twitter     : @tostka / http://twitter.com/tostka
+      CreatedDate : 2025-07-11
+      FileName    : Resolve-xopBuildSemVersToTextNameTDO.ps1
+      License     : (none asserted)
+      Copyright   : (none asserted)
+      Github      : https://github.com/tostka/verb-ex2010
+      Tags        : Powershell,Exchange,ExchangeServer,Install,Patch,Maintenance
+      AddedCredit : 
+      AddedWebsite: 
+      AddedTwitter: URL
+      REVISIONS
+      * 5:04 PM 4/16/2026 updated as of curr M$ page (which only shows 12/25 update stamp; in spite of reflecting the 2/2026 updates).
+      * 2:58 PM 11/26/2025 fixed bug in $Version -OR $AllVersions test: pre-blanked $smsg (failing when it inherited data from calling ap)
+      * 10:27 AM 11/24/2025 updated CBH, ref to xopBuilLibrary.psm1\Get-SetupTextVersionTDO, for clarity, updated table to reflect lastest SE, 2019 & 2016 builds:
+          EXSE_RTM_Oct25SU EX2019_CU15_Oct25SU EX2016_CU23_Oct25SU (rest are unmodified); pulled irrelev AddedCredit ref to 821's similar limited vers (below)
+      * 9:24 AM 10/22/2025 FIXED REGION TAGS
+      * 10:22 AM 9/25/2025 ADD: -AllVersions to return the raw versions table ; added IsInstallable field, to tag installable base RTM/SP/CU releases; 
+          CBH: add fields specs for -AllVersions; 
+          add: demos for postfiltering -AllVersions returned data to find installable 
+      * 4:07 PM 9/24/2025 flip return from [hashtable] to [pscustomobject]; 
+           add alias & param alias for install-Exchange15-TTC.ps1\Get-FileVersion() emulation; pull -LongBuildNumber: the shift to [system.version]$Version obviates differences: 
+          it autoflattens zero-pads to short format when .tostring()'d. So all compares are effectively to the shortversionnumber, regardless of input format.
+      * 4:25 PM 9/23/2025 flipped -Version [string]->[version], does it's own type validation; updated table added NickName in format: EX[vers]_[SpCU]_[HuSu]
+      * 4:02 PM 9/22/2025 init; Updated BuildToProductName indexed hash to specs posted as of 04/25/2025 at https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates
+          Maxes reflected in this script, as of that time:
+           - Exchange Server SE RTM Oct25SU 	October 14, 2025 	15.2.2562.29 	15.02.2562.029
+           - Exchange Server 2019 CU15 Oct25SU 	October 14, 2025 	15.2.1748.39 	15.02.1748.039
+           -    Exchange Server 2016 CU23 Oct25SU 	October 14, 2025 	15.1.2507.61 	15.01.2507.061
+           - Exchange Server 2013 CU23 Mar23SU 	March 14, 2023 	15.0.1497.48 	15.00.1497.048
+           - Update Rollup 32 for Exchange Server 2010 SP3 	March 2, 2021 	14.3.513.0 	14.03.0513.000
+           - Update Rollup 23 for Exchange Server 2007 SP3 	March 21, 2017 	8.3.517.0 	8.03.0517.000
+           - Exchange Server 2003 post-SP2 	August 2008 	6.5.7654.4
+           - Exchange 2000 Server post-SP3 	August 2008 	6.0.6620.7
+           - Exchange Server version 5.5 SP4 	November 1, 2000 	5.5.2653
+           - Exchange Server 5.0 SP2 	February 19, 1998 	5.0.1460
+           - Exchange Server 4.0 SP5 	May 5, 1998 	4.0.996
 
-    .DESCRIPTION
-    Resolve-xopBuildSemVersToTextNameTDO - Resolves Exchange Server SemanticVersion BuildNumber to MS Build/Release information details
-    
-        > Note: xopBuildLibrary.psm1\Get-SetupTextVersionTDO is another option of much more limited utility: 
-        > Duped from install-Exchange15-TTC.ps1, solely to support out of band calls to that function:
-        > - Works with a static array of recent builds of installable RTM/SP/CU builds. 
-        > - by contrast verb-ex2010\xopBuildSemVersToTextNameTDO() covers every version of Exchange Server back to 4.0, including every SU & HU. Issue between the two, 
-        >     is Resolve-xopBuildSemVersToTextNameTDO's ProductName reflects MS's version doc page string; 
-        >     while xopBuildLibrary.psm1\Get-SetupTextVersion() returns a non-standard name for the same build/CU 
-        >     ('Exchange Server 2016 CU23 (2022H1)' v 'Exchange Server 2016 Cumulative Update 23')
-        >     Retaining both, to avoid changing rev version strings already stored in server build state .xml files
+      .DESCRIPTION
+      Resolve-xopBuildSemVersToTextNameTDO - Resolves Exchange Server SemanticVersion BuildNumber to MS Build/Release information details
+  
+          > Note: xopBuildLibrary.psm1\Get-SetupTextVersionTDO is another option of much more limited utility: 
+          > Duped from install-Exchange15-TTC.ps1, solely to support out of band calls to that function:
+          > - Works with a static array of recent builds of installable RTM/SP/CU builds. 
+          > - by contrast verb-ex2010\xopBuildSemVersToTextNameTDO() covers every version of Exchange Server back to 4.0, including every SU & HU. Issue between the two, 
+          >     is Resolve-xopBuildSemVersToTextNameTDO's ProductName reflects MS's version doc page string; 
+          >     while xopBuildLibrary.psm1\Get-SetupTextVersion() returns a non-standard name for the same build/CU 
+          >     ('Exchange Server 2016 CU23 (2022H1)' v 'Exchange Server 2016 Cumulative Update 23')
+          >     Retaining both, to avoid changing rev version strings already stored in server build state .xml files
 
-    -AllVersions fields (and those in use in source table):
-    - Most, aside from PatchBasis, NickName & 'IsInstallable' are the field names and data directly lifted from the source MS table above
-    - ProductName | the "official" MS name for the RTM/SP/CU/SU/HU release (ReleaseToManuf,ServicePack,CumulativeUpdate,ServiceUpdate,HotfixUpdate)
-    - ReleaseDate | documented release date
-    - BuildNumberShort | SemanticVersion string with 0-padding removed
-    - BuildNumberLong |  SemanticVersion string with 0-padding intact
-    - PatchBasis | The most recent full IsInstallable RTM/SP/CU prior to a given HU,SU 'patch'
-    - NickName | converted from ProductName: 1) subst 'EX' for 'Exchange\sServer', 2) Move 'Update\sRollup\s\d+' prefix to suffix, 3) subst '_' for '\s', 4) remove parenthesis, 5) replace 'Standard\sEdition' w 'SE'
-    - IsInstallable | represents an RTM, SP or CU release in setup.exe-installable ISO or CAB availablility: e.g. the baseline installs that get patched with later CU/SU/HU updates to reach fully patched status.
+      -AllVersions fields (and those in use in source table):
+      - Most, aside from PatchBasis, NickName & 'IsInstallable' are the field names and data directly lifted from the source MS table above
+      - ProductName | the "official" MS name for the RTM/SP/CU/SU/HU release (ReleaseToManuf,ServicePack,CumulativeUpdate,ServiceUpdate,HotfixUpdate)
+      - ReleaseDate | documented release date
+      - BuildNumberShort | SemanticVersion string with 0-padding removed
+      - BuildNumberLong |  SemanticVersion string with 0-padding intact
+      - PatchBasis | The most recent full IsInstallable RTM/SP/CU prior to a given HU,SU 'patch'
+      - NickName | converted from ProductName: 1) subst 'EX' for 'Exchange\sServer', 2) Move 'Update\sRollup\s\d+' prefix to suffix, 3) subst '_' for '\s', 4) remove parenthesis, 5) replace 'Standard\sEdition' w 'SE'
+      - IsInstallable | represents an RTM, SP or CU release in setup.exe-installable ISO or CAB availablility: e.g. the baseline installs that get patched with later CU/SU/HU updates to reach fully patched status.
 
-    ## To Update `$xopBuilds table in this function to current published specs:
+      ## To Update `$xopBuilds table in this function to current published specs:
 
-    1. Review https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates for updates
-    2. Copy updates across releases (each is in a separate subtable, listed in descending release order) into the xopTable
-        - Simplest accomplished by using Excel to do formatting and editing and appending the entries into proper placese
-        - Be sure to construct NickName, note the PatchBasis, and specify IsInstallable status (if it's an RTM, SP or CU)
-        - Then File > Save As a csv unicode encoded. 
-        - then import and reparse the csv into markdowntable format, used as the data source in the xopBuilds inputs below:
-        ``````powershell
-        $builds = import-csv -path c:\pathto\UpdatedBuilds.csv ; 
-        $builds | verb-io\convertto-Markdowntable ; 
-        ```
-        - copy the displayed console markdown table to clipboard, and paste into the $xopBuilds hashtable between @" and "@.
-        Update the $lastBuildTableUpedate below to reflect the date of update: Note, 
-        the date displayed at the top of the table, as of 9/25/2025, is *not* the 
-        latest update time, it's the original time the article was posted.  
+      1. Review https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates for updates
+      2. Copy updates across releases (each is in a separate subtable, listed in descending release order) into the xopTable
+          - Simplest accomplished by using Excel to do formatting and editing and appending the entries into proper placese
+          - Be sure to construct NickName, note the PatchBasis, and specify IsInstallable status (if it's an RTM, SP or CU)
+          - Then File > Save As a csv unicode encoded. 
+          - then import and reparse the csv into markdowntable format, used as the data source in the xopBuilds inputs below:
+          ``````powershell
+          $builds = import-csv -path c:\pathto\UpdatedBuilds.csv ; 
+          $builds | verb-io\convertto-Markdowntable ; 
+          ```
+          - copy the displayed console markdown table to clipboard, and paste into the $xopBuilds hashtable between @" and "@.
+          Update the $lastBuildTableUpedate below to reflect the date of update: Note, 
+          the date displayed at the top of the table, as of 9/25/2025, is *not* the 
+          latest update time, it's the original time the article was posted.  
 
-        There is no visible timestamp on the page to indicate last content update, simply you will find later revs at the tops of the tables on the page. 
+          There is no visible timestamp on the page to indicate last content update, simply you will find later revs at the tops of the tables on the page. 
 
-    .PARAMETER Version
-    Exchange Version in Semantic Version Number format (n.n.n.n)[-Version '8.0.708.3']
-    .PARAMETER AllVersions
-    Switch to return all versions information to pipeline[-AllVersions]
-    .INPUTS
-    None, no piped input.
-    .OUTPUTS
-    System.Object summary of Exchange server build specifications.
-    .EXAMPLE
-    PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version '8.0.708.3' ; 
-    PS> $VersInfo ; 
-    
-        ProductName      : Update Rollup 1 for Exchange Server 2007
-        ReleaseDate      : 4/17/2007
-        BuildNumberShort : 8.0.708.3
-        BuildNumberLong  : 8.00.0708.003
-        PatchBasis       : Exchange Server 2007 RTM
-        NickName         : EX2007_UR1
-        IsInstallable    : 
+      .PARAMETER Version
+      Exchange Version in Semantic Version Number format (n.n.n.n)[-Version '8.0.708.3']
+      .PARAMETER AllVersions
+      Switch to return all versions information to pipeline[-AllVersions]
+      .INPUTS
+      None, no piped input.
+      .OUTPUTS
+      System.Object summary of Exchange server build specifications.
+      .EXAMPLE
+      PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version '8.0.708.3' ; 
+      PS> $VersInfo ; 
+  
+          ProductName      : Update Rollup 1 for Exchange Server 2007
+          ReleaseDate      : 4/17/2007
+          BuildNumberShort : 8.0.708.3
+          BuildNumberLong  : 8.00.0708.003
+          PatchBasis       : Exchange Server 2007 RTM
+          NickName         : EX2007_UR1
+          IsInstallable    : 
 
-    Demo resolving a Semantic Version string to specific release/build details
-    .EXAMPLE
-    PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version '8.0.708.3' ; 
-    PS> $VersInfo.ProductName ;
+      Demo resolving a Semantic Version string to specific release/build details
+      .EXAMPLE
+      PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version '8.0.708.3' ; 
+      PS> $VersInfo.ProductName ;
 
-        Update Rollup 1 for Exchange Server 2007
+          Update Rollup 1 for Exchange Server 2007
 
-    Demo resolving semversion to equivelent ProductName string property of the Build returned
-    .EXAMPLE
-    PS> $SourcePath = 'D:\cab\ExchangeServer2016-x64-CU23-ISO\unpacked' ; 
-    PS> $ExSetupVersion = (Get-Command "$($SourcePath)\Setup\ServerRoles\Common\ExSetup.exe").FileVersionInfo.ProductVersion ; 
-    PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version $ExSetupVersion ; 
-    PS> $VersInfo | fl * ; 
+      Demo resolving semversion to equivelent ProductName string property of the Build returned
+      .EXAMPLE
+      PS> $SourcePath = 'D:\cab\ExchangeServer2016-x64-CU23-ISO\unpacked' ; 
+      PS> $ExSetupVersion = (Get-Command "$($SourcePath)\Setup\ServerRoles\Common\ExSetup.exe").FileVersionInfo.ProductVersion ; 
+      PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version $ExSetupVersion ; 
+      PS> $VersInfo | fl * ; 
 
-        ProductName      : Exchange Server 2016 CU23 (2022H1)
-        ReleaseDate      : 4/20/2022
-        BuildNumberShort : 15.1.2507.6
-        BuildNumberLong  : 15.01.2507.006
-        PatchBasis       : Exchange Server 2016 CU23
-        NickName         : EX2016_CU23_2022H1
-        IsInstallable    : TRUE
+          ProductName      : Exchange Server 2016 CU23 (2022H1)
+          ReleaseDate      : 4/20/2022
+          BuildNumberShort : 15.1.2507.6
+          BuildNumberLong  : 15.01.2507.006
+          PatchBasis       : Exchange Server 2016 CU23
+          NickName         : EX2016_CU23_2022H1
+          IsInstallable    : TRUE
 
-    Demo resolving details of local CAB source ExSetup.exe build details.
-    .EXAMPLE
-    PS> $ExSetupVersion = (Get-Command ExSetup.exe).FileVersionInfo.ProductVersion ; 
-    PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version $ExSetupVersion ; 
-    PS> $VersInfo | fl * ; 
+      Demo resolving details of local CAB source ExSetup.exe build details.
+      .EXAMPLE
+      PS> $ExSetupVersion = (Get-Command ExSetup.exe).FileVersionInfo.ProductVersion ; 
+      PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version $ExSetupVersion ; 
+      PS> $VersInfo | fl * ; 
 
-        ProductName      : Update Rollup 30 for Exchange Server 2010 SP3
-        ProductName      : Exchange Server 2016 CU23 May25HU
-        ReleaseDate      : 5/29/2025
-        BuildNumberShort : 15.1.2507.57
-        BuildNumberLong  : 15.01.2507.057
-        PatchBasis       : Exchange Server 2016 CU23
-        NickName         : EX2016_CU23_May25HU
-        IsInstallable    : 
+          ProductName      : Update Rollup 30 for Exchange Server 2010 SP3
+          ProductName      : Exchange Server 2016 CU23 May25HU
+          ReleaseDate      : 5/29/2025
+          BuildNumberShort : 15.1.2507.57
+          BuildNumberLong  : 15.01.2507.057
+          PatchBasis       : Exchange Server 2016 CU23
+          NickName         : EX2016_CU23_May25HU
+          IsInstallable    : 
 
-    Demo resolving details of local installed Exchange Server bin build details to determine installed CU/SP/RTM base build (by resolving installed Exchanage ExSetup.exe's presence in the local Path evari). Note: This reflects latest patch level (SP/CU/SU/HU)        
-    .EXAMPLE
-    PS> $ExBinVersion = (Get-Command "$($env:ExchangeInstallPath)Bin\Microsoft.Exchange.Directory.TopologyService.exe").FileVersionInfo.ProductVersion ; 
-    PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version $ExBinVersion ; 
-    PS> $VersInfo | fl * ; 
+      Demo resolving details of local installed Exchange Server bin build details to determine installed CU/SP/RTM base build (by resolving installed Exchanage ExSetup.exe's presence in the local Path evari). Note: This reflects latest patch level (SP/CU/SU/HU)        
+      .EXAMPLE
+      PS> $ExBinVersion = (Get-Command "$($env:ExchangeInstallPath)Bin\Microsoft.Exchange.Directory.TopologyService.exe").FileVersionInfo.ProductVersion ; 
+      PS> $VersInfo = Resolve-xopBuildSemVersToTextNameTDO -Version $ExBinVersion ; 
+      PS> $VersInfo | fl * ; 
 
-        ProductName      : Exchange Server 2016 CU23 May25HU
-        ReleaseDate      : 5/29/2025
-        BuildNumberShort : 15.1.2507.57
-        BuildNumberLong  : 15.01.2507.057
-        PatchBasis       : Exchange Server 2016 CU23
-        NickName         : EX2016_CU23_May25HU
-        IsInstallable    : 
+          ProductName      : Exchange Server 2016 CU23 May25HU
+          ReleaseDate      : 5/29/2025
+          BuildNumberShort : 15.1.2507.57
+          BuildNumberLong  : 15.01.2507.057
+          PatchBasis       : Exchange Server 2016 CU23
+          NickName         : EX2016_CU23_May25HU
+          IsInstallable    : 
 
-    Demo resolving installed ADTopology service .exe to obtain current installed patch revision (will match the much easier tolocate bin dir ExSetup.exe)
-    .EXAMPLE
-    PS> $VersTable = Resolve-xopBuildSemVersToTextNameTDO -AllVersions
-    PS> $VersTable |?{$_.isinstallable -AND $_.NickName -match '^EX2019'} | ft -a 
+      Demo resolving installed ADTopology service .exe to obtain current installed patch revision (will match the much easier tolocate bin dir ExSetup.exe)
+      .EXAMPLE
+      PS> $VersTable = Resolve-xopBuildSemVersToTextNameTDO -AllVersions
+      PS> $VersTable |?{$_.isinstallable -AND $_.NickName -match '^EX2019'} | ft -a 
 
-        -AllVersions: Returning full builds table to pipeline (for post-filtering)
+          -AllVersions: Returning full builds table to pipeline (for post-filtering)
 
-        ProductName                        ReleaseDate BuildNumberShort BuildNumberLong PatchBasis                NickName           IsInstallable
-        -----------                        ----------- ---------------- --------------- ----------                --------           -------------
-        Exchange Server 2019 CU15 (2025H1) 2/10/2025   15.2.1748.10     15.02.1748.010  Exchange Server 2019 CU15 EX2019_CU15_2025H1 TRUE         
-        Exchange Server 2019 CU14 (2024H1) 2/13/2024   15.2.1544.4      15.02.1544.004  Exchange Server 2019 CU14 EX2019_CU14_2024H1 TRUE         
-        Exchange Server 2019 CU13 (2023H1) 5/3/2023    15.2.1258.12     15.02.1258.012  Exchange Server 2019 CU13 EX2019_CU13_2023H1 TRUE         
-        Exchange Server 2019 CU12 (2022H1) 4/20/2022   15.2.1118.7      15.02.1118.007  Exchange Server 2019 CU12 EX2019_CU12_2022H1 TRUE         
-        Exchange Server 2019 CU11          9/28/2021   15.2.986.5       15.02.0986.005  Exchange Server 2019 CU11 EX2019_CU11        TRUE         
-        Exchange Server 2019 CU10          6/29/2021   15.2.922.7       15.02.0922.007  Exchange Server 2019 CU10 EX2019_CU10        TRUE         
-        Exchange Server 2019 CU9           3/16/2021   15.2.858.5       15.02.0858.0.6  Exchange Server 2019 CU9  EX2019_CU9         TRUE         
-        Exchange Server 2019 CU8           12/15/2020  15.2.792.3       15.02.0792.003  Exchange Server 2019 CU8  EX2019_CU8         TRUE         
-        Exchange Server 2019 CU7           9/15/2020   15.2.721.2       15.02.0721.002  Exchange Server 2019 CU7  EX2019_CU7         TRUE         
-        Exchange Server 2019 CU6           6/16/2020   15.2.659.4       15.02.0659.004  Exchange Server 2019 CU6  EX2019_CU6         TRUE         
-        Exchange Server 2019 CU5           3/17/2020   15.2.595.3       15.02.0595.003  Exchange Server 2019 CU5  EX2019_CU5         TRUE         
-        Exchange Server 2019 CU4           12/17/2019  15.2.529.5       15.02.0529.005  Exchange Server 2019 CU4  EX2019_CU4         TRUE         
-        Exchange Server 2019 CU3           9/17/2019   15.2.464.5       15.02.0464.005  Exchange Server 2019 CU3  EX2019_CU3         TRUE         
-        Exchange Server 2019 CU2           6/18/2019   15.2.397.3       15.02.0397.003  Exchange Server 2019 CU2  EX2019_CU2         TRUE         
-        Exchange Server 2019 CU1           2/12/2019   15.2.330.5       15.02.0330.005  Exchange Server 2019 CU1  EX2019_CU1         TRUE         
-        Exchange Server 2019 RTM           10/22/2018  15.2.221.12      15.02.0221.012  Exchange Server 2019 RTM  EX2019_RTM         TRUE      
+          ProductName                        ReleaseDate BuildNumberShort BuildNumberLong PatchBasis                NickName           IsInstallable
+          -----------                        ----------- ---------------- --------------- ----------                --------           -------------
+          Exchange Server 2019 CU15 (2025H1) 2/10/2025   15.2.1748.10     15.02.1748.010  Exchange Server 2019 CU15 EX2019_CU15_2025H1 TRUE         
+          Exchange Server 2019 CU14 (2024H1) 2/13/2024   15.2.1544.4      15.02.1544.004  Exchange Server 2019 CU14 EX2019_CU14_2024H1 TRUE         
+          Exchange Server 2019 CU13 (2023H1) 5/3/2023    15.2.1258.12     15.02.1258.012  Exchange Server 2019 CU13 EX2019_CU13_2023H1 TRUE         
+          Exchange Server 2019 CU12 (2022H1) 4/20/2022   15.2.1118.7      15.02.1118.007  Exchange Server 2019 CU12 EX2019_CU12_2022H1 TRUE         
+          Exchange Server 2019 CU11          9/28/2021   15.2.986.5       15.02.0986.005  Exchange Server 2019 CU11 EX2019_CU11        TRUE         
+          Exchange Server 2019 CU10          6/29/2021   15.2.922.7       15.02.0922.007  Exchange Server 2019 CU10 EX2019_CU10        TRUE         
+          Exchange Server 2019 CU9           3/16/2021   15.2.858.5       15.02.0858.005  Exchange Server 2019 CU9  EX2019_CU9         TRUE         
+          Exchange Server 2019 CU8           12/15/2020  15.2.792.3       15.02.0792.003  Exchange Server 2019 CU8  EX2019_CU8         TRUE         
+          Exchange Server 2019 CU7           9/15/2020   15.2.721.2       15.02.0721.002  Exchange Server 2019 CU7  EX2019_CU7         TRUE         
+          Exchange Server 2019 CU6           6/16/2020   15.2.659.4       15.02.0659.004  Exchange Server 2019 CU6  EX2019_CU6         TRUE         
+          Exchange Server 2019 CU5           3/17/2020   15.2.595.3       15.02.0595.003  Exchange Server 2019 CU5  EX2019_CU5         TRUE         
+          Exchange Server 2019 CU4           12/17/2019  15.2.529.5       15.02.0529.005  Exchange Server 2019 CU4  EX2019_CU4         TRUE         
+          Exchange Server 2019 CU3           9/17/2019   15.2.464.5       15.02.0464.005  Exchange Server 2019 CU3  EX2019_CU3         TRUE         
+          Exchange Server 2019 CU2           6/18/2019   15.2.397.3       15.02.0397.003  Exchange Server 2019 CU2  EX2019_CU2         TRUE         
+          Exchange Server 2019 CU1           2/12/2019   15.2.330.5       15.02.0330.005  Exchange Server 2019 CU1  EX2019_CU1         TRUE         
+          Exchange Server 2019 RTM           10/22/2018  15.2.221.12      15.02.0221.012  Exchange Server 2019 RTM  EX2019_RTM         TRUE      
 
-    Demo returning AllVersions table, and post-filtering for installable Exchange 2019 versions 
-    .EXAMPLE
-    PS> $VersTable = Resolve-xopBuildSemVersToTextNameTDO -AllVersions
-    PS> $VersTable |?{$_.NickName -match '^EX2019' -AND $_.isinstallable -ne $true} | select -first 1 
+      Demo returning AllVersions table, and post-filtering for installable Exchange 2019 versions 
+      .EXAMPLE
+      PS> $VersTable = Resolve-xopBuildSemVersToTextNameTDO -AllVersions
+      PS> $VersTable |?{$_.NickName -match '^EX2019' -AND $_.isinstallable -ne $true} | select -first 1 
 
-        ProductName      : Exchange Server 2019 CU15 Sep25HU
-        ReleaseDate      : 9/8/2025
-        BuildNumberShort : 15.2.1748.37
-        BuildNumberLong  : 15.02.1748.037
-        PatchBasis       : Exchange Server 2019 CU15
-        NickName         : EX2019_CU15_Sep25HU
-        IsInstallable    : 
+          ProductName      : Exchange Server 2019 CU15 Sep25HU
+          ReleaseDate      : 9/8/2025
+          BuildNumberShort : 15.2.1748.37
+          BuildNumberLong  : 15.02.1748.037
+          PatchBasis       : Exchange Server 2019 CU15
+          NickName         : EX2019_CU15_Sep25HU
+          IsInstallable    : 
 
-    Demo returning AllVersions table, and post-filtering for most recent Exchange 2019 patch versions         
-    .LINK
-    https://github.com/tostka/verb-ex2010        
-    .LINK
-    https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates
-    #>
-    [CmdletBinding()]
-    #[alias('Get-DetectedFileVersion')]
-    PARAM(
-        [Parameter(Mandatory=$false,HelpMessage = "Exchange Version in Semantic Version Number format (n.n.n.n)[-Version '8.0.708.3']")]                
-            [alias('FileVersion')]
-            [version]$Version,
-        [Parameter(Mandatory=$false,HelpMessage = "Switch to return all versions information to pipeline[-AllVersions]")]                
-            [switch]$AllVersions
-    ) ;        
-    BEGIN {
-        $smsg = $null ; 
-        if(-not ($Version -OR $AllVersions)){$smsg = "Neither -Version or -AllVersions specified`nPlease specify one or the other" } ; 
-        if($Version -AND $AllVersions){$smsg = "BOTH -Version & -AllVersions specified`nPlease specify one or the other" } ; 
-        # XXXXXX 4:15 PM 9/24/2025
-        if($smsg){
-            write-warning $smsg ; 
-            throw ; 
-            break ; 
-        } ; 
+      Demo returning AllVersions table, and post-filtering for most recent Exchange 2019 patch versions         
+      .LINK
+      https://github.com/tostka/verb-ex2010        
+      .LINK
+      https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates
+      #>
+      [CmdletBinding()]
+      #[alias('Get-DetectedFileVersion')]
+      PARAM(
+          [Parameter(Mandatory=$false,HelpMessage = "Exchange Version in Semantic Version Number format (n.n.n.n)[-Version '8.0.708.3']")]                
+              [alias('FileVersion')]
+              [version]$Version,
+          [Parameter(Mandatory=$false,HelpMessage = "Switch to return all versions information to pipeline[-AllVersions]")]                
+              [switch]$AllVersions
+      ) ;        
+      BEGIN {
+          $smsg = $null ; 
+          if(-not ($Version -OR $AllVersions)){$smsg = "Neither -Version or -AllVersions specified`nPlease specify one or the other" } ; 
+          if($Version -AND $AllVersions){$smsg = "BOTH -Version & -AllVersions specified`nPlease specify one or the other" } ; 
+          # XXXXXX 4:15 PM 9/24/2025
+          if($smsg){
+              write-warning $smsg ; 
+              throw ; 
+              break ; 
+          } ; 
 
-        # when updating $BuildToProductName table (below), also record date of last update here (echos to console, for awareness on results)
-        [datetime]$lastBuildTableUpedate = '2025-11-26' ; 
-        $BuildTableUpedateUrl = 'https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates'
-        #'https://docs.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-date' ; 
-        #Creating the hash table with build numbers and cumulative updates
-        # updated as of 9:56 AM 3/26/2025 to curr https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates?view=exchserver-2019
-        # also using unmodified MS Build names, from the chart (changing just burns time)
-        $smsg = "NOTE:`$BuildToProductName table was last updated on $($lastBuildTableUpedate.ToShortDateString())" ; 
-        $smsg += "`n(update from:$($BuildTableUpedateUrl))" ;
-        write-host -foregroundcolor yellow $smsg ; 
+          # when updating $BuildToProductName table (below), also record date of last update here (echos to console, for awareness on results)
+          [datetime]$lastBuildTableUpedate = '2026-04-16' ; 
+          $BuildTableUpedateUrl = 'https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates'
+          #'https://docs.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-date' ; 
+          #Creating the hash table with build numbers and cumulative updates
+          # updated as of 9:56 AM 3/26/2025 to curr https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates?view=exchserver-2019
+          # also using unmodified MS Build names, from the chart (changing just burns time)
+          $smsg = "NOTE:`$BuildToProductName table was last updated on $($lastBuildTableUpedate.ToShortDateString())" ; 
+          $smsg += "`n(update from:$($BuildTableUpedateUrl))" ;
+          write-host -foregroundcolor yellow $smsg ; 
 
-        #region CONVERTFROM_MARKDOWNTABLE ; #*------v convertfrom-markdowntable v------
-        if(-not (gcm convertfrom-markdowntable -ea 0)){
-                                                                                                                                                                                                                                                                                                                                                    function convertFrom-MarkdownTable{
-            <#
-            .SYNOPSIS
-            convertFrom-MarkdownTable.ps1 - Converts a Markdown table to a PowerShell object.
-            .NOTES
-            Version     : 1.0.3
-            Author      : Todd Kadrie
-            Website     : http://www.toddomation.com
-            Twitter     : @tostka / http://twitter.com/tostka
-            CreatedDate : 2021-06-21
-            FileName    : convertFrom-MarkdownTable.ps1
-            License     : MIT License
-            Copyright   : (c) 2024 Todd Kadrie
-            Github      : https://github.com/tostka/verb-io
-            Tags        : Powershell,Markdown,Input,Conversion
-            REVISION
-            * 9:33 AM 4/11/2025 add alias: cfmdt (reflects standard verbalias)
-            * 12:33 PM 5/17/2024 fixed odd bug, was failing to trim trailing | on some rows, which caused convertfrom-csv to drop that column.
-            * 9:04 AM 9/27/2023 cbh demo output tweaks (unindented, results in 1st line de-indent and rest indented.
-            * 10:35 AM 2/21/2022 CBH example ps> adds 
-            * 12:42 PM 6/22/2021 bug workaround: empty fields in source md table (|data||data|) cause later (export-csv|convertto-csv) to create a csv with *missing* delimiting comma on the problem field ;  added trim of each field content, and CBH example for creation of a csv from mdtable input; added aliases
-            * 5:40 PM 6/21/2021 init
-            .DESCRIPTION
-            convertFrom-MarkdownTable.ps1 - Converts a Markdown table to a PowerShell object.
-            Also supports convesion of variant 'border' md table syntax (e.g. each line wrapped in outter pipe | chars)
-            Intent is as a simpler alternative to here-stringinputs for csv building. 
-            .PARAMETER markdowntext
-            Markdown-formated table to be converted into an object [-markdowntext 'title text']
-            .INPUTS
-            Accepts piped input.
-            .OUTPUTS
-            System.Object[]
-           .EXAMPLE
-           PS> $svcs = Get-Service Bits,Winrm | select status,name,displayname | 
-              convertTo-MarkdownTable -border | ConvertFrom-MarkDownTable ;  
-           Convert Service listing to and back from MD table, demo's working around border md table syntax (outter pipe-wrapped lines)
-          .EXAMPLE
-           PS> $mdtable = @"
-        |EmailAddress|DisplayName|Groups|Ticket|
-        |---|---|---|---|
-        |da.pope@vatican.org||CardinalDL@vatican.org|999999|
-        |bozo@clown.com|Bozo Clown|SillyDL;SmartDL|000001|
-        "@ ; 
-              $of = ".\out-csv-$(get-date -format 'yyyyMMdd-HHmmtt').csv" ; 
-              $mdtable | convertfrom-markdowntable | export-csv -path $of -notype ;
-              cat $of ;
-
-                "EmailAddress","DisplayName","Groups","Ticket"
-                "da.pope@vatican.org","","CardinalDL@vatican.org","999999"
-                "bozo@clown.com","Bozo Clown","SillyDL;SmartDL","000001"
-
-            Example simpler method for building csv input files fr mdtable syntax, without PSCustomObjects, hashes, or invoked object creation.
+          #region CONVERTFROM_MARKDOWNTABLE ; #*------v convertfrom-markdowntable v------
+          if(-not (gcm convertfrom-markdowntable -ea 0)){
+                                                                                                                                                                                                                                                                                                                                                      function convertFrom-MarkdownTable{
+              <#
+              .SYNOPSIS
+              convertFrom-MarkdownTable.ps1 - Converts a Markdown table to a PowerShell object.
+              .NOTES
+              Version     : 1.0.3
+              Author      : Todd Kadrie
+              Website     : http://www.toddomation.com
+              Twitter     : @tostka / http://twitter.com/tostka
+              CreatedDate : 2021-06-21
+              FileName    : convertFrom-MarkdownTable.ps1
+              License     : MIT License
+              Copyright   : (c) 2024 Todd Kadrie
+              Github      : https://github.com/tostka/verb-io
+              Tags        : Powershell,Markdown,Input,Conversion
+              REVISION
+              * 9:33 AM 4/11/2025 add alias: cfmdt (reflects standard verbalias)
+              * 12:33 PM 5/17/2024 fixed odd bug, was failing to trim trailing | on some rows, which caused convertfrom-csv to drop that column.
+              * 9:04 AM 9/27/2023 cbh demo output tweaks (unindented, results in 1st line de-indent and rest indented.
+              * 10:35 AM 2/21/2022 CBH example ps> adds 
+              * 12:42 PM 6/22/2021 bug workaround: empty fields in source md table (|data||data|) cause later (export-csv|convertto-csv) to create a csv with *missing* delimiting comma on the problem field ;  added trim of each field content, and CBH example for creation of a csv from mdtable input; added aliases
+              * 5:40 PM 6/21/2021 init
+              .DESCRIPTION
+              convertFrom-MarkdownTable.ps1 - Converts a Markdown table to a PowerShell object.
+              Also supports convesion of variant 'border' md table syntax (e.g. each line wrapped in outter pipe | chars)
+              Intent is as a simpler alternative to here-stringinputs for csv building. 
+              .PARAMETER markdowntext
+              Markdown-formated table to be converted into an object [-markdowntext 'title text']
+              .INPUTS
+              Accepts piped input.
+              .OUTPUTS
+              System.Object[]
+             .EXAMPLE
+             PS> $svcs = Get-Service Bits,Winrm | select status,name,displayname | 
+                convertTo-MarkdownTable -border | ConvertFrom-MarkDownTable ;  
+             Convert Service listing to and back from MD table, demo's working around border md table syntax (outter pipe-wrapped lines)
             .EXAMPLE
-            PS> $mdtable | convertFrom-MarkdownTable | convertTo-MarkdownTable -border ; 
-            Example to expand and dress up a simple md table, leveraging both convertfrom-mtd and convertto-mtd (which performs space padding to align pipe columns)
-            .LINK
-            https://github.com/tostka/verb-IO
-            #>
-            [CmdletBinding()]
-            [alias('convertfrom-mdt','in-markdowntable','in-mdt','cfmdt')]    
-            Param (
-                [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true,HelpMessage="Markdown-formated table to be converted into an object [-markdowntext 'title text']")]
-                $markdowntext
-            ) ;
-            PROCESS {
-                $content = @() ; 
-                if(($markdowntext|measure).count -eq 1){$markdowntext  = $markdowntext -split '\n' } ;
-                # # bug, empty fields (||) when exported (export-csv|convertto-csv) -> broken csv (missing delimiting comma between 2 fields). 
-                # workaround : flip empty field => \s. The $object still comes out properly $null on the field, but the change cause export-csv of the resulting obj to no longer output a broken csv.(weird)
-                $markdowntext  = $markdowntext -replace '\|\|','| |' ; 
-                $content = $markdowntext  | ?{$_ -notmatch "--" } ;
-            } ;  
-            END {
-                # trim lead/trail '| from each line (borders) ; remove empty lines; foreach
-                #$PsObj = $content.trim('|')| where-object{$_} | ForEach-Object{ 
-                # 11:19 AM 5/17/2024 issue, it's not triming trailing '|' on "THROTTLE |The message was throttled.|problem|":
-                $PsObj = $content.trim('|').trimend('|')| where-object{$_} | ForEach-Object{ 
-                    #$_.split('|').trim() -join '|' ; # split fields and trim leading/trailing spaces from each , then re-join with '|'
-                    # still coming through with a surviving trailing |, though the leading border is gone (causes to drop trailing cell)
-                    # filter populated, trim start/end spaces, and refilter pop'd then join result - that seems to have fixed the bug
-                    ($_.split('|') | where-object{$_} | foreach-object{$_.trim()} |where-object{$_} )  -join '|' ; 
-                } | ConvertFrom-Csv -Delimiter '|'; # convert to object
-                $PsObj | write-output ; 
-            } ; # END-E
-        } ; 
-        } ; 
-        #endregion CONVERTFROM_MARKDOWNTABLE ; #*------^ END convertFrom-MarkdownTable ^------
-        
-        $xopBuilds = @"
-ProductName                                                | ReleaseDate     | BuildNumberShort | BuildNumberLong | PatchBasis                           | NickName              | IsInstallable
----------------------------------------------------------- | --------------- | ---------------- | --------------- | ------------------------------------ | --------------------- | -------------
-Exchange Server SE RTM Oct25SU                             | 10/14/2025      | 15.2.2562.29 	  | 15.02.2562.029  | Exchange Server SE RTM               | EXSE_RTM_Oct25SU
+             PS> $mdtable = @"
+          |EmailAddress|DisplayName|Groups|Ticket|
+          |---|---|---|---|
+          |da.pope@vatican.org||CardinalDL@vatican.org|999999|
+          |bozo@clown.com|Bozo Clown|SillyDL;SmartDL|000001|
+          "@ ; 
+                $of = ".\out-csv-$(get-date -format 'yyyyMMdd-HHmmtt').csv" ; 
+                $mdtable | convertfrom-markdowntable | export-csv -path $of -notype ;
+                cat $of ;
+
+                  "EmailAddress","DisplayName","Groups","Ticket"
+                  "da.pope@vatican.org","","CardinalDL@vatican.org","999999"
+                  "bozo@clown.com","Bozo Clown","SillyDL;SmartDL","000001"
+
+              Example simpler method for building csv input files fr mdtable syntax, without PSCustomObjects, hashes, or invoked object creation.
+              .EXAMPLE
+              PS> $mdtable | convertFrom-MarkdownTable | convertTo-MarkdownTable -border ; 
+              Example to expand and dress up a simple md table, leveraging both convertfrom-mtd and convertto-mtd (which performs space padding to align pipe columns)
+              .LINK
+              https://github.com/tostka/verb-IO
+              #>
+              [CmdletBinding()]
+              [alias('convertfrom-mdt','in-markdowntable','in-mdt','cfmdt')]    
+              Param (
+                  [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true,HelpMessage="Markdown-formated table to be converted into an object [-markdowntext 'title text']")]
+                  $markdowntext
+              ) ;
+              PROCESS {
+                  $content = @() ; 
+                  if(($markdowntext|measure).count -eq 1){$markdowntext  = $markdowntext -split '\n' } ;
+                  # # bug, empty fields (||) when exported (export-csv|convertto-csv) -> broken csv (missing delimiting comma between 2 fields). 
+                  # workaround : flip empty field => \s. The $object still comes out properly $null on the field, but the change cause export-csv of the resulting obj to no longer output a broken csv.(weird)
+                  $markdowntext  = $markdowntext -replace '\|\|','| |' ; 
+                  $content = $markdowntext  | ?{$_ -notmatch "--" } ;
+              } ;  
+              END {
+                  # trim lead/trail '| from each line (borders) ; remove empty lines; foreach
+                  #$PsObj = $content.trim('|')| where-object{$_} | ForEach-Object{ 
+                  # 11:19 AM 5/17/2024 issue, it's not triming trailing '|' on "THROTTLE |The message was throttled.|problem|":
+                  $PsObj = $content.trim('|').trimend('|')| where-object{$_} | ForEach-Object{ 
+                      #$_.split('|').trim() -join '|' ; # split fields and trim leading/trailing spaces from each , then re-join with '|'
+                      # still coming through with a surviving trailing |, though the leading border is gone (causes to drop trailing cell)
+                      # filter populated, trim start/end spaces, and refilter pop'd then join result - that seems to have fixed the bug
+                      ($_.split('|') | where-object{$_} | foreach-object{$_.trim()} |where-object{$_} )  -join '|' ; 
+                  } | ConvertFrom-Csv -Delimiter '|'; # convert to object
+                  $PsObj | write-output ; 
+              } ; # END-E
+          } ; 
+          } ; 
+          #endregion CONVERTFROM_MARKDOWNTABLE ; #*------^ END convertFrom-MarkdownTable ^------
+          
+          # (ESU) == $$$ not-available [Extended Security Update (ESU) program](https://techcommunity.microsoft.com/blog/exchange/announcing-exchange-2016--2019-extended-security-update-program/4433495))
+
+          $xopBuilds = @"
+ProductName                                                | ReleaseDate     | BuildNumberShort | BuildNumberLong | PatchBasis                           | NickName              | IsInstallable 
+---------------------------------------------------------- | --------------- | ---------------- | --------------- | ------------------------------------ | --------------------- | ------------- 
+Exchange Server SE RTM Feb26SU                             | 2/10/2026       | 15.2.2562.37     | 15.02.2562.037  | Exchange Server SE RTM               | EXSE_RTM_Feb26SU      |
+Exchange Server SE RTM Dec25SU                             | 12/9/2025       | 15.2.2562.35     | 15.02.2562.035  | Exchange Server SE RTM               | EXSE_RTM_Dec25SU      |
+Exchange Server SE RTM Oct25SU                             | 10/14/2025      | 15.2.2562.29     | 15.02.2562.029  | Exchange Server SE RTM               | EXSE_RTM_Oct25SU      |
 Exchange Server SE RTM Sep25HU                             | 9/8/2025        | 15.2.2562.27     | 15.02.2562.027  | Exchange Server SE RTM               | EXSE_RTM_Sep25HU      |
 Exchange Server SE RTM Aug25SU                             | 8/12/2025       | 15.2.2562.20     | 15.02.2562.020  | Exchange Server SE RTM               | EXSE_RTM_Aug25SU      |
 Exchange Server SE RTM                                     | 7/1/2025        | 15.2.2562.17     | 15.02.2562.017  | Exchange Server SE RTM               | EXSE_RTM              | TRUE
-Exchange Server 2019 CU15 Oct25SU 	                       | 10/14/2025      | 15.2.1748.39   	| 15.02.1748.039  | Exchange Server 2019 CU15            | EX2019_CU15_Oct25SU   |
+Exchange Server 2019 CU15 Feb26SU (ESU)                    | 2/10/2026       | 15.2.1748.43     | 15.02.1748.043  | Exchange Server 2019 CU15            | EX2019_CU15_Feb26SU   |
+Exchange Server 2019 CU15 Dec25SU (ESU)                    | 12/9/2025       | 15.2.1748.42     | 15.02.1748.042  | Exchange Server 2019 CU15            | EX2019_CU15_Dec25SU   |
+Exchange Server 2019 CU15 Oct25SU                          | 10/14/2025      | 15.2.1748.39     | 15.02.1748.039  | Exchange Server 2019 CU15            | EX2019_CU15_Oct25SU   |
 Exchange Server 2019 CU15 Sep25HU                          | 9/8/2025        | 15.2.1748.37     | 15.02.1748.037  | Exchange Server 2019 CU15            | EX2019_CU15_Sep25HU   |
 Exchange Server 2019 CU15 Aug25SU                          | 8/12/2025       | 15.2.1748.36     | 15.02.1748.036  | Exchange Server 2019 CU15            | EX2019_CU15_Aug25SU   |
 Exchange Server 2019 CU15 May25HU                          | 5/29/2025       | 15.2.1748.26     | 15.02.1748.026  | Exchange Server 2019 CU15            | EX2019_CU15_May25HU   |
@@ -22551,7 +23267,7 @@ Exchange Server 2019 CU13 Apr24HU                          | 4/23/2024       | 1
 Exchange Server 2019 CU13 Mar24SU                          | 3/12/2024       | 15.2.1258.32     | 15.02.1258.032  | Exchange Server 2019 CU13            | EX2019_CU13_Mar24SU   |
 Exchange Server 2019 CU13 Nov23SU                          | 11/14/2023      | 15.2.1258.28     | 15.02.1258.028  | Exchange Server 2019 CU13            | EX2019_CU13_Nov23SU   |
 Exchange Server 2019 CU13 Oct23SU                          | 10/10/2023      | 15.2.1258.27     | 15.02.1258.027  | Exchange Server 2019 CU13            | EX2019_CU13_Oct23SU   |
-Exchange Server 2019 CU13 Aug23SUv2                        | 8/15/2023       | 15.2.1258.25     | 15.02.1258.0.6  | Exchange Server 2019 CU13            | EX2019_CU13_Aug23SUv2 |
+Exchange Server 2019 CU13 Aug23SUv2                        | 8/15/2023       | 15.2.1258.25     | 15.02.1258.025  | Exchange Server 2019 CU13            | EX2019_CU13_Aug23SUv2 |
 Exchange Server 2019 CU13 Aug23SU                          | 8/8/2023        | 15.2.1258.23     | 15.02.1258.023  | Exchange Server 2019 CU13            | EX2019_CU13_Aug23SU   |
 Exchange Server 2019 CU13 Jun23SU                          | 6/13/2023       | 15.2.1258.16     | 15.02.1258.016  | Exchange Server 2019 CU13            | EX2019_CU13_Jun23SU   |
 Exchange Server 2019 CU13 (2023H1)                         | 5/3/2023        | 15.2.1258.12     | 15.02.1258.012  | Exchange Server 2019 CU13            | EX2019_CU13_2023H1    | TRUE
@@ -22561,10 +23277,10 @@ Exchange Server 2019 CU12 Aug23SUv2                        | 8/15/2023       | 1
 Exchange Server 2019 CU12 Aug23SU                          | 8/8/2023        | 15.2.1118.36     | 15.02.1118.036  | Exchange Server 2019 CU12            | EX2019_CU12_Aug23SU   |
 Exchange Server 2019 CU12 Jun23SU                          | 6/13/2023       | 15.2.1118.30     | 15.02.1118.030  | Exchange Server 2019 CU12            | EX2019_CU12_Jun23SU   |
 Exchange Server 2019 CU12 Mar23SU                          | 3/14/2023       | 15.2.1118.26     | 15.02.1118.026  | Exchange Server 2019 CU12            | EX2019_CU12_Mar23SU   |
-Exchange Server 2019 CU12 Feb23SU                          | 2/14/2023       | 15.2.1118.25     | 15.02.1118.0.6  | Exchange Server 2019 CU12            | EX2019_CU12_Feb23SU   |
+Exchange Server 2019 CU12 Feb23SU                          | 2/14/2023       | 15.2.1118.25     | 15.02.1118.025  | Exchange Server 2019 CU12            | EX2019_CU12_Feb23SU   |
 Exchange Server 2019 CU12 Jan23SU                          | 1/10/2023       | 15.2.1118.21     | 15.02.1118.021  | Exchange Server 2019 CU12            | EX2019_CU12_Jan23SU   |
 Exchange Server 2019 CU12 Nov22SU                          | 11/8/2022       | 15.2.1118.20     | 15.02.1118.020  | Exchange Server 2019 CU12            | EX2019_CU12_Nov22SU   |
-Exchange Server 2019 CU12 Oct22SU                          | 10/11/2022      | 15.2.1118.15     | 15.02.1118.0.6  | Exchange Server 2019 CU12            | EX2019_CU12_Oct22SU   |
+Exchange Server 2019 CU12 Oct22SU                          | 10/11/2022      | 15.2.1118.15     | 15.02.1118.015  | Exchange Server 2019 CU12            | EX2019_CU12_Oct22SU   |
 Exchange Server 2019 CU12 Aug22SU                          | 8/9/2022        | 15.2.1118.12     | 15.02.1118.012  | Exchange Server 2019 CU12            | EX2019_CU12_Aug22SU   |
 Exchange Server 2019 CU12 May22SU                          | 5/10/2022       | 15.2.1118.9      | 15.02.1118.009  | Exchange Server 2019 CU12            | EX2019_CU12_May22SU   |
 Exchange Server 2019 CU12 (2022H1)                         | 4/20/2022       | 15.2.1118.7      | 15.02.1118.007  | Exchange Server 2019 CU12            | EX2019_CU12_2022H1    | TRUE
@@ -22586,10 +23302,10 @@ Exchange Server 2019 CU10 Nov21SU                          | 11/9/2021       | 1
 Exchange Server 2019 CU10 Oct21SU                          | 10/12/2021      | 15.2.922.14      | 15.02.0922.014  | Exchange Server 2019 CU10            | EX2019_CU10_Oct21SU   |
 Exchange Server 2019 CU10 Jul21SU                          | 7/13/2021       | 15.2.922.13      | 15.02.0922.013  | Exchange Server 2019 CU10            | EX2019_CU10_Jul21SU   |
 Exchange Server 2019 CU10                                  | 6/29/2021       | 15.2.922.7       | 15.02.0922.007  | Exchange Server 2019 CU10            | EX2019_CU10           | TRUE
-Exchange Server 2019 CU9 Jul21SU                           | 7/13/2021       | 15.2.858.15      | 15.02.0858.0.6  | Exchange Server 2019 CU9             | EX2019_CU9_Jul21SU    |
+Exchange Server 2019 CU9 Jul21SU                           | 7/13/2021       | 15.2.858.15      | 15.02.0858.015  | Exchange Server 2019 CU9             | EX2019_CU9_Jul21SU    |
 Exchange Server 2019 CU9 May21SU                           | 5/11/2021       | 15.2.858.12      | 15.02.0858.012  | Exchange Server 2019 CU9             | EX2019_CU9_May21SU    |
 Exchange Server 2019 CU9 Apr21SU                           | 4/13/2021       | 15.2.858.10      | 15.02.0858.010  | Exchange Server 2019 CU9             | EX2019_CU9_Apr21SU    |
-Exchange Server 2019 CU9                                   | 3/16/2021       | 15.2.858.5       | 15.02.0858.0.6  | Exchange Server 2019 CU9             | EX2019_CU9            | TRUE
+Exchange Server 2019 CU9                                   | 3/16/2021       | 15.2.858.5       | 15.02.0858.005  | Exchange Server 2019 CU9             | EX2019_CU9            | TRUE
 Exchange Server 2019 CU8 May21SU                           | 5/11/2021       | 15.2.792.15      | 15.02.0792.015  | Exchange Server 2019 CU8             | EX2019_CU8_May21SU    |
 Exchange Server 2019 CU8 Apr21SU                           | 4/13/2021       | 15.2.792.13      | 15.02.0792.013  | Exchange Server 2019 CU8             | EX2019_CU8_Apr21SU    |
 Exchange Server 2019 CU8 Mar21SU                           | 3/2/2021        | 15.2.792.10      | 15.02.0792.010  | Exchange Server 2019 CU8             | EX2019_CU8_Mar21SU    |
@@ -22611,7 +23327,9 @@ Exchange Server 2019 CU1                                   | 2/12/2019       | 1
 Exchange Server 2019 RTM Mar21SU                           | 3/2/2021        | 15.2.221.18      | 15.02.0221.018  | Exchange Server 2019 RTM             | EX2019_RTM_Mar21SU    |
 Exchange Server 2019 RTM                                   | 10/22/2018      | 15.2.221.12      | 15.02.0221.012  | Exchange Server 2019 RTM             | EX2019_RTM            | TRUE
 Exchange Server 2019 Preview                               | 7/24/2018       | 15.2.196.0       | 15.02.0196.000  | Exchange Server 2019 Preview         | EX2019_Preview        |
-Exchange Server 2016 CU23 Oct25SU 	                       | 10/14/2025 	   | 15.1.2507.61 	  | 15.01.2507.061  | Exchange Server 2016 CU23            | EX2016_CU23_Oct25SU   |
+Exchange Server 2016 CU23 Feb26SU (ESU)                    | 2/10/2026       | 15.1.2507.66     | 15.01.2507.066  | Exchange Server 2016 CU23            | EX2016_CU23_Feb26SU   |
+Exchange Server 2016 CU23 Dec25SU (ESU)                    | 12/9/2025       | 15.1.2507.63     | 15.01.2507.063  | Exchange Server 2016 CU23            | EX2016_CU23_Dec25SU   |
+Exchange Server 2016 CU23 Oct25SU                          | 10/14/2025      | 15.1.2507.61     | 15.01.2507.061  | Exchange Server 2016 CU23            | EX2016_CU23_Oct25SU   |
 Exchange Server 2016 CU23 Sep25HU                          | 9/8/2025        | 15.1.2507.59     | 15.01.2507.059  | Exchange Server 2016 CU23            | EX2016_CU23_Sep25HU   |
 Exchange Server 2016 CU23 Aug25SU                          | 8/12/2025       | 15.1.2507.58     | 15.01.2507.058  | Exchange Server 2016 CU23            | EX2016_CU23_Aug25SU   |
 Exchange Server 2016 CU23 May25HU                          | 5/29/2025       | 15.1.2507.57     | 15.01.2507.057  | Exchange Server 2016 CU23            | EX2016_CU23_May25HU   |
@@ -22645,7 +23363,7 @@ Exchange Server 2016 CU22                                  | 9/28/2021       | 1
 Exchange Server 2016 CU21 Mar22SU                          | 3/8/2022        | 15.1.2308.27     | 15.01.2308.027  | Exchange Server 2016 CU21            | EX2016_CU21_Mar22SU   |
 Exchange Server 2016 CU21 Jan22SU                          | 1/11/2022       | 15.1.2308.21     | 15.01.2308.021  | Exchange Server 2016 CU21            | EX2016_CU21_Jan22SU   |
 Exchange Server 2016 CU21 Nov21SU                          | 11/9/2021       | 15.1.2308.20     | 15.01.2308.020  | Exchange Server 2016 CU21            | EX2016_CU21_Nov21SU   |
-Exchange Server 2016 CU21 Oct21SU                          | 10/12/2021      | 15.1.2308.15     | 15.01.2308.0.6  | Exchange Server 2016 CU21            | EX2016_CU21_Oct21SU   |
+Exchange Server 2016 CU21 Oct21SU                          | 10/12/2021      | 15.1.2308.15     | 15.01.2308.015  | Exchange Server 2016 CU21            | EX2016_CU21_Oct21SU   |
 Exchange Server 2016 CU21 Jul21SU                          | 7/13/2021       | 15.1.2308.14     | 15.01.2308.014  | Exchange Server 2016 CU21            | EX2016_CU21_Jul21SU   |
 Exchange Server 2016 CU21                                  | 6/29/2021       | 15.1.2308.8      | 15.01.2308.008  | Exchange Server 2016 CU21            | EX2016_CU21           | TRUE
 Exchange Server 2016 CU20 Jul21SU                          | 7/13/2021       | 15.1.2242.12     | 15.01.2242.012  | Exchange Server 2016 CU20            | EX2016_CU20_Jul21SU   |
@@ -22767,7 +23485,7 @@ Update Rollup 8 for Exchange Server 2010 SP2               | 12/9/2013       | 1
 Update Rollup 7 for Exchange Server 2010 SP2               | 8/3/2013        | 14.2.375.0       | 14.02.0375.000  | Exchange Server 2010 SP2             | EX2010_SP2_UR7        |
 Update Rollup 6 Exchange Server 2010 SP2                   | 2/12/2013       | 14.2.342.3       | 14.02.0342.003  | Exchange Server 2010 SP2             | EX2010_SP2_UR6        |
 Update Rollup 5 v2 for Exchange Server 2010 SP2            | 12/10/2012      | 14.2.328.10      | 14.02.0328.010  | Exchange Server 2010 SP2             | EX2010_SP2_UR5_v2     |
-Update Rollup 5 for Exchange Server 2010 SP2               | 11/13/2012      | 14.3.328.5       | 14.03.0328.0.6  | Exchange Server 2010 SP2             | EX2010_SP2_UR5        |
+Update Rollup 5 for Exchange Server 2010 SP2               | 11/13/2012      | 14.3.328.5       | 14.03.0328.005  | Exchange Server 2010 SP2             | EX2010_SP2_UR5        |
 Update Rollup 4 v2 for Exchange Server 2010 SP2            | 10/9/2012       | 14.2.318.4       | 14.02.0318.004  | Exchange Server 2010 SP2             | EX2010_SP2_UR4_v2     |
 Update Rollup 4 for Exchange Server 2010 SP2               | 8/13/2012       | 14.2.318.2       | 14.02.0318.002  | Exchange Server 2010 SP2             | EX2010_SP2_UR4        |
 Update Rollup 3 for Exchange Server 2010 SP2               | 5/29/2012       | 14.2.309.2       | 14.02.0309.002  | Exchange Server 2010 SP2             | EX2010_SP2_UR3        |
@@ -22784,7 +23502,7 @@ Update Rollup 4 for Exchange Server 2010 SP1               | 7/27/2011       | 1
 Update Rollup 3 for Exchange Server 2010 SP1               | 4/6/2011        | 14.1.289.7       | 14.01.0289.007  | Exchange Server 2010 SP1             | EX2010_SP1_UR3        |
 Update Rollup 2 for Exchange Server 2010 SP1               | 12/9/2010       | 14.1.270.1       | 14.01.0270.001  | Exchange Server 2010 SP1             | EX2010_SP1_UR2        |
 Update Rollup 1 for Exchange Server 2010 SP1               | 10/4/2010       | 14.1.255.2       | 14.01.0255.002  | Exchange Server 2010 SP1             | EX2010_SP1_UR1        |
-Exchange Server 2010 SP1                                   | 8/23/2010       | 14.1.218.15      | 14.01.0218.0.6  | Exchange Server 2010 SP1             | EX2010_SP1            | TRUE
+Exchange Server 2010 SP1                                   | 8/23/2010       | 14.1.218.15      | 14.01.0218.015  | Exchange Server 2010 SP1             | EX2010_SP1            | TRUE
 Update Rollup 5 for Exchange Server 2010                   | 12/13/2010      | 14.0.726.0       | 14.00.0726.000  | Exchange Server 2010 RTM             | EX2010_UR5            |
 Update Rollup 4 for Exchange Server 2010                   | 6/10/2010       | 14.0.702.1       | 14.00.0702.001  | Exchange Server 2010 RTM             | EX2010_UR4            |
 Update Rollup 3 for Exchange Server 2010                   | 4/13/2010       | 14.0.694.0       | 14.00.0694.000  | Exchange Server 2010 RTM             | EX2010_UR3            |
@@ -22871,38 +23589,38 @@ Exchange Server 4.0 SP2                                    | 7/19/1996       | 4
 Exchange Server 4.0 SP1                                    | 5/1/1996        | 4.0.838          |                 | Exchange Server 4.0 SP1              | EX40_SP1              | TRUE
 Exchange Server 4.0 Standard Edition                       | 6/11/1996       | 4.0.837          |                 | Exchange Server 4.0 Standard Edition | EX40_SE               | TRUE
 "@ | convertFrom-MarkdownTable ;    
-        if($Version){ 
-            $xopBuildsndx = @{}
-            $Key = 'BuildNumberShort' ;             
-            write-verbose "building indexed hash on $($Key)" ; 
-            Foreach ($Item in $xopBuilds){
-                $Procd++ ; 
-                if($Key -eq 'BuildNumberLong' -AND ($null -eq $Item.BuildNumberLong)){
-                    $Item.BuildNumberLong = $Item.BuildNumberShort
-                } ; 
-                $xopBuildsndx[$Item.$Key.ToString()] = $Item ;             
-            } ; 
-            $xopBuilds = $null ; 
-        } ; 
-    } ;  # BEG-E
-    PROCESS {
-        if($Version){
-            foreach($Vers in $Version){
-                if($BuildData = $xopBuildsndx[$Vers.tostring()]){
-                    #Return $BuildData ; 
-                    Return [pscustomobject]$BuildData ;
-                }else{
-                    Return $false ; 
-                } ;
-            } ; 
-        } ;
-        if($AllVersions){
-            write-host "-AllVersions: Returning full builds table to pipeline (for post-filtering)" ; 
-            Return [pscustomobject]$xopBuilds ; 
-        } ; 
-    };  # PROC-E
-    END {}
-}
+          if($Version){ 
+              $xopBuildsndx = @{}
+              $Key = 'BuildNumberShort' ;             
+              write-verbose "building indexed hash on $($Key)" ; 
+              Foreach ($Item in $xopBuilds){
+                  $Procd++ ; 
+                  if($Key -eq 'BuildNumberLong' -AND ($null -eq $Item.BuildNumberLong)){
+                      $Item.BuildNumberLong = $Item.BuildNumberShort
+                  } ; 
+                  $xopBuildsndx[$Item.$Key.ToString()] = $Item ;             
+              } ; 
+              $xopBuilds = $null ; 
+          } ; 
+      } ;  # BEG-E
+      PROCESS {
+          if($Version){
+              foreach($Vers in $Version){
+                  if($BuildData = $xopBuildsndx[$Vers.tostring()]){
+                      #Return $BuildData ; 
+                      Return [pscustomobject]$BuildData ;
+                  }else{
+                      Return $false ; 
+                  } ;
+              } ; 
+          } ;
+          if($AllVersions){
+              write-host "-AllVersions: Returning full builds table to pipeline (for post-filtering)" ; 
+              Return [pscustomobject]$xopBuilds ; 
+          } ; 
+      };  # PROC-E
+      END {}
+  }
 
 #*------^ Resolve-xopBuildSemVersToTextNameTDO.ps1 ^------
 
@@ -25456,7 +26174,7 @@ PARAM() ;
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function add-MailboxAccessGrant,Remove-InvalidVariableNameChars,2b4,2b4c,fb4,add-MbxAccessGrant,_cleanup,Connect-Ex2010,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,Connect-Ex2010XO,Connect-ExchangeServerTDO,_connect-ExOP,connect-OPServices,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,2b4,2b4c,fb4,connect-XopLocalManagementShell,Convert-xopAdminDisplayVersionTDO,cx10cmw,cx10tol,cx10tor,disable-ForestView,disable-xopExServer,Disconnect-Ex2010,enable-ForestView,get-ADExchangeServerTDO,get-DAGDatabaseCopyStatus,Get-ex16ExchangeServerTDO,Get-ex16MaintenanceModeTDO,Get-ExchangeOrganizationTDO,Get-ExchServerFromExServersGroup,get-ExRootSiteOUs,get-IISLocalBoundCertifcateTDO,get-MailboxDatabaseQuotas,Get-MessageTrackingLogTDO,resolve-EnvironmentTDO,write-log,Start-Log,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,resolve-NetworkLocalTDO,out-Clipboard,convertFrom-MarkdownTable,Remove-InvalidVariableNameChars,remove-SmtpPlusAddress,Initialize-xopEventIDTable,push-TLSLatest,test-LocalExchangeInfoTDO,2b4,2b4c,fb4,Get-SetupTextVersionTDO,get-UserMailADSummary,get-xopExchangeLocalVersionTDO,get-xopLocalExSetupVersionTDO,get-xopLocalExSetupVersionTDO,get-xopServerAdminDisplayVersion,import-EMSLocalModule,Initialize-xopEventIDTable,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxGenericTOR,Remove-InvalidVariableNameChars,2b4,2b4c,fb4,new-MailboxShared,Remove-InvalidVariableNameChars,2b4,2b4c,fb4,preview-EAPUpdate,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,remove-SmtpPlusAddress,Resolve-ADUserToLocalMailObjectExchangeGuid,Resolve-ADUserToOPMailboxExchangeGuid,resolve-ExchangeServerVersionTDO,Resolve-OPMailObjectToADUsermsExchMailboxGuid,resolve-RecipientEAP,Resolve-xopBuildSemVersToTextNameTDO,convertFrom-MarkdownTable,Resolve-xopMajorVersionTDO,rx10cmw,rx10tol,rx10tor,Start-ex16MaintenanceMode,start-Ex16ServicesInDependencyOrder,start-ExMaintModeExpress,Stop-ex16MaintenanceMode,stop-Ex16ServicesInDependencyOrder,Test-ExchangeOrganizationTDO,test-ExOPPSession,test-EXOPConnection,test-LocalExchangeInfoTDO,test-xopExchangeInstallWatermarkTDO,toggle-ForestView -Alias *
+Export-ModuleMember -Function add-MailboxAccessGrant,Remove-InvalidVariableNameChars,2b4,2b4c,fb4,add-MbxAccessGrant,_cleanup,add-MbxAccessGrant,_cleanup,Connect-Ex2010,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,Connect-Ex2010XO,Connect-ExchangeServerTDO,_connect-ExOP,connect-OPServices,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,2b4,2b4c,fb4,connect-XopLocalManagementShell,Convert-xopAdminDisplayVersionTDO,cx10cmw,cx10tol,cx10tor,disable-ForestView,disable-xopExServer,Disconnect-Ex2010,enable-ForestView,get-ADExchangeServerTDO,get-DAGDatabaseCopyStatus,Get-ex16ExchangeServerTDO,Get-ex16MaintenanceModeTDO,Get-ExchangeOrganizationTDO,Get-ExchServerFromExServersGroup,get-ExRootSiteOUs,get-IISLocalBoundCertifcateTDO,get-MailboxDatabaseQuotas,Get-MessageTrackingLogTDO,resolve-EnvironmentTDO,write-log,Start-Log,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,resolve-NetworkLocalTDO,out-Clipboard,convertFrom-MarkdownTable,Remove-InvalidVariableNameChars,remove-SmtpPlusAddress,Initialize-xopEventIDTable,push-TLSLatest,test-LocalExchangeInfoTDO,2b4,2b4c,fb4,Get-SetupTextVersionTDO,get-UserMailADSummary,get-xopExchangeLocalVersionTDO,get-xopLocalExSetupVersionTDO,get-xopLocalExSetupVersionTDO,get-xopServerAdminDisplayVersion,import-EMSLocalModule,Initialize-xopEventIDTable,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxGenericTOR,Remove-InvalidVariableNameChars,2b4,2b4c,fb4,new-MailboxShared,Remove-InvalidVariableNameChars,2b4,2b4c,fb4,preview-EAPUpdate,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,remove-SmtpPlusAddress,Resolve-ADUserToLocalMailObjectExchangeGuid,Resolve-ADUserToOPMailboxExchangeGuid,resolve-ExchangeServerVersionTDO,Resolve-OPMailObjectToADUsermsExchMailboxGuid,resolve-RecipientEAP,Resolve-xopBuildSemVersToTextNameTDO,convertFrom-MarkdownTable,Resolve-xopMajorVersionTDO,rx10cmw,rx10tol,rx10tor,Start-ex16MaintenanceMode,start-Ex16ServicesInDependencyOrder,start-ExMaintModeExpress,Stop-ex16MaintenanceMode,stop-Ex16ServicesInDependencyOrder,Test-ExchangeOrganizationTDO,test-ExOPPSession,test-EXOPConnection,test-LocalExchangeInfoTDO,test-xopExchangeInstallWatermarkTDO,toggle-ForestView -Alias *
 
 
 
@@ -25464,8 +26182,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Remove-InvalidVariableNameC
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUp7sW2zG2XUBADIOWhp59iSFO
-# Nb6gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU3F6huOlnEahJesQF+LOVgfL4
+# z9WgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -25480,9 +26198,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Remove-InvalidVariableNameC
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSZTEYO
-# mSsQnoofoondPcopaKWY2DANBgkqhkiG9w0BAQEFAASBgIO70J1SHAuAngGI4+Jt
-# ImTO5BNhmp9pq4est20cSd5yVOwdCuAyT6+KdR8RiSIBkcQVGVkTbBBcQhbIqbwj
-# HK3MB2ovbsgzhVwOC0aRjEwtcaHrXyw2nERVVWzzLlN71czRsRQIKsQYunHl//im
-# qHCWZEepPDmB+AHnbxpsMm5s
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTNMytV
+# 6zI9oTb5Fj6MG0Ilyl9b+DANBgkqhkiG9w0BAQEFAASBgJJklduWF3eGnmU+pwY4
+# bEr9owdEN0Bix8GqNL22hN2K6RdRHkVlKeqhR/GeM2Zk3zapQBiTh6Ck+NlAtelU
+# c1NkKCqFJDxg/j1OJjJRhOJ+6C01XTSJuPyA1r9jMB0rFiLVGvqhrp2zO/cievOf
+# ZyyV7nFz9GrEMpuawNR4rmVe
 # SIG # End signature block
