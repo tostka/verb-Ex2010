@@ -963,8 +963,6 @@ new-MailboxShared:Ticket
 new-MailboxShared:domaincontroller
 new-MailboxShared:ParentPath
 new-MailboxShared:NoPrompt
-new-MailboxShared:BrandUPN
-new-MailboxShared:NoOutput
 new-MailboxShared:showDebug
 new-MailboxShared:whatIf
 new-MailboxShared:Verbose

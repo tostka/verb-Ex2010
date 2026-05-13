@@ -5,26 +5,26 @@
 .SYNOPSIS
 VERB-Ex2010 - Exchange 2010 PS Module-related generic functions
 .NOTES
-Version     : 8.3.0
+Version     : 8.2.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
-CreatedDate : 1/18.3.00
+CreatedDate : 1/18.2.00
 FileName    : VERB-Ex2010.psm1
 License     : MIT
-Copyright   : (c) 1/18.3.00 Todd Kadrie
+Copyright   : (c) 1/18.2.00 Todd Kadrie
 Github      : https://github.com/tostka
 REVISIONS
 * 11:22 AM 3/13/2020 Get-ExchangeServerInSite added a ping-test, to only return matches that are pingable, added -NoPing param, to permit (faster) untested bypass
 * 6:25 PM 1/21/2020 - 1.0.0.1, rebuild, see if I can get a functional module out
-* 1/18.3.00 - 1.0.0.0
+* 1/18.2.00 - 1.0.0.0
 # 7:31 PM 1/15/2020 major revise - subbed out all identifying constants, rplcd regex hardcodes with builds sourced in tor-incl-infrastrings.ps1. Tests functional.
 # 11:34 AM 12/30/2019 ran vsc alias-expansion
 # 7:51 AM 12/5/2019 Connect-Ex2010:retooled $ExAdmin variant webpool support - now has detect in the server-pick logic, and on failure, it retries to the stock pool.
 # 10:19 AM 11/1/2019 trimmed some whitespace
 # 10:05 AM 10/31/2019 added sample load/call info
-# 12:02 PM 5/8.3.09 added cx10,rx10,dx10 aliases
-# 11:29 AM 5/8.3.09 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
+# 12:02 PM 5/8.2.09 added cx10,rx10,dx10 aliases
+# 11:29 AM 5/8.2.09 load-EMSLatest: spliced in from tsksid-incl-ServerApp.ps1, purging ; alias Add-EMSRemote-> Connect-Ex2010 ; toggle-ForestView():moved from tsksid-incl-ServerApp.ps1
 # * 1:02 PM 11/7/2018 updated Disconnect-PssBroken
 # 4:15 PM 3/24/2018 updated pshhelp
 # 1:24 PM 11/2/2017 fixed connect-Ex2010 example code to include $Ex2010SnapinName vari for the snapin name (regex no worky for that)
@@ -3952,7 +3952,7 @@ Function Connect-Ex2010 {
                             16439   {"CAS, HUB, MBX"  -split ","} # Ex13+
 
                 .PARAMETER Roles
-                Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38,16385)]
+                Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38.2.085)]
                 .PARAMETER RoleNames
                 Array of Server 'Role' name strings to be filtered against (MBX|CAS|HUB|UM|MBX|EDGE)[-RoleNames 'HUB','CAS']
                 .PARAMETER Server
@@ -3985,10 +3985,10 @@ Function Connect-Ex2010 {
                 PS> $exhubcas = (get-ADExchangeServerTDO |?{($_.roles -eq $tExRole) -AND ($_.FQDN -match "$($env:computername.substring(0,3)).*")} | Get-Random ).FQDN ;
                 Use a switch block to select different role combo targets for a given server fqdn prefix string.
                 .EXAMPLE
-                PS> $ExchangeServer = get-ADExchangeServerTDO | ?{$_.Roles -match '(4|20|32|36|38|16385|16439)'} | select -expand fqdn | get-random ; 
+                PS> $ExchangeServer = get-ADExchangeServerTDO | ?{$_.Roles -match '(4|20|32|36|38.2.085|16439)'} | select -expand fqdn | get-random ; 
                 Another/Older approach filtering on the Roles integer (targeting combos with Hub or CAS in the mix)
                 .EXAMPLE
-                PS> $ret = get-ADExchangeServerTDO -Roles @(4,20,32,36,38,16385,16439) -verbose 
+                PS> $ret = get-ADExchangeServerTDO -Roles @(4,20,32,36,38.2.085,16439) -verbose 
                 Demo use of the -Roles param, feeding it an array of Role integer values to be filtered against. In this case, the Role integers that include a CAS or HUB role.
                 .EXAMPLE
                 PS> $ret = get-ADExchangeServerTDO -RoleNames 'HUB','CAS' -verbose ;
@@ -4047,7 +4047,7 @@ Function Connect-Ex2010 {
                     [Parameter(Position=2,HelpMessage="Array of Server 'Role' name strings to be filtered against (MBX|CAS|HUB|UM|MBX|EDGE)[-RoleNames 'HUB','CAS']")]
                         [ValidateSet('MBX','CAS','HUB','UM','MBX','EDGE')]
                         [string[]]$RoleNames = @('HUB','CAS'),
-                    [Parameter(HelpMessage="Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38,16385)]")]
+                    [Parameter(HelpMessage="Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38.2.085)]")]
                         [ValidateSet(2,4,16,20,32,36,38,54,64,16385,16439)]
                         [int[]]$Roles,
                     [Parameter(HelpMessage="Switch to suppress default 'pingable' test (e.g. returns all matches, no testing)[-NoTest]")]
@@ -6175,7 +6175,7 @@ function connect-OPServices {
                                 16385   {"CAS"} # Ex13+
                                 16439   {"CAS, HUB, MBX"  -split ","} # Ex13+
                     .PARAMETER Roles
-                    Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38,16385)]
+                    Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38.2.085)]
                     .PARAMETER RoleNames
                     Array of Server 'Role' name strings to be filtered against (MBX|CAS|HUB|UM|MBX|EDGE)[-RoleNames 'HUB','CAS']
                     .PARAMETER Server
@@ -6208,10 +6208,10 @@ function connect-OPServices {
                     PS> $exhubcas = (get-ADExchangeServerTDO |?{($_.roles -eq $tExRole) -AND ($_.FQDN -match "$($env:computername.substring(0,3)).*")} | Get-Random ).FQDN ;
                     Use a switch block to select different role combo targets for a given server fqdn prefix string.
                     .EXAMPLE
-                    PS> $ExchangeServer = get-ADExchangeServerTDO | ?{$_.Roles -match '(4|20|32|36|38|16385|16439)'} | select -expand fqdn | get-random ; 
+                    PS> $ExchangeServer = get-ADExchangeServerTDO | ?{$_.Roles -match '(4|20|32|36|38.2.085|16439)'} | select -expand fqdn | get-random ; 
                     Another/Older approach filtering on the Roles integer (targeting combos with Hub or CAS in the mix)
                     .EXAMPLE
-                    PS> $ret = get-ADExchangeServerTDO -Roles @(4,20,32,36,38,16385,16439) -verbose 
+                    PS> $ret = get-ADExchangeServerTDO -Roles @(4,20,32,36,38.2.085,16439) -verbose 
                     Demo use of the -Roles param, feeding it an array of Role integer values to be filtered against. In this case, the Role integers that include a CAS or HUB role.
                     .EXAMPLE
                     PS> $ret = get-ADExchangeServerTDO -RoleNames 'HUB','CAS' -verbose ;
@@ -6270,7 +6270,7 @@ function connect-OPServices {
                         [Parameter(Position=2,HelpMessage="Array of Server 'Role' name strings to be filtered against (MBX|CAS|HUB|UM|MBX|EDGE)[-RoleNames 'HUB','CAS']")]
                             [ValidateSet('MBX','CAS','HUB','UM','MBX','EDGE')]
                             [string[]]$RoleNames = @('HUB','CAS'),
-                        [Parameter(HelpMessage="Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38,16385)]")]
+                        [Parameter(HelpMessage="Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38.2.085)]")]
                             [ValidateSet(2,4,16,20,32,36,38,54,64,16385,16439)]
                             [int[]]$Roles,
                         [Parameter(HelpMessage="Switch to suppress default 'pingable' test (e.g. returns all matches, no testing)[-NoTest]")]
@@ -8522,383 +8522,6 @@ Function enable-ForestView {
 #*------^ enable-ForestView.ps1 ^------
 
 
-#*------v enable-XOPCertificateTDO.ps1 v------
-function enable-XOPCertificateTDO{
-            <#                                                                                                                                                                                                     <#
-            .SYNOPSIS
-            enable-XOPCertificateTDO.ps1 - Enable previously-imported Exchange Certificate and bind to services. 
-            .NOTES
-            Version     : 0.0.1
-            Author      : Todd Kadrie
-            Website     : http://www.toddomation.com
-            Twitter     : @tostka / http://twitter.com/tostka
-            CreatedDate : 2025-07-08
-            FileName    : enable-XOPCertificateTDO
-            License     : MIT License
-            Copyright   : (c) 2025 Todd Kadrie
-            Github      : https://github.com/tostka/PowershellBB
-            Tags        : Powershell,Certificate,TrustChain,Import,Maintenance
-            AddedCredit : REFERENCE
-            AddedWebsite: URL
-            AddedTwitter: URL
-            REVISIONS
-            * 2:35 PM 12/2/2025 spliced in re-import connect-xopLocalManagementShell code
-            * 3:22 PM 7/24/2025 switched return to pscustomobj ; rem -whatif support ; logic upgrades write-myX compat ; added missing connect-xopLocalManagementShell code; added hybrid write-myX cmdlet support
-            * 5:06 PM 7/12/2025 substantial rewrite, added ex-eval, version, & import detect code, spanning ex2010,16 & 19 (no SE support yet, need version numbers)
-            * 5:11 PM 7/11/2025 init; wrote/added set-CertificatesInCaHierarchytdo(); flipped processing to straight loop in CA hier order, switched on extension. 
-
-            .DESCRIPTION
-            enable-XOPCertificateTDO.ps1 - Enable previously-imported Exchange Certificate and bind to services. 
-            .PARAMETER CNName
-            Target Certificate SubjectName[-CNName 'CN=GLOBAL.AD.TORO.COM
-            .PARAMETER Computername
-            Target Computer name[-Computername 'servername']
-            .PARAMETER CertStoreLocation
-            Destination Certificate Hive (My|LocalMachine|Both)[-CertStoreLocation 'LocalMachine']
-            .PARAMETER TargetCertStore
-            Optional override Destination Certificate Store name ('My':Certificates|'CA':IA's|'Root':Root CAs|'REQUEST':Pending CSRs). Default behavior is to identify Certificate type and auto-steer to the proper Store[-TargetCertStore 'CA']
-            .PARAMETER SourcePath
-            Optional path to a directory containing specified cert files[-SourcePath \\machine\share\]
-            .PARAMETER noTranscript
-            Switch to suppress internal transcript (e.g. broad ongoing transcript running)[-noTranscript]
-            .PARAMETER Change
-            Change Number[-Change 123456]
-            .INPUTS
-            None. Does not accepted piped input.(.NET types, can add description)
-            .OUTPUTS
-            Returns a customobject with a summary of the enabled certificate.
-            .EXAMPLE
-            PS> enable-XOPCertificateTDO.ps1 -CertificateFileNames 'PS_Trusted_Root_Cert.cer','ToddSelfII.pfx' -Computername $env:computername -CertStoreLocation LocalMachine -whatif
-            .EXAMPLE
-            PS> enable-XOPCertificateTDO.ps1 -CertificateFileNames @('new_entrust_bundle 8-20241010-0931AM.crt','mymail-toro-com-(11-10-2025).pfx') -Computername $env:computername -CertStoreLocation LocalMachine -verbose -whatif:
-            TOR prod current cert install
-            .EXAMPLE
-            PS> enable-XOPCertificateTDO.ps1 -CertificateFileNames @('new_entrust_bundle 8-20241010-0931AM.crt','mymail-torolab-com-(10-10-2025).pfx') -Computername $env:computername -CertStoreLocation LocalMachine -verbose -whatif:
-            TOL lab  current cert install
-            .LINK
-            https://github.com/tostka/powershellbb/
-            #>
-            [CmdletBinding()]
-            PARAM(    
-                [Parameter(Mandatory=$true,HelpMessage="Target Certificate SubjectName[-CNName 'CN=GLOBAL.AD.TORO.COM']")]
-                    $CNName,
-                [Parameter(Mandatory=$true,HelpMessage="Target Certificate NotBefore value[-NotBefore '7/23/2024 3:34:19 PM']")]
-                    [ValidateNotNullOrEmpty()]
-                    [datetime]$NotBefore,    
-                [Parameter(HelpMessage="Change Number[-Change 123456]")]
-                    [string] $Change,
-                [Parameter(HelpMessage = "Switch to suppress internal transcript (e.g. broad ongoing transcript running)[-noTranscript]")]
-                    [switch] $noTranscript
-                #[Parameter(HelpMessage="Whatif Flag  [-whatIf]")]
-                #    [switch] $whatif
-            )
-            BEGIN{    
-                if(gcm Write-MyOutput -ea 0){
-                    $noTranscript = $TRUE 
-                    $smsg = "Write-MyOutput detected: disabling transcribing" ;
-                    if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
-                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                    } ;
-                } 
-                #region BANNER ; #*------v BANNER v------
-                $sBnr="#*======v $(${CmdletName}): v======" ;
-                $smsg = $sBnr ;
-                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 }
-                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                } ;
-                #endregion BANNER ; #*------^ END BANNER ^------
-
-                $smsg = "`$PSBoundParameters w`n$(($PSBoundParameters|out-string).trim())" ; 
-                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
-                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                } ;
-                if($CNName -AND $NotBefore){} else {
-                    $smsg = "`$CNName ($($CNName)) -OR `$NotBefore ($($NotBefore)) are not BOTH populated!" 
-                    if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    } ;  
-                    throw $smsg ;
-                    break ; 
-                } ;
-                
-                #region CONNECT_XOPLOCAL ; #*------v connect-XopLocal v------
-                $tcmdlet = 'get-exchangecertificate' ;
-                $cmd = $null; $cmd = get-command $tcmdlet -erroraction 0 ;
-                if(-not $cmd){
-                    if($xopconn = connect-XopLocalManagementShell){
-                        if($ExPSS = get-pssession | ? { $_.ComputerName -match "^$($env:computername)" -AND $_.ConfigurationName -eq 'Microsoft.Exchange' } | sort id -Descending | select -first 1 ){
-                            TRY{
-                                $cmd = $null; $cmd = get-command $tcmdlet -erroraction 0 ;
-                                if(-not $cmd){
-                                    $smsg = "Missing $($cmdlet): re-importing PSSession..." ;
-                                    if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                                    } ;
-                                    $ExIPSS = Import-PSSession $ExPSS -allowclobber -ea STOP ;
-                                } ;
-                                $cmd = $null; $cmd = get-command 'Get-OrganizationConfig' -erroraction stop ;
-                                $smsg = "Connected to: $($expss.computername)" ;
-                                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                                } ;
-                            } CATCH {
-                                $ErrTrapd=$Error[0] ;
-                                $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-                                if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                } ;
-                                BREAK ;
-                            } ;
-                        } ;
-                    } else {
-                        $smsg = "NOT CONNECTED!"
-                        if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
-                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        } ;
-                        BREAK ;
-                    } ;
-                } ;
-                #endregion CONNECT_XOPLOCAL ; #*------^ END connect-XopLocal ^------
-                $rgxStatusKey = 'Automatic|Disabled' ; 
-                $rgxXopKeySvcs = 'MSExchangeADTopology|MSExchangeFrontEndTransport|MSExchangeTransport|MSExchangeRPC|MSExchangeIS|W3SVC' ; 
-                #$exlocalstatus.ExServicesStatus |?{$_.StartType -match 'Automatic|Disabled'} | ?{$_.status -eq 'Stopped'} |?{$_.servicename -match 'MSExchangeADTopology|MSExchangeFrontEndTransport|MSExchangeTransport|MSExchangeRPC|MSExchangeIS|W3SVC'}
-                <#if($ExLocalStatus.ExServicesStatus |?{$_.StartType -match $rgxStatusKey} | ?{$_.status -eq 'Stopped'} |?{$_.servicename -match $rgxXopKeySvcs}){
-                    $smsg = "LOCAL SERVER IS *SERVICE-DISABLED/DOWN*!" ; 
-                    $smsg += "`nENABLE SERVIVCES AND BRING BACK ONLINE BEFORE RUNNING THIS SCRIPT!" ;
-                    if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
-                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    } ;
-                    throw $smsg ; 
-                    break ; 
-                }
-                #>
-                if(-not $noTranscript){
-                    $transcript = "c:\scripts\logs\$($Change)-$($env:COMPUTERNAME)-ImportExCertPFX-$(get-date -format 'yyyyMMdd-HHmmtt')" ; 
-                    if(-not(test-path (split-path $transcript))){
-                        $smsg = "(creating missing $(split-path $transcript))" ; 
-                        if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 }
-                            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                        } ;
-                        mkdir -path (split-path $transcript) -verbose ; 
-                    }; 
-                    if($whatif){
-                        $transcript += "-WHATIF" ; 
-                    } else { 
-                        $transcript += "-EXEC" ; 
-                    } ; 
-                    $transcript+="-log-trans.txt" ;             
-                    TRY{$stopresults = stop-transcript} CATCH {} ; 
-                    TRY{$startresults = start-transcript $transcript ; 
-                        $smsg = $startresults ; 
-                        if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
-                            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                        } ;
-                    } CATCH {
-                        $smsg = "host doesn't support transcription"
-                        if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
-                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        } ;
-                    } ; 
-                }else {
-                    $smsg = "(-NoTranscript: skipping internal transcription)" ; 
-                    if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
-                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                    } ;
-                }
-                  
-                $tcmdlet = 'get-exchangecertificate' ;
-                $cmd = $null; $cmd = get-command $tcmdlet -erroraction 0 ;
-                if(-not $cmd){
-                    if($xopconn = connect-XopLocalManagementShell){
-                        if($ExPSS = get-pssession | ? { $_.ComputerName -match "^$($env:computername)" -AND $_.ConfigurationName -eq 'Microsoft.Exchange' } | sort id -Descending | select -first 1 ){
-                            TRY{
-                                $cmd = $null; $cmd = get-command $tcmdlet -erroraction 0 ;
-                                if(-not $cmd){
-                                    $smsg = "Missing $($cmdlet): re-importing PSSession..." ;
-                                    if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                                    } ;
-                                    $ExIPSS = Import-PSSession $ExPSS -allowclobber -ea STOP ;
-                                } ;
-                                $cmd = $null; $cmd = get-command 'Get-OrganizationConfig' -erroraction stop ;
-                                $smsg = "Connected to: $($expss.computername)" ;
-                                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                                } ;
-                            } CATCH {
-                                $ErrTrapd=$Error[0] ;
-                                $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-                                if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                } ;
-                                BREAK ;
-                            } ;
-                        } ;
-                    } else {
-                        $smsg = "NOT CONNECTED!"
-                        if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
-                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        } ;
-                        BREAK ;
-                    } ;
-                } ;              
-            };  # BEG-E
-            PROCESS{
-                TRY{             
-                    $cert=get-childitem cert:\LocalMachine\My\ -EA STOP|?{$_.Subject -like $CNName -AND $_.NotBefore -ge (get-date $NotBefore)} ;
-                    #$cert | select subject,friendlyname,not*,DNSName,pspath ;
-                    $smsg = "Matched Cert:`n$(($cert | select subject,friendlyname,not*,DNSName,pspath|out-string).trim())" ; 
-                    if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
-                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                    } ;
-                    if($cert -isnot [system.array]){
-                        if((get-exchangeserver $env:computername -EA STOP).IsClientAccessServer ){
-                            $smsg = "The next command will prompt:" ;
-                            $smsg += "`nConfirm Overwrite the existing default SMTP certificate?" ;
-                            $smsg += "`nCurrent certificate: [thumb will match the *OLD* cert]" ;
-                            $smsg += "`nReplace it with certificate: [new cert thumb]?`n" ;
-                            $smsg += "ANSWER Y(YES) OVERWRITE!`n" ;                            
-                            if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
-                                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            } ;
-                        }elseif((get-exchangeserver $env:computername -EA STOP).IsEdgeServer){
-                            $smsg = "The next command will prompt:" ;
-                            $smsg += "`nConfirm Overwrite the existing default SMTP certificate?" ;
-                            $smsg += "`nCurrent certificate: [thumb will match the *SELF-SIGNED* cert that runs edgsync and mail transfer]" ;
-                            $smsg += "`nReplace it with certificate: [new cert thumb]?`n" ;
-                            $smsg += "ANSWER N (NO!) OVERWRITE! TO AVOID DAMAGING SYNC & TRANSFER!`n" ;                            
-                            if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
-                                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            } ;
-                        }  ;
-                        
-                        TRY{
-                            Enable-ExchangeCertificate -server $env:computername -Thumbprint $($cert.Thumbprint) -Services POP,IMAP,SMTP,IIS -EA STOP -whatif:$($whatif) ;
-                        } CATCH {
-                            $ErrTrapd=$Error[0] ;
-                            $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-                            if(gcm Write-MyError -ea 0){Write-MyError $smsg } else {
-                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error}
-                                else{ write-ERROR "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            } ;
-                        } ; 
-                        
-                        $smsg = "Confirming:" ;       
-                        if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
-                            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                        } ;
-                        TRY{                 
-                            $bcert=get-exchangecertificate -Server $env:COMPUTERNAME -ErrorAction STOP |
-                                    ?{($_.Services -match "IIS") -AND ($_.Services -match "SMTP") -AND ($_.Services -match "IMAP") -AND ($_.Services -match "POP")}  ;
-                            $retObj = [ordered]@{
-                                Subject    =  $bcert.Subject
-                                Services   =  $bcert.Services
-                                NotAfter   =    $bcert.NotAfter
-                                NotBefore  =    $bcert.NotBefore
-                                Thumbprint =    $bcert.Thumbprint
-                            } ; 
-                            $smsg = "`n=MATCHED CERT ON $($env:COMPUTERNAME):`n$(($bcert | fl Subject,Services,not*,thumb*|out-string).trim())" ;
-                            if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
-                                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                            } ;
-                            if($bcert -isnot [system.array]){
-                                $tCERT=gci cert:\LocalMachine\My\$($bcert.Thumbprint) ;
-                                $retObj.add('SANS',"`n$((($tCert.Extensions | Where-Object {$_.Oid.FriendlyName -eq "subject alternative name"}).Format(1)|out-string).trim())")
-                                $smsg = "==$($tcert.Subject) SANS" ;
-                                $smsg += "`n$((($tCert.Extensions | Where-Object {$_.Oid.FriendlyName -eq "subject alternative name"}).Format(1)|out-string).trim())" ;
-                            } else {
-                                $smsg = "multiple certs returned! $($bcert.Subject| out-string)" 
-                                if(gcm Write-MyError -ea 0){Write-MyError $smsg } else {
-                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error}
-                                    else{ write-ERROR "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                } ;                                
-                            };
-                        } CATCH {
-                            $ErrTrapd=$Error[0] ;
-                            $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-                            if(gcm Write-MyError -ea 0){Write-MyError $smsg } else {
-                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error}
-                                else{ write-ERROR "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            } ;
-                        } ; 
-                        $smsg = "Returning certificate summary to pipeline" ;
-                        if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
-                            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
-                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-                        } ;
-                        [pscustomobject]$retObj | write-output ;
-                    } else {
-                         $smsg = "multiple certs matched!"  ; 
-                         if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        } ;  
-                        throw $smsg ;
-                    } ;
-                } CATCH {     $ErrTrapd=$Error[0] ;
-                    $smsg = "`n$(($ErrTrapd  | fl * -Force|out-string).trim())" ;
-                    if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
-                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    } ;
-                    Break ;
-                } ;
-   
-            } ;  # PROC-E
-            END{
-                if(-not $noTranscript){
-                    TRY{
-                        $smsg = $stopresults = stop-transcript 
-                        if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        } ;
-                    } CATCH {
-                        $smsg = "host doesn't support transcription"
-                        if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
-                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        } ;
-                    } ; 
-                } ; 
-                $smsg = "$($sBnr.replace('=v','=^').replace('v=','^='))" ;
-                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
-                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                } ;
-            };  # END-E   
-        }
-
-#*------^ enable-XOPCertificateTDO.ps1 ^------
-
-
 #*------v get-ADExchangeServerTDO.ps1 v------
 Function get-ADExchangeServerTDO {
         <#
@@ -8997,7 +8620,7 @@ Function get-ADExchangeServerTDO {
                     16385   {"CAS"} # Ex13+
                     16439   {"CAS, HUB, MBX"  -split ","} # Ex13+
         .PARAMETER Roles
-        Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38,16385)]
+        Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38.2.085)]
         .PARAMETER RoleNames
         Array of Server 'Role' name strings to be filtered against (MBX|CAS|HUB|UM|MBX|EDGE)[-RoleNames 'HUB','CAS']
         .PARAMETER Server
@@ -9030,10 +8653,10 @@ Function get-ADExchangeServerTDO {
         PS> $exhubcas = (get-ADExchangeServerTDO |?{($_.roles -eq $tExRole) -AND ($_.FQDN -match "$($env:computername.substring(0,3)).*")} | Get-Random ).FQDN ;
         Use a switch block to select different role combo targets for a given server fqdn prefix string.
         .EXAMPLE
-        PS> $ExchangeServer = get-ADExchangeServerTDO | ?{$_.Roles -match '(4|20|32|36|38|16385|16439)'} | select -expand fqdn | get-random ; 
+        PS> $ExchangeServer = get-ADExchangeServerTDO | ?{$_.Roles -match '(4|20|32|36|38.2.085|16439)'} | select -expand fqdn | get-random ; 
         Another/Older approach filtering on the Roles integer (targeting combos with Hub or CAS in the mix)
         .EXAMPLE
-        PS> $ret = get-ADExchangeServerTDO -Roles @(4,20,32,36,38,16385,16439) -verbose 
+        PS> $ret = get-ADExchangeServerTDO -Roles @(4,20,32,36,38.2.085,16439) -verbose 
         Demo use of the -Roles param, feeding it an array of Role integer values to be filtered against. In this case, the Role integers that include a CAS or HUB role.
         .EXAMPLE
         PS> $ret = get-ADExchangeServerTDO -RoleNames 'HUB','CAS' -verbose ;
@@ -9092,7 +8715,7 @@ Function get-ADExchangeServerTDO {
             [Parameter(Position=2,HelpMessage="Array of Server 'Role' name strings to be filtered against (MBX|CAS|HUB|UM|MBX|EDGE)[-RoleNames 'HUB','CAS']")]
                 [ValidateSet('MBX','CAS','HUB','UM','MBX','EDGE')]
                 [string[]]$RoleNames = @('HUB','CAS'),
-            [Parameter(HelpMessage="Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38,16385)]")]
+            [Parameter(HelpMessage="Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38.2.085)]")]
                 [ValidateSet(2,4,16,20,32,36,38,54,64,16385,16439)]
                 [int[]]$Roles,
             [Parameter(HelpMessage="Switch to suppress default 'pingable' test (e.g. returns all matches, no testing)[-NoTest]")]
@@ -12197,7 +11820,7 @@ function Get-MessageTrackingLogTDO {
                             16385   {"CAS"} # Ex13+
                             16439   {"CAS, HUB, MBX"  -split ","} # Ex13+
                 .PARAMETER Roles
-                Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38,16385)]
+                Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38.2.085)]
                 .PARAMETER RoleNames
                 Array of Server 'Role' name strings to be filtered against (MBX|CAS|HUB|UM|MBX|EDGE)[-RoleNames 'HUB','CAS']
                 .PARAMETER Server
@@ -12230,10 +11853,10 @@ function Get-MessageTrackingLogTDO {
                 PS> $exhubcas = (get-ADExchangeServerTDO |?{($_.roles -eq $tExRole) -AND ($_.FQDN -match "$($env:computername.substring(0,3)).*")} | Get-Random ).FQDN ;
                 Use a switch block to select different role combo targets for a given server fqdn prefix string.
                 .EXAMPLE
-                PS> $ExchangeServer = get-ADExchangeServerTDO | ?{$_.Roles -match '(4|20|32|36|38|16385|16439)'} | select -expand fqdn | get-random ; 
+                PS> $ExchangeServer = get-ADExchangeServerTDO | ?{$_.Roles -match '(4|20|32|36|38.2.085|16439)'} | select -expand fqdn | get-random ; 
                 Another/Older approach filtering on the Roles integer (targeting combos with Hub or CAS in the mix)
                 .EXAMPLE
-                PS> $ret = get-ADExchangeServerTDO -Roles @(4,20,32,36,38,16385,16439) -verbose 
+                PS> $ret = get-ADExchangeServerTDO -Roles @(4,20,32,36,38.2.085,16439) -verbose 
                 Demo use of the -Roles param, feeding it an array of Role integer values to be filtered against. In this case, the Role integers that include a CAS or HUB role.
                 .EXAMPLE
                 PS> $ret = get-ADExchangeServerTDO -RoleNames 'HUB','CAS' -verbose ;
@@ -12292,7 +11915,7 @@ function Get-MessageTrackingLogTDO {
                     [Parameter(Position=2,HelpMessage="Array of Server 'Role' name strings to be filtered against (MBX|CAS|HUB|UM|MBX|EDGE)[-RoleNames 'HUB','CAS']")]
                         [ValidateSet('MBX','CAS','HUB','UM','MBX','EDGE')]
                         [string[]]$RoleNames = @('HUB','CAS'),
-                    [Parameter(HelpMessage="Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38,16385)]")]
+                    [Parameter(HelpMessage="Array of msExchCurrentServerRoles 'role' integers to be filtered against (2|4|16|20|32|36|38|54|64|16385|16439)[-Roles @(38.2.085)]")]
                         [ValidateSet(2,4,16,20,32,36,38,54,64,16385,16439)]
                         [int[]]$Roles,
                     [Parameter(HelpMessage="Switch to suppress default 'pingable' test (e.g. returns all matches, no testing)[-NoTest]")]
@@ -16727,235 +16350,6 @@ Function import-EMSLocalModule {
 }
 
 #*------^ import-EMSLocalModule.ps1 ^------
-
-
-#*------v import-xopCertificatePfxTDO.ps1 v------
-function import-xopCertificatePfxTDO{
-        <#
-        .SYNOPSIS
-        import-xopCertificatePfxTDO - Imports Exchange certificates - has logic to auto-locate & find per UserDomain. Returns certificate summary properties to pipeline
-        .NOTES
-        Version     : 0.0.1
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 2025-07-24
-        FileName    : import-xopCertificatePfxTDO.ps1
-        License     : MIT License
-        Copyright   : (c) 2025 Todd Kadrie
-        Github      : https://github.com/tostka/verb-XXX
-        Tags        : Powershell,Certificate,TrustChain,Import,Maintenance,ExchangeServer,Exchange
-        AddedCredit : REFERENCE
-        AddedWebsite: URL
-        AddedTwitter: URL
-        REVISIONS
-        * 2:11 PM 8/12/2025 added trycatch on the import attempt, trying to capture the TOL 01T rpc error that left certs non returnable via get-exchangecertificate.
-        * 2:47 PM 7/24/2025 getting an unresolvable alias on orig name: ren import-xopCertificateTDO -> import-xopCertificatePfxTDO 
-        updated path resolution logic ren import-xopCertificate -> import-xopCertificateTDO, alias orig
-        * 11:30 AM 7/11/2025 init
-        .DESCRIPTION
-        import-xopCertificatePfxTDO - Imports Exchange certificates - has logic to auto-locate & find per UserDomain
-        .PARAMETER Computername
-        Target Computer name[-Computername 'servername']"
-        .PARAMETER CertStoreLocation
-        "Destination Certificate Hive (CurrentUser|LocalMachine|Both)[-CertStoreLocation 'LocalMachine']
-        .PARAMETER TargetCertStore
-        Destination Certificate Store name ('My':Certificates|'CA':IA's|'Root':Root CAs|'REQUEST':Pending CSRs)[-TargetCertStore 'CA']
-        .PARAMETER Path
-        "Path to a target Certificate .cer/.crt file [-Path \\machine\share\]
-        .PARAMETER whatIf
-        Whatif Flag  [-whatIf]
-        .INPUTS
-        None. Does not accepted piped input.
-        .OUTPUTS
-        System.Security.Cryptography.X509Certificates.X509Certificate
-        .EXAMPLE
-        PS> $results = import-xopCertificatePfxTDO -whatif -verbose
-        PS> $results 
-
-            Subject      : CN=SUB.DOMAIN.com, O=The Toro Company, L=Bloomington, S=Minnesota, C=US
-            Services     :
-            NotAfter     : 11/10/2025 7:54:40 AM
-            NotBefore    : 10/10/2024 8:54:41 AM
-            Thumbprint   : DF6F6ADD7A304FB8A894C679C240FB91B6843ED4
-            FriendlyName :
-
-        Run with whatif & verbose
-        .EXAMPLE
-        PS> $pltLegCER=@{
-        PS>     computername = $env:computername ;
-        PS>     CertStoreLocation = 'LocalMachine' ;
-        PS>     TargetCertStore = 'Root' ;
-        PS>     Path = 'c:\path-to\cert.cer' ;
-        PS>     whatIf = $($whatif)
-        PS> } ;
-        PS> $smsg += "`nusing import-xopCertificatePfxTDO`n$(($pltLegCER|out-string).trim())" ;
-        PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
-        PS> $ret = import-xopCertificatePfxTDO @pltLegCER ;
-        Typical splatted call
-        .EXAMPLE
-        PS> $result = import-xopCertificatePfxTDO -computername $env:computername -CertStoreLocation 'LocalMachine' -TargetCertStore Root -Path d:\cab\new_entrust_bundle 8-20241010-0931AM.crt -whatIf:$true ;
-        Parameter call        
-        .LINK
-        https://github.com/tostka/verb-Network
-        #>
-        [CmdletBinding()]
-        #[Alias('import-xopCertificate')]
-        Param (
-            [Parameter(Mandatory=$false,HelpMessage="Path to target PFX file")]
-                [string]$FilePath,
-            [Parameter(Mandatory=$false,HelpMessage="Securestring Password for PFX format certificates[-Password `$securestringpw")]
-                [System.Security.SecureString]$Password,
-            [Parameter(Mandatory=$false,HelpMessage="Exchange version string (ExSE|Ex2019|Ex2016|Ex2013|Ex2010|Ex2007|Ex2003|Ex2000)[-ExVers Ex2016]")]
-                [ValidateSet('ExSE','Ex2019','Ex2016','Ex2013','Ex2010','Ex2007','Ex2003','Ex2000')]
-                [string]$ExVers = 'Ex2016'
-        )
-        BEGIN{
-            if(test-path $FilePath -PathType Container -ea 0){
-                # fed a folder it tries to discover for the domain in the folder                
-                switch ($env:USERDOMAIN){
-                    'TORO'{
-                        $FilePath = get-childitem -path "$($FilePath)\*.pfx" -ea STOP |?{$_.name -match 'mymail-toro-com-'} | select -expand fullname ;
-                    }
-                    'TORO-LAB'{
-                        $FilePath = get-childitem -path "$($FilePath)\*.pfx" -ea STOP |?{$_.name -match 'mymail-torolab-com-'} | select -expand fullname ; 
-                    }
-                    DEFAULT{
-                        $smsg = "UNCONFIGURED/UNRECOGNIZED `$ENV:USERDOMAIN: $($env:USERDOMAIN)`nSKIPPING CERT CHAIN OF TRUST IMPORT" ; 
-                        if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
-                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        } ;
-                    }
-                }
-                if(test-path $FilePath -PathType Leaf){
-                    $smsg = "Using $($env:USERDOMAIN) -discovered certificate PFX file:$($FilePath)" ;
-                    if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
-                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                    } ;                    
-                }else {
-                    $smsg = "UNABLE TO RESOLVE -FILEPATH $($FilePath) TO A SUITABLE PFX FILE!" ; 
-                    if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
-                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    } ;
-                }
-            } ; 
-        }
-        PROCESS{
-            foreach($CertificatePath in $FilePath){                
-                if($CertificatePath = gci $CertificatePath){
-                    if($CertificatePath.name.tolower() -match '\.pfx$' -and -not $Password){
-                        $smsg = "Next dialog will prompt for PFX credential,`nfor:$($CertificatePath.name)`nenter anything ('dummy') for Username, it will not be used" ; 
-                        if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        } ;
-                        $Password = (get-credential -Credential dummy).password ; 
-                    } ; 
-                    # demo cmdline: Import-ExchangeCertificate -FileData ([Byte[]]$(Get-Content -Path "D:\cab\mymail-torolab-com-(10-10-2025).pfx" -Encoding Byte -ReadCount 0)) -Password (Read-Host "Enter Certificate Password" -AsSecureString)
-                    $pltIpExCert=@{
-                        #FileData=([Byte[]]$(Get-Content -Path $CertificatePath.fullname -Encoding byte -ReadCount 0 -erroraction 'STOP')) ;
-                        #Password=$Password ;
-                        erroraction = 'STOP' ;
-                        whatif = $($whatif) ;
-                    } ;
-                    if($Password){
-                        $pltIpExCert.add('Password',$Password) ; 
-                    }
-                    # note UNC sources are disabled now!
-                    # Import-ExchangeCertificate -Server Mailbox01 -FileData ([System.IO.File]::ReadAllBytes('\\FileServer01\Data\Exported Fabrikam Cert.pfx')) -Password (Get-Credential).password
-                    switch -regex ($ExVers){
-                        'Ex2010'{
-                            $pltIpExCert.add('FileData',([Byte[]]$(Get-Content -Path $CertificatePath.fullname -Encoding byte -ReadCount 0 -erroraction 'STOP'))) ;  
-                        }
-                        'Ex2013'{
-                            $pltIpExCert.add('FileName',$CertificatePath.fullname) ;   
-                        }
-                        'ExSE|Ex2019|Ex2016'{
-                            #$pltIpExCert.add('FileData',([System.IO.File]::ReadAllBytes($CertificatePath.fullname))) ;   
-                            $pltIpExCert.add('FileData',([System.IO.File]::ReadAllBytes($CertificatePath.fullname))) ;   
-                        }
-                        default{
-                            $smsg = "UNCONFIGURED `$ExVers:$($ExVers)!" ; 
-                            $smsg += "`nThis script has not been configured (yet) to support ImportExchangeCertificate syntax on the specified version" ; 
-                            if(gcm Write-MyError -ea 0){Write-MyError $smsg } else {
-                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error} else{ write-ERROR "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            } ;
-                            break ; 
-                        }
-                    }
-                    $smsg = "Import-ExchangeCertificate  w`n$(($pltIpExCert|out-string).trim())" ; 
-                    if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                    } ;
-                    TRY{
-                        $results = Import-ExchangeCertificate @pltIpExCert ;                 
-                    } CATCH [InvalidOperationException]{
-                        $ErrTrapd=$Error[0] ;
-                        $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
-                        $smsg += "`n$($ErrTrapd.Exception.Message)" ;
-                        if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        } ;
-                    } CATCH {
-                        $ErrTrapd=$Error[0] ;
-                        $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
-                        $smsg += "`n$($ErrTrapd.Exception.Message)" ;
-                        if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        } ;
-                        $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } CATCH[$($ErrTrapd.Exception.GetType().FullName)]{" ;
-                        if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        } ;
-                    } ;
-                    if(-not ($whatif) -and $results.Thumbprint){
-                        if (-not $whatif -AND ($rout = Get-ExchangeCertificate -server $env:computername -thumb $results.Thumbprint)) {
-                            #$rout | select Subject, Services, not*, thumb*, friend* | write-output ;
-                            # return the cert not summary
-                            $rout | write-output ; 
-                        } elseif (-not $whatif) {
-                            $false | write-output ;
-                        } else {
-                            $smsg = "-whatif:$($whatif): skipped import/confirmation" ;
-                            if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                            } ;
-                        } ;
-                    }else{
-                        $smsg = "Import-ExchangeCertificate RETURNED NO POPULATED THUMBPRINT!(BUG?)"
-                        if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                        } ;
-                        $false | write-output ;
-                    }
-                    if(-not $whatif -AND ($rout = Get-ExchangeCertificate -server $env:computername -thumb $results.Thumbprint)){
-                        $rout | select Subject,Services,not*,thumb*,friend* | write-output ;
-                    } elseif(-not $whatif){
-                        $false | write-output ; 
-                    }else {                        
-                        $smsg = "-whatif:$($whatif): skipped import/confirmation" ; 
-                        if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
-                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                        } ;
-                    } ; 
-                } else { 
-                   $smsg = "Unable to locate cert `$pfx!:$($CertificatePath)" ; 
-                   if(gcm Write-MyError -ea 0){Write-MyError $smsg } else {
-                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error}
-                        else{ write-ERROR "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    } ;
-                } ;
-            }  # loop-E       
-        } ;  # PROC-E
-    }
-
-#*------^ import-xopCertificatePfxTDO.ps1 ^------
 
 
 #*------v Initialize-xopEventIDTable.ps1 v------
@@ -23334,35 +22728,35 @@ Update Rollup 2 for Exchange Server 2007 SP2               | 1/22/2010       | 8
 Update Rollup 1 for Exchange Server 2007 SP2               | 11/19/2009      | 8.2.217.3        | 8.02.0217.003   | Exchange Server 2007 SP2             | EX2007_SP2_UR1        |
 Exchange Server 2007 SP2                                   | 8/24/2009       | 8.2.176.2        | 8.02.0176.002   | Exchange Server 2007 SP2             | EX2007_SP2            | TRUE
 Update Rollup 10 for Exchange Server 2007 SP1              | 4/13/2010       | 8.1.436.0        | 8.01.0436.000   | Exchange Server 2007 SP1             | EX2007_SP1_UR10       |
-Update Rollup 9 for Exchange Server 2007 SP1               | 7/16/2009       | 8.1.393.1        | 8.01.0393.001   | Exchange Server 2007 SP1             | EX2007_SP1_UR9        |
-Update Rollup 8 for Exchange Server 2007 SP1               | 5/19/2009       | 8.1.375.2        | 8.01.0375.002   | Exchange Server 2007 SP1             | EX2007_SP1_UR8        |
-Update Rollup 7 for Exchange Server 2007 SP1               | 3/18.3.09       | 8.1.359.2        | 8.01.0359.002   | Exchange Server 2007 SP1             | EX2007_SP1_UR7        |
-Update Rollup 6 for Exchange Server 2007 SP1               | 2/10/2009       | 8.1.340.1        | 8.01.0340.001   | Exchange Server 2007 SP1             | EX2007_SP1_UR6        |
-Update Rollup 5 for Exchange Server 2007 SP1               | 11/20/2008      | 8.1.336.1        | 8.01.0336.01    | Exchange Server 2007 SP1             | EX2007_SP1_UR5        |
-Update Rollup 4 for Exchange Server 2007 SP1               | 10/7/2008       | 8.1.311.3        | 8.01.0311.003   | Exchange Server 2007 SP1             | EX2007_SP1_UR4        |
-Update Rollup 3 for Exchange Server 2007 SP1               | 7/8.3.08        | 8.1.291.2        | 8.01.0291.002   | Exchange Server 2007 SP1             | EX2007_SP1_UR3        |
+Update Rollup 9 for Exchange Server 2007 SP1               | 7/16/2009       | 8.2.093.1        | 8.01.0393.001   | Exchange Server 2007 SP1             | EX2007_SP1_UR9        |
+Update Rollup 8 for Exchange Server 2007 SP1               | 5/19/2009       | 8.2.075.2        | 8.01.0375.002   | Exchange Server 2007 SP1             | EX2007_SP1_UR8        |
+Update Rollup 7 for Exchange Server 2007 SP1               | 3/18/2009       | 8.2.059.2        | 8.01.0359.002   | Exchange Server 2007 SP1             | EX2007_SP1_UR7        |
+Update Rollup 6 for Exchange Server 2007 SP1               | 2/10/2009       | 8.2.040.1        | 8.01.0340.001   | Exchange Server 2007 SP1             | EX2007_SP1_UR6        |
+Update Rollup 5 for Exchange Server 2007 SP1               | 11/20/2008      | 8.2.036.1        | 8.01.0336.01    | Exchange Server 2007 SP1             | EX2007_SP1_UR5        |
+Update Rollup 4 for Exchange Server 2007 SP1               | 10/7/2008       | 8.2.011.3        | 8.01.0311.003   | Exchange Server 2007 SP1             | EX2007_SP1_UR4        |
+Update Rollup 3 for Exchange Server 2007 SP1               | 7/8/2008        | 8.1.291.2        | 8.01.0291.002   | Exchange Server 2007 SP1             | EX2007_SP1_UR3        |
 Update Rollup 2 for Exchange Server 2007 SP1               | 5/9/2008        | 8.1.278.2        | 8.01.0278.002   | Exchange Server 2007 SP1             | EX2007_SP1_UR2        |
-Update Rollup 1 for Exchange Server 2007 SP1               | 2/28.3.08       | 8.1.263.1        | 8.01.0263.001   | Exchange Server 2007 SP1             | EX2007_SP1_UR1        |
+Update Rollup 1 for Exchange Server 2007 SP1               | 2/28/2008       | 8.1.263.1        | 8.01.0263.001   | Exchange Server 2007 SP1             | EX2007_SP1_UR1        |
 Exchange Server 2007 SP1                                   | 11/29/2007      | 8.1.240.6        | 8.01.0240.006   | Exchange Server 2007 SP1             | EX2007_SP1            | TRUE
-Update Rollup 7 for Exchange Server 2007                   | 7/8.3.08        | 8.0.813.0        | 8.00.0813.000   | Exchange Server 2007 RTM             | EX2007_UR7            |
+Update Rollup 7 for Exchange Server 2007                   | 7/8/2008        | 8.0.813.0        | 8.00.0813.000   | Exchange Server 2007 RTM             | EX2007_UR7            |
 Update Rollup 6 for Exchange Server 2007                   | 2/21/2008       | 8.0.783.2        | 8.00.0783.002   | Exchange Server 2007 RTM             | EX2007_UR6            |
 Update Rollup 5 for Exchange Server 2007                   | 10/25/2007      | 8.0.754.0        | 8.00.0754.000   | Exchange Server 2007 RTM             | EX2007_UR5            |
 Update Rollup 4 for Exchange Server 2007                   | 8/23/2007       | 8.0.744.0        | 8.00.0744.000   | Exchange Server 2007 RTM             | EX2007_UR4            |
-Update Rollup 3 for Exchange Server 2007                   | 6/28.3.07       | 8.0.730.1        | 8.00.0730.001   | Exchange Server 2007 RTM             | EX2007_UR3            |
-Update Rollup 2 for Exchange Server 2007                   | 5/8.3.07        | 8.0.711.2        | 8.00.0711.002   | Exchange Server 2007 RTM             | EX2007_UR2            |
+Update Rollup 3 for Exchange Server 2007                   | 6/28/2007       | 8.0.730.1        | 8.00.0730.001   | Exchange Server 2007 RTM             | EX2007_UR3            |
+Update Rollup 2 for Exchange Server 2007                   | 5/8/2007        | 8.0.711.2        | 8.00.0711.002   | Exchange Server 2007 RTM             | EX2007_UR2            |
 Update Rollup 1 for Exchange Server 2007                   | 4/17/2007       | 8.0.708.3        | 8.00.0708.003   | Exchange Server 2007 RTM             | EX2007_UR1            |
-Exchange Server 2007 RTM                                   | 3/8.3.07        | 8.0.685.25       | 8.00.0685.025   | Exchange Server 2007 RTM             | EX2007_RTM            | TRUE
+Exchange Server 2007 RTM                                   | 3/8/2007        | 8.0.685.25       | 8.00.0685.025   | Exchange Server 2007 RTM             | EX2007_RTM            | TRUE
 Exchange Server 2003 post-SP2                              | 8/1/2008        | 6.5.7654.4       |                 | Exchange Server 2003 post-SP2        | EX2003_post-SP2       | TRUE
 Exchange Server 2003 post-SP2                              | 3/1/2008        | 6.5.7653.33      |                 | Exchange Server 2003 post-SP2        | EX2003_post-SP2       | TRUE
 Exchange Server 2003 SP2                                   | 10/19/2005      | 6.5.7683         |                 | Exchange Server 2003 SP2             | EX2003_SP2            | TRUE
 Exchange Server 2003 SP1                                   | 5/25/2004       | 6.5.7226         |                 | Exchange Server 2003 SP1             | EX2003_SP1            | TRUE
-Exchange Server 2003                                       | 9/28.3.03       | 6.5.6944         |                 | Exchange Server 2003                 | EX2003                |
+Exchange Server 2003                                       | 9/28/2003       | 6.5.6944         |                 | Exchange Server 2003                 | EX2003                |
 Exchange 2000 Server post-SP3                              | 8/1/2008        | 6.0.6620.7       |                 | Exchange 2000 Server post-SP3        | EX2000_post-SP3       | TRUE
 Exchange 2000 Server post-SP3                              | 3/1/2008        | 6.0.6620.5       |                 | Exchange 2000 Server post-SP3        | EX2000_post-SP3       | TRUE
 Exchange 2000 Server post-SP3                              | 8/1/2004        | 6.0.6603         |                 | Exchange 2000 Server post-SP3        | EX2000_post-SP3       | TRUE
 Exchange 2000 Server post-SP3                              | 4/1/2004        | 6.0.6556         |                 | Exchange 2000 Server post-SP3        | EX2000_post-SP3       | TRUE
 Exchange 2000 Server post-SP3                              | 9/1/2003        | 6.0.6487         |                 | Exchange 2000 Server post-SP3        | EX2000_post-SP3       | TRUE
-Exchange 2000 Server SP3                                   | 7/18.3.02       | 6.0.6249         |                 | Exchange 2000 Server SP3             | EX2000_SP3            | TRUE
+Exchange 2000 Server SP3                                   | 7/18/2002       | 6.0.6249         |                 | Exchange 2000 Server SP3             | EX2000_SP3            | TRUE
 Exchange 2000 Server SP2                                   | 11/29/2001      | 6.0.5762         |                 | Exchange 2000 Server SP2             | EX2000_SP2            | TRUE
 Exchange 2000 Server SP1                                   | 6/21/2001       | 6.0.4712         |                 | Exchange 2000 Server SP1             | EX2000_SP1            | TRUE
 Exchange 2000 Server                                       | 11/29/2000      | 6.0.4417         |                 | Exchange 2000 Server                 | EX2000                |
@@ -23523,144 +22917,6 @@ Function Resolve-xopMajorVersionTDO {
 }
 
 #*------^ Resolve-xopMajorVersionTDO.ps1 ^------
-
-
-#*------v Resolve-xopVersionTagToMinVersionNumTDO.ps1 v------
-Function Resolve-xopVersionTagToMinVersionNumTDO {
-        <#
-        .SYNOPSIS
-        Resolve-xopVersionTagToMinVersionNumTDO - Resolves Exchange Server Major Server Revision tag (EXSE|EX2019|EX2016|EX2013|EX2010|EX2007|EX2003|EX2000|EX55|EX50|EX40_SE) to Min/RTM SemanticVersion BuildNumber for filtering server lists to return specific revisions 
-        .NOTES
-        Version     : 0.0.
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 20250711-0423PM
-        FileName    : Resolve-xopVersionTagToMinVersionNumTDO.ps1
-        License     : (none asserted)
-        Copyright   : (none asserted)
-        Github      : https://github.com/tostka/verb-ex2010
-        Tags        : Powershell,Exchange,ExchangeServer,Install,Patch,Maintenance
-        AddedCredit : 
-        AddedWebsite: 
-        AddedTwitter: URL
-        REVISIONS
-        * 3:06 PM 11/26/2025 init version, simplified major version version of Resolve-xopBuildSemVersToTextNameTDO, returns solely the build tag, not further details
-
-        .DESCRIPTION
-        Resolve-xopVersionTagToMinVersionNumTDO - Resolves Exchange Server Major Server Revision tag (EXSE|EX2019|EX2016|EX2013|EX2010|EX2007|EX2003|EX2000|EX55|EX50|EX40_SE) to Min/RTM SemanticVersion BuildNumber for filtering server lists to return specific revisions 
-        
-        Returns the following variant Version Tags:
-
-            Tag     | Server Major Release Version
-            ------- | ------------------------------------
-            EXSE    | Exchange Server Subscription Edition
-            EX2019  | Exchange Server 2019
-            EX2016  | Exchange Server 2016
-            EX2013  | Exchange Server 2013
-            EX2010  | Exchange Server 2010
-            EX2007  | Exchange Server 2007
-            EX2003  | Exchange Server 2003
-            EX2000  | Exchange Server 2000
-            EX55    | Exchange Server 5.5
-            EX50    | Exchange Server 5.0
-            EX40_SE | Exchange Server 4.0 SE
-
-        Supports Exchange Server 4.0 SE through Exchange Server Subscription Edition. 
-
-        Simple check of semver against RTM/Preview etc initial release versions ('Breakpoints'): 
-
-            Breakpoints for major versions (1st/lowest BuildNumberShort for the revision level):
-            NickName           BuildNumberShort
-            --------           ----------------
-            EXSE_RTM           15.2.2562.17
-            EX2019_Preview     15.2.196.0
-            EX2016_RTM         15.1.225.42
-            EX2016_Preview     15.1.225.16
-            EX2013_RTM         15.0.516.32
-            EX2010_RTM         14.0.639.21
-            EX2007_RTM         8.0.685.25
-            EX2003             6.5.6944
-            EX2000             6.0.4417
-            EX55               5.5.1960
-            EX50               5.0.1457
-            EX40_SE            4.0.837
-
-        .PARAMETER Version
-        .INPUTS
-        None, no piped input.
-        .OUTPUTS
-        System.String Exchange Server Major Version Tag
-        .EXAMPLE
-        PS> $SemVers = Resolve-xopVersionTagToMinVersionNumTDO -VersionTag Ex2016
-        PS> $SemVers ; 
-
-            Major  Minor  Build  Revision
-            -----  -----  -----  --------
-            15     1      225    16      
-
-        Demo resolving Ex2016 minimum revision semantic version number
-        .EXAMPLE
-        PS> $SemVers = Resolve-xopVersionTagToMinVersionNumTDO -VersionTag Ex2019 ; 
-        PS> $SemVers ; 
-
-            Major  Minor  Build  Revision
-            -----  -----  -----  --------
-            15     2      196    0  
-
-        Demo resolving Ex2019 minimum revision semantic version number
-
-        .LINK
-        https://github.com/tostka/verb-ex2010        
-        .LINK
-        https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates
-        #>
-        [CmdletBinding()]
-        #[alias('Get-DetectedFileVersion')]
-        PARAM(
-            [Parameter(Mandatory=$TRUE,HelpMessage = "Exchange Server Major Server Revision tag (EXSE|EX2019|EX2016|EX2013|EX2010|EX2007|EX2003|EX2000|EX55|EX50|EX40_SE)[-Version 'EX2016']")]                
-                [alias('FileVersion')]
-                [string]$VersionTag        
-        ) ;         
-        PROCESS {
-            # when updating $BuildToProductName table (below), also record date of last update here (echos to console, for awareness on results)
-            [datetime]$lastBuildTableUpedate = '2025-11-26' ; 
-            $BuildTableUpedateUrl = 'https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates'
-            #'https://docs.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-date' ; 
-            #Creating the hash table with build numbers and cumulative updates
-            # updated as of 9:56 AM 3/26/2025 to curr https://learn.microsoft.com/en-us/exchange/new-features/build-numbers-and-release-dates?view=exchserver-2019
-            # also using unmodified MS Build names, from the chart (changing just burns time)
-            $smsg = "NOTE:`$BuildToProductName table was last updated on $($lastBuildTableUpedate.ToShortDateString())" ; 
-            $smsg += "`n(update from:$($BuildTableUpedateUrl))" ;
-            write-host -foregroundcolor yellow $smsg ; 
-          
-            if($VersionTag){
-                switch($VersionTag){
-                    'EXSE' {$MinVersion = [version]'15.2.196.0' }
-                    'EX2019' {$MinVersion = [version]'15.2.196.0' }
-                    'EX2016' {$MinVersion = [version]'15.1.225.16' }
-                    'EX2013' {$MinVersion = [version]'15.0.516.32' }
-                    'EX2010' {$MinVersion = [version]'14.0.639.21' }
-                    'EX2007' {$MinVersion = [version]'8.0.685.25' }
-                    'EX2003' {$MinVersion = [version]'6.5.6944' }
-                    'EX2000' {$MinVersion = [version]'6.0.4417' }
-                    'EX55' {$MinVersion = [version]'5.5.1960' }
-                    'EX50' {$MinVersion = [version]'5.0.1457' }
-                    'EX40_SE' {$MinVersion = [version]'4.0.837' }
-                    default{
-                        $smsg = "Unrecognized -VersionTag: $($VersionTag)" ; 
-                        write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)"  ; 
-                    }
-                }; 
-                if($MinVersion){
-                    $MinVersion | write-output ;
-                } 
-               
-            } ; 
-        };  # PROC-E        
-    }
-
-#*------^ Resolve-xopVersionTagToMinVersionNumTDO.ps1 ^------
 
 
 #*------v rx10cmw.ps1 v------
@@ -25955,212 +25211,6 @@ function test-LocalExchangeInfoTDO {
 #*------^ test-LocalExchangeInfoTDO.ps1 ^------
 
 
-#*------v test-xopCerticateBinding.ps1 v------
-function test-xopCerticateBinding{
-        <#
-        .SYNOPSIS
-        test-xopCerticateBinding - Use get-ExchangeCertificate (EMS) to retrieve current Services-bound certificate, and evaluate that it meets the necessary validity checks for production use (Subject matches production host names; Status: Valid; NotAfter & NotBefore are in window for use, IISServices has a binding, PrivateKeyExportable:`$true, and Issuer is the expected Public vendor for public authentication
-        .NOTES
-        Version     : 0.0.3
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 2025-11-13
-        FileName    : test-xopCerticateBinding.ps1
-        License     : MIT License
-        Copyright   : (c) 2025 Todd Kadrie
-        Github      : https://github.com/tostka/verb-XXX
-        Tags        : Powershell,Exchange,ExchangeServer,Certificate,Validation,Maintenance
-        AddedCredit : REFERENCE
-        AddedWebsite: URL
-        AddedTwitter: URL
-        REVISIONS
-        * 11:05 AM 11/19/2025 add break on dep-fails (wasn't exiting) ; add test for broken signing on ex16 - doesn't return Thumbprint or other properties; convert to func(), add to xopBL        * 1:20 PM 11/13/2025 init, works in production.
-        .DESCRIPTION
-        test-xopCerticateBinding - Use get-ExchangeCertificate (EMS) to retrieve current Services-bound certificate, and evaluate that it meets the necessary validity checks for production use (Subject matches production host names; Status: Valid; NotAfter & NotBefore are in window for use, IISServices has a binding, PrivateKeyExportable:`$true, and Issuer is the expected Public vendor for public authentication
-        .INPUTS
-        None. Does not accepted piped input.(.NET types, can add description)
-        .OUTPUTS
-        Returns psjCustomObject reflecting status of each configured test
-        .EXAMPLE
-        PS> test-xopCerticateBinding -verbose 
-
-        =MATCHED CERT ON AAAAAnnn:
-
-        Subject              : CN=AAAAAA.AAAA.com, O=The Toro Company, L=Bloomington, S=Minnesota, C=US
-        Status               : Valid
-        Services             : IMAP, POP, IIS, SMTP
-        NotAfter             : 11/2/2026 5:59:59 PM
-        NotBefore            : 11/2/2025 6:00:00 PM
-        Thumbprint           : 6F029E0D20605DBTRIM7016B787C4503FD0002C0
-        IisServices          : {IIS://AAAAAnnn/W3SVC/1}
-        PrivateKeyExportable : True
-        PublicKeySize        : 2048
-        FriendlyName         : AAAAAA.AAAA.com (11-02-2026)
-        Issuer               : CN=DigiCert Global G2 TLS RSA SHA256 2020 CA1, O=DigiCert Inc, C=US
-
-        =CN=AAAAAA.AAAA.com, O=AAA AAAA AAAAAAA, L=AAAAAAAAAAA, S=AAAAAAAAA, C=US 
-        SANS
-        DNS Name=AAAAAA.AAAA.com
-        DNS Name=autodiscover.AAAA.com
-
-        Thumbprint                                Services   Subject                                                                                                  
-        ----------                                --------   -------                                                                                                  
-        6F029E0D20605DBTRIM7016B787C4503FD0002C0  IP.WS.     CN=AAAAAA.AAAA.com, O=AAA AAAA AAAAAAA, L=AAAAAAAAAAA, S=AAAAAAAAA, C=US                                 
-
-        VERBOSE: Tests to be Run:
-        subject match CN=AAAAAA\.
-        status eq Valid
-        NotAfter gt NOW
-        NotBefore lt NOW
-        IISServices eq TRUE
-        PrivateKeyExportable eq TRUE
-        issuer match CN=DigiCert
-
-        subject	[Y] MATCH	CN=AAAAAA\. 	:	CN=AAAAAA.AAAA.com, O=AAA AAAA AAAAAAA, L=AAAAAAAAAAA, S=AAAAAAAAA, C=US
-        status	[Y] -EQ	Valid 	:	Valid
-        NotAfter	[Y] -GT	11/13/2025 13:30:31 	:	11/02/2026 17:59:59
-        NotBefore	[Y] -LT	11/13/2025 13:30:31 	:	11/02/2025 18:00:00
-        IISServices	[Y] -EQ	True 	:	Microsoft.Exchange.Management.SystemConfigurationTasks.IisService
-        PrivateKeyExportable	[Y] -EQ	True 	:	True
-        issuer	[Y] MATCH	CN=DigiCert 	:	CN=DigiCert Global G2 TLS RSA SHA256 2020 CA1, O=DigiCert Inc, C=US
-
-        $TestResults:
-        subject	[Y] MATCH	CN=AAAAAA\. 	:	CN=AAAAAA.AAAA.com, O=AAA AAAA AAAAAAA, L=AAAAAAAAAAA, S=AAAAAAAAA, C=US
-        status	[Y] -EQ	Valid 	:	Valid
-        NotAfter	[Y] -GT	11/13/2025 13:30:31 	:	11/02/2026 17:59:59
-        NotBefore	[Y] -LT	11/13/2025 13:30:31 	:	11/02/2025 18:00:00
-        IISServices	[Y] -EQ	True 	:	Microsoft.Exchange.Management.SystemConfigurationTasks.IisService
-        PrivateKeyExportable	[Y] -EQ	True 	:	True
-        issuer	[Y] MATCH	CN=DigiCert 	:	CN=DigiCert Global G2 TLS RSA SHA256 2020 CA1, O=DigiCert Inc, C=US
-
-        .LINK
-        https://github.com/tostka/powershellbb/
-        #>
-        [CmdletBinding()]
-        PARAM()
-        BEGIN{
-            # PKI cert object: doesn't include Status and other key values; must obtain via get-exchangecertificate cmdlet.
-            #$CNName = 'CN=mymail.toro.com*' ;
-            #$NotBefore = '11/2/2025 6:00:00 PM' ;
-            #$cert=get-childitem cert:\LocalMachine\My\ |?{$_.Subject -like $CNName -AND $_.NotBefore -ge (get-date $NotBefore)} ;
-            #$cert | select subject,friendlyname,not*,DNSName,pspath,thumbprint ;
-            if(-not (get-command get-exchangecertificate)){
-                $smsg = "MISSING EMS: get-exchangecertificate cmdlet" ; 
-                $smsg += "`nPre-connect to Exchange Management Shell *locally* on an Exchange Server to run this check" ; 
-                $smsg += "`n(must be local EMS: Remote EMS lacks Status and other key values on return)" ; 
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                throw $smsg ; 
-                break ; 
-            }
-            $cert=get-exchangecertificate -Server $env:LOCALHOST |?{($_.Services -match "IIS") -AND ($_.Services -match "SMTP") -AND ($_.Services -match "IMAP") -AND ($_.Services -match "POP")}  ;"`n=MATCHED CERT ON $($env:COMPUTERNAME):" ;$cert | fl Subject,Status,Services,not*,thumb*,Iis*,PrivateKeyEx*,PublicKeyS*,Friend*,Issuer ;if($cert -isnot [system.array]){  $tCERT=gci cert:\LocalMachine\My\$($cert.Thumbprint) ;  "=$($tcert.Subject) SANS" ;  ($tCert.Extensions | Where-Object {$_.Oid.FriendlyName -eq "subject alternative name"}).Format(1) ;} else {    throw "multiple certs returned! $($cert.Subject| out-string)" ;};
-            # 10:41 AM 11/19/2025 add test for broken signing on ex16 - doesn't return Thumbprint or other properties
-            if(($cert | gm | ?{$_.MemberType -eq 'property'} | select -expand name) -contains 'Thumbprint'){
-                $smsg = "(confirmed get-exchangecertificate returns a populated Thumbprint at mininum: no Fed Cert blank return issue)" ; 
-                if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-            }else{
-                $smsg = "BROKEN EMS: get-exchangecertificate cmdlet!" ; 
-                $smsg += "`nSigning-Behavior: FAILS to return properly populated Thumbprint, Status, Subject, Services or other normal propertiesr" ; 
-                $smsg += "`n(requires rebuild of Federation cert, with CAB'd post-run of HCW to repair to function)" ; 
-                $smsg += "`nTHIS TEST WILL NOT FUNCTION UNTIL GET-EXCHANGECERTIFICATE IS FIXED AND FUNCTIONAL!" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                THROW $SMSG ; 
-                BREAK ; 
-            }
-            write-host "`n" ;    
-            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):matched cert:`n$(($cert|out-string).trim())" ; 
-
-            $TestsValid = @(
-                'subject;match;CN=mymail\.',
-                'status;eq;Valid',
-                'NotAfter;gt;NOW',
-                'NotBefore;lt;NOW',
-                'IISServices;eq;TRUE',
-                'PrivateKeyExportable;eq;TRUE',
-                'issuer;match;CN=DigiCert'
-            ) ;
-            $smsg = "Tests to be Run:`n$(($testsvalid | %{$_.replace(';',' ')}|out-string).trim())" ; 
-            write-verbose $smsg ; 
-            $TestResults = @() ;
-        } # BEG-E
-        PROCESS{
-            foreach($test in $TestsValid){
-                $prop,$comp,$valu = $null ;
-                write-verbose $test ;
-                $prop,$comp,$valu = $test.split(';') ;
-                write-verbose $(@($prop,$comp,$valu) -join ',')
-                switch ($valu){
-                    'NOW'{$valu = (get-date ) }
-                    'TRUE'{$valu = $true}
-                    'FALSE'{$valu = $false}
-                    default{
-                        write-verbose "passthru usable valu:$($valu)" ;
-                    } ;
-                } ;
-                switch ($comp){
-                    'match'{
-                        if(($cert | select -expand $prop) -MATCH $valu){
-                            $TestResults += "$($prop)`t[Y] MATCH`t$($valu) `t:`t$($cert | select -expand $prop)" ;
-                        } else{
-                            $TestResults += "$($prop)`t*[X]* $($valu) `t:`t$($cert | select -expand $prop)" ;
-                        };
-                    }
-                    'gt'{
-                        if(($cert | select -expand $prop) -GT $valu){
-                            $TestResults += "$($prop)`t[Y] -GT`t$($valu) `t:`t$($cert | select -expand $prop)" ;
-                        } else{
-                            $TestResults += "$($prop)`t*[X]* $($valu) `t:`t$($cert | select -expand $prop)" ;
-                        };
-                    }
-                    'lt'{
-                        if(($cert | select -expand $prop) -LT $valu){
-                            $TestResults += "$($prop)`t[Y] -LT`t$($valu) `t:`t$($cert | select -expand $prop)" ;
-                        } else{
-                            $TestResults += "$($prop)`t*[X]* $($valu) `t:`t$($cert | select -expand $prop)" ;
-                        };
-                    }
-                    'eq'{
-                        if($valu -eq $true){
-                            if(($cert | select -expand $prop) | ?{$_ -eq $valu -or $_ -ne $null}){
-                                $TestResults += "$($prop)`t[Y] -EQ`t$($valu) `t:`t$($cert | select -expand $prop)" ;
-                            } else{
-                                $TestResults += "$($prop)`t*[X]* $($valu) `t:`t$($cert | select -expand $prop)" ;
-                            };
-                        }elseif($valu -eq $false){
-                            if(($cert | select -expand $prop) | ?{$_ -eq $valu -or $_ -eq $null}){
-                                $TestResults += "$($prop)`t[Y] -EQ`t$($valu) `t:`t$($cert | select -expand $prop)" ;
-                            } else{
-                                $TestResults += "$($prop)`t*[X]* $($valu) `t:`t$($cert | select -expand $prop)" ;
-                            };
-                        }else{
-                          if(($cert | select -expand $prop) -EQ $valu){
-                                $TestResults += "$($prop)`t[Y] -EQ`t$($valu) `t:`t$($cert | select -expand $prop)" ;
-                            } else{
-                                $TestResults += "$($prop)`t*[X]* $($valu) `t:`t$($cert | select -expand $prop)" ;
-                            };
-                        }
-               
-                    }
-                    default{
-                        throw "unrecognized `$comp! comparision operator!:$($comp)" ;
-                    }
-                } ;
-            } ; # loop-E
-        }  # PROC-E
-        END{
-            $TestResults | write-output ;
-            WRITE-HOST "`n`$TestResults:`n$(($TestResults|out-string).trim())`n" ; 
-        } ; 
-    }
-
-#*------^ test-xopCerticateBinding.ps1 ^------
-
-
 #*------v test-xopExchangeInstallWatermarkTDO.ps1 v------
 function test-xopExchangeInstallWatermarkTDO {
         <#
@@ -26310,7 +25360,7 @@ PARAM() ;
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function add-MailboxAccessGrant,Remove-InvalidVariableNameChars,2b4,2b4c,fb4,add-MbxAccessGrant,_cleanup,add-MbxAccessGrant,_cleanup,Connect-Ex2010,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,Connect-Ex2010XO,Connect-ExchangeServerTDO,_connect-ExOP,connect-OPServices,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,2b4,2b4c,fb4,connect-XopLocalManagementShell,Convert-xopAdminDisplayVersionTDO,cx10cmw,cx10tol,cx10tor,disable-ForestView,disable-xopExServer,Disconnect-Ex2010,enable-ForestView,enable-XOPCertificateTDO,get-ADExchangeServerTDO,get-DAGDatabaseCopyStatus,Get-ex16ExchangeServerTDO,Get-ex16MaintenanceModeTDO,Get-ExchangeOrganizationTDO,Get-ExchServerFromExServersGroup,get-ExRootSiteOUs,get-IISLocalBoundCertifcateTDO,get-MailboxDatabaseQuotas,Get-MessageTrackingLogTDO,resolve-EnvironmentTDO,write-log,Start-Log,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,resolve-NetworkLocalTDO,out-Clipboard,convertFrom-MarkdownTable,Remove-InvalidVariableNameChars,remove-SmtpPlusAddress,Initialize-xopEventIDTable,push-TLSLatest,test-LocalExchangeInfoTDO,2b4,2b4c,fb4,Get-SetupTextVersionTDO,get-UserMailADSummary,get-xopExchangeLocalVersionTDO,get-xopLocalExSetupVersionTDO,get-xopLocalExSetupVersionTDO,get-xopServerAdminDisplayVersion,import-EMSLocalModule,import-xopCertificatePfxTDO,Initialize-xopEventIDTable,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxGenericTOR,2b4,2b4c,fb4,Remove-InvalidVariableNameChars,new-MailboxShared,2b4,2b4c,fb4,Remove-InvalidVariableNameChars,preview-EAPUpdate,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,remove-SmtpPlusAddress,Repair-xopEmailAddresses,Resolve-ADUserToLocalMailObjectExchangeGuid,Resolve-ADUserToOPMailboxExchangeGuid,resolve-ExchangeServerVersionTDO,Resolve-OPMailObjectToADUsermsExchMailboxGuid,resolve-RecipientEAP,Resolve-xopBuildSemVersToTextNameTDO,convertFrom-MarkdownTable,Resolve-xopMajorVersionTDO,Resolve-xopVersionTagToMinVersionNumTDO,rx10cmw,rx10tol,rx10tor,Start-ex16MaintenanceMode,start-Ex16ServicesInDependencyOrder,start-ExMaintModeExpress,Stop-ex16MaintenanceMode,stop-Ex16ServicesInDependencyOrder,Test-ExchangeOrganizationTDO,test-ExOPPSession,test-EXOPConnection,test-LocalExchangeInfoTDO,test-xopCerticateBinding,test-xopExchangeInstallWatermarkTDO,toggle-ForestView -Alias *
+Export-ModuleMember -Function add-MailboxAccessGrant,Remove-InvalidVariableNameChars,2b4,2b4c,fb4,add-MbxAccessGrant,_cleanup,add-MbxAccessGrant,_cleanup,Connect-Ex2010,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,Connect-Ex2010XO,Connect-ExchangeServerTDO,_connect-ExOP,connect-OPServices,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,2b4,2b4c,fb4,connect-XopLocalManagementShell,Convert-xopAdminDisplayVersionTDO,cx10cmw,cx10tol,cx10tor,disable-ForestView,disable-xopExServer,Disconnect-Ex2010,enable-ForestView,get-ADExchangeServerTDO,get-DAGDatabaseCopyStatus,Get-ex16ExchangeServerTDO,Get-ex16MaintenanceModeTDO,Get-ExchangeOrganizationTDO,Get-ExchServerFromExServersGroup,get-ExRootSiteOUs,get-IISLocalBoundCertifcateTDO,get-MailboxDatabaseQuotas,Get-MessageTrackingLogTDO,resolve-EnvironmentTDO,write-log,Start-Log,Connect-ExchangeServerTDO,_connect-ExOP,get-ADExchangeServerTDO,load-ADMS,get-GCFast,resolve-NetworkLocalTDO,out-Clipboard,convertFrom-MarkdownTable,Remove-InvalidVariableNameChars,remove-SmtpPlusAddress,Initialize-xopEventIDTable,push-TLSLatest,test-LocalExchangeInfoTDO,2b4,2b4c,fb4,Get-SetupTextVersionTDO,get-UserMailADSummary,get-xopExchangeLocalVersionTDO,get-xopLocalExSetupVersionTDO,get-xopLocalExSetupVersionTDO,get-xopServerAdminDisplayVersion,import-EMSLocalModule,Initialize-xopEventIDTable,Invoke-ExchangeCommand,load-EMSLatest,Load-EMSSnap,new-MailboxGenericTOR,2b4,2b4c,fb4,Remove-InvalidVariableNameChars,new-MailboxShared,2b4,2b4c,fb4,Remove-InvalidVariableNameChars,preview-EAPUpdate,Reconnect-Ex2010,Reconnect-Ex2010XO,remove-EMSLocalModule,remove-SmtpPlusAddress,Repair-xopEmailAddresses,Resolve-ADUserToLocalMailObjectExchangeGuid,Resolve-ADUserToOPMailboxExchangeGuid,resolve-ExchangeServerVersionTDO,Resolve-OPMailObjectToADUsermsExchMailboxGuid,resolve-RecipientEAP,Resolve-xopBuildSemVersToTextNameTDO,convertFrom-MarkdownTable,Resolve-xopMajorVersionTDO,rx10cmw,rx10tol,rx10tor,Start-ex16MaintenanceMode,start-Ex16ServicesInDependencyOrder,start-ExMaintModeExpress,Stop-ex16MaintenanceMode,stop-Ex16ServicesInDependencyOrder,Test-ExchangeOrganizationTDO,test-ExOPPSession,test-EXOPConnection,test-LocalExchangeInfoTDO,test-xopExchangeInstallWatermarkTDO,toggle-ForestView -Alias *
 
 
 
@@ -26318,8 +25368,8 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Remove-InvalidVariableNameC
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUi2CQlyGEe1v3jPcKQgKz/Hd+
-# e8+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQURHTa7XcRvYunSFb3WPGrKOI4
+# AjagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -26334,9 +25384,9 @@ Export-ModuleMember -Function add-MailboxAccessGrant,Remove-InvalidVariableNameC
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTQbFj+
-# qz7BvAs7GRdse0zV0Kn5TzANBgkqhkiG9w0BAQEFAASBgFFSCtmFe4Xgq77PKQAn
-# 9imNdQZFDRHKbHxd1VgIUvRjrR2/HFOfH1sojkr7n+I4pyzSqUnzDa4Qgwl70WEn
-# S14omuoIdF8SvrMeiIhVpoM3DzUMefTXM0+0zioH/zm2u+4Fl2XRGhCMWyw42pTl
-# +XIF/JaEJ5uqfJRyrhXfdKlX
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSGabwL
+# GMnsWYA2X3W/I20lYFsHiDANBgkqhkiG9w0BAQEFAASBgKmPB/ivbej2iGKPYNzN
+# vjCjCvfZ5C5Vo/2/myDGb2m4Jb7wx2BYpooU7oVR3lMMe4wPbkJUaibjyQiVJw+2
+# QEIPOV4GtWU0QKsYTtI/zSP2DjfCE1Tt2mwG3HD5y3LBkfeYCu+WiZsJzVnf3GWV
+# A/up+aYymjbwgX6o5J/MF6FM
 # SIG # End signature block
